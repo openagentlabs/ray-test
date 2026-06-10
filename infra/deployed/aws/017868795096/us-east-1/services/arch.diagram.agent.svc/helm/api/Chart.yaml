@@ -1,0 +1,6 @@
+apiVersion: v2
+name: arb-arch-diagram-agent-api
+description: Helm chart scaffold for the arch diagram agent gRPC workload (Bedrock-backed).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

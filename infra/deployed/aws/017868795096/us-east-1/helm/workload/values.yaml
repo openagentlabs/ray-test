@@ -1,0 +1,35 @@
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: placeholder
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 8803
+  exposeLoadBalancer: false
+
+resources:
+  requests:
+    cpu: 256m
+    memory: 512Mi
+  limits:
+    cpu: 256m
+    memory: 512Mi
+
+env: {}
+
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

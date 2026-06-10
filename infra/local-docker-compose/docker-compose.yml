@@ -1,0 +1,238 @@
+# Local Docker Compose stack for ARB - AI Assistant (build context: repository root).
+#
+# Start:  make start-local-docker
+# Stop:   make stop-local-docker
+# Build:  make build-dockers  (or: make start-local-docker BUILD=1)
+
+name: arb-ai-assistant
+
+networks:
+  arb:
+    driver: bridge
+
+volumes:
+  storage_data:
+
+x-aws-env: &aws-env
+  env_file:
+    - path: ../../envs/dev/.env.aws
+      required: false
+
+x-python-service-defaults: &python-service-defaults
+  <<: *aws-env
+  environment:
+    AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    CLOUDWATCH_LOGS_ENABLED: "false"
+    PYTHONUNBUFFERED: "1"
+  networks:
+    - arb
+  restart: unless-stopped
+
+services:
+  iam:
+    <<: *python-service-defaults
+    image: arb-iam-service:local
+    build:
+      context: ../..
+      dockerfile: iam.svc/server/Dockerfile
+    ports:
+      - "8803:8803"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../iam.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      IAM_AUTO_BOOTSTRAP_ADMIN_ON_EMPTY: "false"
+
+  general-ai-agent:
+    <<: *python-service-defaults
+    image: arb-general-ai-agent-service:local
+    build:
+      context: ../..
+      dockerfile: general.ai.agent.svc/server/Dockerfile
+    ports:
+      - "8806:8806"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../general.ai.agent.svc/server/.env.local
+        required: false
+    depends_on:
+      - iam
+
+  solutions:
+    <<: *python-service-defaults
+    image: arb-solutions-service:local
+    build:
+      context: ../..
+      dockerfile: solutions.svc/server/Dockerfile
+    ports:
+      - "8804:8804"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../solutions.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      SOLUTIONS_APP_CONFIG_PATH: ./app_config.toml
+    depends_on:
+      - iam
+
+  notification:
+    <<: *python-service-defaults
+    image: arb-notification-service:local
+    build:
+      context: ../..
+      dockerfile: notification.svc/server/Dockerfile
+    ports:
+      - "8807:8807"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../notification.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      NOTIFICATION_SKIP_SNS_STARTUP_CHECK: "true"
+    depends_on:
+      - iam
+
+  collaboration:
+    <<: *python-service-defaults
+    image: arb-collaboration-service:local
+    build:
+      context: ../..
+      dockerfile: collaboration.svc/server/Dockerfile
+    ports:
+      - "8808:8808"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../collaboration.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      COLLABORATION_SVC_APP_CONFIG_PATH: ./app_config.toml
+      COLLABORATION_SKIP_DYNAMODB_STARTUP_CHECK: "true"
+    depends_on:
+      - iam
+
+  storage:
+    <<: *python-service-defaults
+    image: arb-storage-service:local
+    build:
+      context: ../..
+      dockerfile: storage.svc/server/Dockerfile
+    ports:
+      - "8805:8805"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../storage.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      STORAGE_DATABASE_PATH: /app/data/storage.db
+    volumes:
+      - storage_data:/app/data
+    depends_on:
+      - iam
+
+  document-storage:
+    <<: *python-service-defaults
+    image: arb-document-storage-service:local
+    build:
+      context: ../..
+      dockerfile: document-storage.svc/server/Dockerfile
+    ports:
+      - "8809:8809"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../document-storage.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      DOCUMENT_STORAGE_APP_CONFIG_PATH: ./app_config.toml
+      DOCUMENT_STORAGE_SKIP_DYNAMODB_STARTUP_CHECK: "true"
+    depends_on:
+      - iam
+
+  arch-diagram-agent:
+    <<: *python-service-defaults
+    image: arb-arch-diagram-agent-service:local
+    build:
+      context: ../..
+      dockerfile: arch.diagram.agent.svc/server/Dockerfile
+    ports:
+      - "8810:8810"
+    env_file:
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../arch.diagram.agent.svc/server/.env.local
+        required: false
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      CLOUDWATCH_LOGS_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+      ARCH_DIAGRAM_AGENT_APP_CONFIG_PATH: ./app_config.toml
+      ARCH_DIAGRAM_AGENT_SKIP_DYNAMODB_STARTUP_CHECK: "true"
+      ARCH_DIAGRAM_AGENT_DOCUMENT_STORAGE_ENABLED: "true"
+      ARCH_DIAGRAM_AGENT_DOCUMENT_STORAGE_GRPC_HOST: document-storage
+      ARCH_DIAGRAM_AGENT_DOCUMENT_STORAGE_GRPC_PORT: "8809"
+      ARCH_DIAGRAM_AGENT_STORAGE_ENABLED: "true"
+      ARCH_DIAGRAM_AGENT_STORAGE_GRPC_HOST: storage
+      ARCH_DIAGRAM_AGENT_STORAGE_GRPC_PORT: "8805"
+    depends_on:
+      - iam
+      - document-storage
+      - storage
+
+  frontend:
+    image: arb-frontend:local
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8802:8802"
+    env_file:
+      - path: .env.local
+        required: false
+      - path: ../../envs/dev/compose.env
+        required: false
+      - path: ../../envs/dev/.env.aws
+        required: false
+      - path: ../../frontend/.env.local
+        required: false
+    environment:
+      APP_ENV: dev
+      APP_TARGET: local
+      AUTH_TRUST_HOST: "true"
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    depends_on:
+      - iam
+      - general-ai-agent
+      - solutions
+      - notification
+      - collaboration
+      - storage
+      - document-storage
+      - arch-diagram-agent
+    networks:
+      - arb
+    restart: unless-stopped

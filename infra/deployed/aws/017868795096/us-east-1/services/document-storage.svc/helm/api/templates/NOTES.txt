@@ -1,0 +1,3 @@
+Document storage gRPC workload.
+Attach the IAM role from Terraform output `iam_document_storage_svc_role_arn` (IRSA or task role).
+OpenSearch data access is granted via the same principal on the docstore vector collection.

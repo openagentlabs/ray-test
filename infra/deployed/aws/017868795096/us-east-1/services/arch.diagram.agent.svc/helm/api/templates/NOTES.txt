@@ -1,0 +1,3 @@
+Scaffold: add Kubernetes manifests under templates/.
+Attach the Bedrock IAM role from Terraform output `iam_arch_diagram_agent_bedrock_role_arn` (IRSA or instance profile).
+Keep `[agent.bedrock]` in app_config.toml aligned with Terraform Bedrock model/profile outputs.

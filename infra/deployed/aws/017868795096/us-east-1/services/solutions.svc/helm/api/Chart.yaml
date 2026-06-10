@@ -1,0 +1,6 @@
+apiVersion: v2
+name: arb-solutions-api
+description: Helm chart scaffold for the solutions service workload.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

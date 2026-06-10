@@ -1,0 +1,40 @@
+{
+  "syncedFrom": "terraform output",
+  "aws_region": "us-east-1",
+  "aws_account_id": "017868795096",
+  "application_logs_put_policy_arn": "arn:aws:iam::017868795096:policy/arb_ai_assistant-app-logs-20260517113152714800000001",
+  "log_group_names": {
+    "aspire": "/arb/arb_ai_assistant/services/aspire",
+    "frontend": "/arb/arb_ai_assistant/services/frontend",
+    "general_ai_agent_svc": "/arb/arb_ai_assistant/services/general_ai_agent_svc",
+    "iam_svc": "/arb/arb_ai_assistant/services/iam_svc",
+    "solutions_svc": "/arb/arb_ai_assistant/services/solutions_svc",
+    "storage_svc": "/arb/arb_ai_assistant/services/storage_svc"
+  },
+  "service_identity": {
+    "aspire": {
+      "service_id": "arb-aspire",
+      "service_name": "arb-aspire-host"
+    },
+    "frontend": {
+      "service_id": "arb-frontend",
+      "service_name": "arb-sherpa-frontend"
+    },
+    "general_ai_agent_svc": {
+      "service_id": "arb-general-ai-agent-svc",
+      "service_name": "arb-general-ai-agent-svc"
+    },
+    "iam_svc": {
+      "service_id": "arb-iam-svc",
+      "service_name": "arb-iam-svc"
+    },
+    "solutions_svc": {
+      "service_id": "arb-solutions-svc",
+      "service_name": "arb-solutions-svc"
+    },
+    "storage_svc": {
+      "service_id": "arb-storage-svc",
+      "service_name": "arb-storage-svc"
+    }
+  }
+}

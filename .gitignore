@@ -157,6 +157,38 @@ aspire.svc/service-registry.sqlite
 aspire.svc/.aspire/
 
 # =============================================================================
+# Terraform / OpenTofu — runnable root: infra/aws_tf/
+# =============================================================================
+.terraform/
+**/.terraform/
+
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Local overrides (never commit engineer-specific variable files)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+**/terraform.tfvars.local
+**/terraform.tfvars.*.local
+
+# Auto-loaded var files are for secrets (e.g. secrets.auto.tfvars from scaffold_secrets.py)
+*.auto.tfvars
+*.auto.tfvars.json
+infra/envs/**/secrets.auto.tfvars
+
+# Plan artifacts
+infra/aws_tf/tfplan
+**/tfplan
+*.tfplan
+
+# Terraform run logs (local apply/destroy output)
+infra/aws_tf/*.log
+
+# =============================================================================
 # Misc logs & certs
 # =============================================================================
 *.log

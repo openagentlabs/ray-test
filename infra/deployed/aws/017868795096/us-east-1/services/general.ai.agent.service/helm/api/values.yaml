@@ -1,0 +1,14 @@
+replicaCount: 1
+
+image:
+  repository: placeholder
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Wire at deploy time:
+# - serviceAccount with IRSA annotation to `terraform output iam_general_ai_agent_bedrock_role_arn`
+# - env: AWS_REGION (must match `app_config.toml` `[agent.bedrock].region` and Terraform `aws_region`),
+#   optional GENERAL_AI_AGENT_GRPC_PORT (default 8806 in app_config.toml); mount app_config.toml at server path
+# - ConfigMap/volume for `app_config.toml`: keep `[agent.bedrock]` ids in sync with Terraform outputs
+#   `general_ai_agent_bedrock_foundation_model_id`, `general_ai_agent_bedrock_inference_profile_id`,
+#   and `general_ai_agent_bedrock_invoke_resource_arns` (IAM must include every model/profile you call).

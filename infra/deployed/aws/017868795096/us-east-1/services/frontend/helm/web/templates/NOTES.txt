@@ -1,0 +1,1 @@
+Scaffold: add Kubernetes manifests under templates/.

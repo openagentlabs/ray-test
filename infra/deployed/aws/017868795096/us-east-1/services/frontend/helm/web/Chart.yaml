@@ -1,0 +1,6 @@
+apiVersion: v2
+name: arb-frontend-web
+description: Helm chart scaffold for the frontend web workload (replace with real templates).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

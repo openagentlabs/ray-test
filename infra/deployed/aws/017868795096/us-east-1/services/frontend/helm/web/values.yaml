@@ -1,0 +1,7 @@
+# Values for arb-frontend-web — scaffold; override per environment as needed.
+replicaCount: 1
+
+image:
+  repository: placeholder
+  tag: "latest"
+  pullPolicy: IfNotPresent

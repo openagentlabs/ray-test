@@ -1,0 +1,6 @@
+replicaCount: 1
+
+image:
+  repository: placeholder
+  tag: "latest"
+  pullPolicy: IfNotPresent

@@ -1,0 +1,16 @@
+replicaCount: 1
+
+image:
+  repository: placeholder
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Wire at deploy time:
+# - serviceAccount with IRSA annotation to `terraform output iam_document_storage_svc_role_arn`
+# - env: AWS_REGION, optional DOCUMENT_STORAGE_SERVICE_GRPC_PORT (default 8809 in app_config.toml)
+# - DynamoDB: DOCUMENT_STORAGE_REGISTRY_DYNAMO_TABLE_NAME, DOCUMENT_STORAGE_GROUPS_DYNAMO_TABLE_NAME
+#   from `terraform output ddb_docstore_registry_table_name` / `ddb_docstore_groups_table_name`
+# - S3: DOCUMENT_STORAGE_S3_BUCKET from `terraform output docstore_attachments_bucket_name`
+# - OpenSearch: DOCUMENT_STORAGE_OPENSEARCH_ENDPOINT from
+#   `terraform output docstore_opensearch_collection_endpoint`
+# - Mount or sync `app_config.toml` via `node infra/aws_tf/scripts/sync-cloudwatch-logging-defaults.mjs`
