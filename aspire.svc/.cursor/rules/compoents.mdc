@@ -1,0 +1,15 @@
+---
+description: >-
+  Arb Aspire UI components: layout shell, architect workspace under
+  components/pages/, and shared primitives in components/ui/ for PROJECT_NAME.
+globs:
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/app/**/*.tsx"
+alwaysApply: false
+---
+
+Rules for **Arb Aspire** UI: **`aspire.svc/components/layout/`** (dashboard shell, sidebar, header), **`aspire.svc/components/pages/architect-workspace/`** (current product surface), **`aspire.svc/components/ui/`** (shadcn primitives), and **`aspire.svc/components/providers/`**. Product identity: **`.cursor/rules/constants.mdc`**. Stack and routing: **`nextjs.mdc`**, styling: **`pages_compoents_style_guide.mdc`**.
+
+## Chat / assistant UI
+
+There is **no** `components/assistant-ui/` scaffold in this host today. If you add a chat experience, introduce **`aspire.svc/components/assistant-ui/`** (or a similarly named folder) and depend on **`assistant-ui`** packages from there; do not scatter ad hoc thread UIs across unrelated folders.

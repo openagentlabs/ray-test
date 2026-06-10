@@ -1,0 +1,92 @@
+---
+description: >-
+  Arb Aspire — the Next.js application host under aspire.svc/: composes UI, platform
+  libraries, and microservice-shaped domains (aspire.svc/services/*) with strict
+  boundaries, structured telemetry, and a single dev inner loop. Architectural
+  intent parallels Microsoft .NET Aspire (app host + projects + observability +
+  replaceable resources); this repo implements that role in TypeScript on Node
+  with Next.js — it is not the .NET Aspire SDK or orchestrator.
+globs:
+  - "aspire.svc/package.json"
+  - "aspire.svc/next.config.ts"
+  - "aspire.svc/vitest.config.ts"
+  - "aspire.svc/tsconfig.json"
+  - "aspire.svc/components.json"
+alwaysApply: false
+---
+
+# Arb Aspire — `PROJECT_NAME` application host
+
+**Arb Aspire** is the codename for everything under **`aspire.svc/`**: the **application host** that ships the product defined by **`PROJECT_NAME`**, **`PROJECT_PACKAGE`**, and **`PROJECT_SLUG`** in **`.cursor/rules/constants.mdc`** at the repository root. **`aspire.svc/.cursor/`** holds stack rules for this host only; AWS account binding, Terraform (**`infra/aws_tf/`** only), **`infra/deployed/`**, and Helm layout live in the root **`.cursor/`** tree (**`infra.mdc`**, **`terrafrom.mdc`**).
+
+Use this file for **what Arb Aspire is**, **how it relates to other services in the repo**, and **where code lives under `aspire.svc/`**. Companion rules in **`aspire.svc/.cursor/rules/`** (this directory) define stack details — do not duplicate them here.
+
+## What **Aspire** means here (vs Microsoft .NET Aspire)
+
+Microsoft **.NET Aspire** is an **app host plus composition model**: you declare an app, reference other projects, wire resources (databases, messaging), and get a consistent **local dev and deployment story** with **built-in observability** and **clear ownership** between components.
+
+**Arb Aspire** is our **same architectural job** for this product, implemented as a **modular monolith**:
+
+| .NET Aspire idea | Arb Aspire (this workspace) |
+|------------------|------------------------------|
+| App host / entry | **`aspire.svc/`** Next.js process — `npm run dev` / `next build` from this folder |
+| Referenced services / projects | **`aspire.svc/services/<domain>/`** — each folder is a **bounded context** with a **single public barrel** (`index.ts`), extractable to a separate deployable later |
+| Shared configuration & platform | **`aspire.svc/lib/`** — navigation, app config, logging helpers, shared types (**not** home for extractable domain tables) |
+| UI surface | **`aspire.svc/app/`**, **`aspire.svc/components/`** — presentation and routing only; server code calls domains through **`@/services/<domain>`** |
+| Observability | **`logging.mdc`** — structured server/client logs, OTel-oriented registration; emit at the layer that owns the outcome |
+| Replaceable resources | **`database.mdc`** | **No** persistence service in the host today; when storage is added under **`aspire.svc/services/<domain>/`**, follow **`database.mdc`** + **`architetcure.mdc`**. |
+
+**Non-goals:** we do **not** ship a generic multi-process orchestrator, YAML service manifest, or .NET **DistributedApplication** API. Python microservices (**`iam.svc/`**, **`solutions.svc/`**) remain **separate repos/folders** integrated at the network boundary, the same way .NET Aspire would talk to an external API.
+
+## What this host ships (`PROJECT_NAME`)
+
+- **Shell & UX**: **Next.js App Router** dashboard workspace, **React 19**, **TypeScript (strict)**, **Tailwind CSS v4**, **shadcn / Base UI** (`PROJECT_PACKAGE` in **`aspire.svc/package.json`**).
+- **Persistence**: none in this workspace’s **`aspire.svc/services/`** tree; do not add DB access without a proper service boundary — **`database.mdc`**.
+- **Observability**: structured server and client logging with optional export paths — **`logging.mdc`**.
+
+## Global instructions for agents
+
+- **Next.js**: this project may use APIs and layout patterns that differ from older Next.js versions. Read **`AGENTS.md`** at the repository root when present, and consult **`node_modules/next/dist/docs/`** as noted there.
+- **Architecture and UI layering** (App Router, `aspire.svc/lib/` patterns, shell layout): **`architetcure.mdc`** and **`nextjs.mdc`** (this folder).
+- **TypeScript**: **`typescript.mdc`** (this folder).
+- **Styling and UI tokens**: **`pages_compoents_style_guide.mdc`** (this folder).
+- **Database driver, repositories, migrations**: **`database.mdc`** (this folder).
+
+Do not contradict those files; extend the application in line with them.
+
+## Quality bar (Arb Aspire host)
+
+- **Strict typing** on public surfaces; **do not use `any`**.
+- **Imports**: use the **`@/*`** path alias from **`aspire.svc/tsconfig.json`** (maps to files under **`aspire.svc/`**, including `app/`, `components/`, `lib/`, `services/`, and `test/`).
+- **Tests**: **Vitest** suites live under **`aspire.svc/test/`** (`npm test` / `vitest run`). Add or update tests when behavior of drivers, repositories, migrations, logging config, or other covered modules changes.
+
+## Where key parts live (paths from repository root)
+
+| Area | Path | Role |
+|------|------|------|
+| App Router entry | `aspire.svc/app/layout.tsx`, `aspire.svc/app/page.tsx` | Root layout; **`app/page.tsx`** renders the **Arb Aspire** shell + architect workspace (see below). |
+| Global styles and theme tokens | `aspire.svc/app/globals.css` | Tailwind v4 and semantic CSS variables (including sidebar theming). |
+| Primary product surface | **`/`** (root) | **`app/page.tsx`** composes **`DashboardShell`** + **`ArchitectWorkspacePage`** from **`aspire.svc/components/pages/architect-workspace/`**. |
+| Additional workspace routes | _(none today)_ | Shell sections previously under **`aspire.svc/app/pages/`** were removed; reintroduce routes under **`aspire.svc/app/…/page.tsx`** only when needed and sync **`NavigationService`**. |
+| Alternate / legacy routes | **`/main` → `/`** | **`aspire.svc/proxy.ts`** redirects legacy **`/main`** paths to the root. |
+| Server actions | `aspire.svc/app/actions/` | Server-only actions (e.g. client log ingestion). |
+| Proxy (Next 16) | `aspire.svc/proxy.ts` | Request proxy (replaces deprecated `middleware.ts`; lives next to the Next.js root). |
+| Instrumentation | `aspire.svc/instrumentation.ts` | Next.js instrumentation hook (e.g. server logging registration). |
+| Page components (per route) | `aspire.svc/components/pages/<segment>/` | One folder per page (kebab-case, mirrors the route segment). Contains the page component `<segment>-page.tsx` exporting `<Segment>Page` plus that page's private sub-components. Route files in `aspire.svc/app/` import and render this component only. See **`nextjs.mdc`** §"Page routes and page components" for the mandatory two-piece contract. |
+| Shared layout UI | `aspire.svc/components/layout/` | Shell pieces: `dashboard-shell`, `app-sidebar`, `app-header`, theme toggle, user menu. |
+| Providers | `aspire.svc/components/providers/` | e.g. `app-providers` (themes, tooltips, etc.). |
+| shadcn / Base UI primitives | `aspire.svc/components/ui/` | Generated UI primitives only; add via shadcn CLI per project convention. |
+| Domain logic and platform helpers | `aspire.svc/lib/` | Navigation, app config, storage preferences, logging helpers, shared `aspire.svc/lib/types/`. **Extractable product domains with persistence belong under `aspire.svc/services/<name>/` when added, not `aspire.svc/lib/`.** |
+| Backend domains (microservice-shaped) | `aspire.svc/services/<name>/` | _(none today)_ — each future folder is an extractable unit with a **public** `index.ts` only. |
+| Database / persistence service | _(none)_ | Reintroduce as **`aspire.svc/services/<domain>/`** with a port + barrel when the product needs storage; see **`database.mdc`**. |
+| Logging | `aspire.svc/lib/logging/`, `aspire.svc/lib/config/logging-config.ts` | Server logging (console OTel exporter), client sender, ingestion, severity maps. |
+| Navigation | `aspire.svc/lib/navigation/` | Nav definitions and client icon resolution. |
+| Human-oriented docs | `doc/` | e.g. `doc/solution-architecture/getting_started.md`. |
+| Agent / editor hints (Next.js caveat) | `AGENTS.md`, `CLAUDE.md` (repository root) | `CLAUDE.md` may point at `AGENTS.md`; both are repo-wide, not Cursor-only. |
+| Tooling and config | **`aspire.svc/package.json`**, **`aspire.svc/package-lock.json`**, **`aspire.svc/eslint.config.mjs`**, `next.config.ts`, `tsconfig.json`, `postcss.config.mjs`, `vitest.config.ts` | Run **`npm install`**, **`npm run dev|build|lint|test`** from **`aspire.svc/`** (or `npm --prefix aspire.svc …` from the repo root). |
+
+## When touching multiple layers
+
+- Keep **route and page files thin**; put **business rules and persistence** in **`aspire.svc/services/<domain>/`** (public API only from outside) and **platform** helpers in **`aspire.svc/lib/`** (and server actions in **`aspire.svc/app/actions/`** when appropriate).
+- Keep **nav labels and routes** consistent with **`aspire.svc/lib/navigation/navigation-service.ts`** and the real URLs under **`aspire.svc/app/`** (today: **`/`** only).
+- After adding routes or environment-driven behavior, ensure **logging** rules still match how the feature crosses server/client boundaries. If you add persistence, align with **`database.mdc`**.

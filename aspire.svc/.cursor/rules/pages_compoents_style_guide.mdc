@@ -1,0 +1,785 @@
+---
+description: >-
+  Arb Aspire UI style: theme-first Tailwind v4 + shadcn for PROJECT_NAME surfaces
+  in the aspire.svc/ host — mandatory visual rules; product name from constants.mdc.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx,css}"
+  - "aspire.svc/components/**/*.{ts,tsx,css}"
+  - "aspire.svc/lib/**/*.{ts,tsx,css}"
+alwaysApply: false
+---
+
+# Arb Aspire — style guide (mandatory rules)
+
+Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+
+For **stack/Next/React** rules see `nextjs.mdc`. For **TypeScript** see `typescript.mdc`. For **persistence** see `database.mdc`. **This file is the single source of truth for visual styling.** The long-form explainer lives in `doc/web-stylng/` (start at `00-overview.md`); the rules below are extracted from that guide and **must** be followed by every UI change.
+
+> If a rule below conflicts with a UI library default, **the rule wins**. If a rule conflicts with `nextjs.mdc` or `typescript.mdc`, those win and you have misread the intent — re-read both files.
+
+---
+
+## 1. Stack — what is allowed and what is banned
+
+### 1.1 Allowed
+
+- **Tailwind v4** (CSS-first config in `aspire.svc/app/globals.css` via `@theme inline`).
+- **shadcn/ui** primitives in `aspire.svc/components/ui/` only (`style: "base-nova"`, `baseColor: "neutral"`, `iconLibrary: "lucide"` per `components.json`).
+- **Base UI** primitives via shadcn.
+- **`next-themes`** for theme switching (`attribute="class"`, `defaultTheme="light"`).
+- **`lucide-react`** for icons.
+- **`class-variance-authority`** + **`clsx`** + **`tailwind-merge`** via the **`cn()`** helper at `@/lib/utils`.
+- **`tw-animate-css`** for animations (already imported in `globals.css`).
+- **Recharts** (or shadcn `Chart*`) for charts.
+- **`react-markdown`** + **`remark-gfm`** for Markdown.
+- **`react-syntax-highlighter`** (Prism) for code highlighting.
+- **`react-json-view-lite`** for JSON trees.
+- **`@tanstack/react-table`** for table logic.
+- **`react-hook-form`** + **`zod`** for forms.
+- **`sonner`** for notifications.
+- **`date-fns`** or **`dayjs`** for time formatting.
+- **`Geist Sans`** + **`Geist Mono`** via `next/font` (already wired through `var(--font-geist-sans)` / `var(--font-geist-mono)`).
+
+### 1.2 Banned (do not install or import)
+
+- **`antd`** and **`@ant-design/icons`** — replace with shadcn + lucide.
+- **`@tremor/react`** — replace with shadcn + Recharts.
+- **`@heroicons/react`** — replace with lucide.
+- **`@remixicon/react`** — replace with lucide.
+- **`moment`** — use `date-fns` or `dayjs`.
+- **Inter** font (LiteLLM default) — `PROJECT_NAME` is **Geist**.
+- Any new global CSS file outside `aspire.svc/app/globals.css`.
+- Any new CSS-in-JS runtime (emotion, styled-components, stitches).
+- Any UI component library outside shadcn (no Mantine, Chakra, MUI, NextUI, Radix-direct, etc. — go through shadcn wrappers).
+
+If a feature seems to require a banned dep, **stop and find the shadcn equivalent** before opening an issue — `doc/web-stylng/05-component-library-inventory.md` and `08-arb-sherpa-mapping.md` enumerate every substitution.
+
+---
+
+## 2. Theme system — EXL Services light default
+
+- **`<html>` MUST have `suppressHydrationWarning`** and the active `dark` class (or none) applied by `next-themes`. Do not hard-code `class="dark"`.
+- **Default theme is `light`.** It is the brand-aligned EXL Services palette (orange `#FB4E0B` primary, deep blue secondary, warm-neutral grays). Dark is opt-in. Every component must look correct in **both** modes without a `dark:` override.
+- **NEVER write `dark:*` Tailwind variants.** All color access goes through semantic tokens (`bg-background`, `text-foreground`, `border-border`, …). Tokens already invert via `:root` vs `.dark` in `aspire.svc/app/globals.css`.
+- **NEVER add a parallel `.light` class.** Light is `:root` defaults, dark is `.dark`. There are exactly two modes.
+- **No `prefers-color-scheme` media queries.** `next-themes` resolves user choice; do not bypass it.
+- **Theme-toggle UI** belongs in `aspire.svc/components/layout/theme-toggle.tsx` (already exists, unmounted by default per `nextjs.mdc`). Mount it, do not invent a new toggle.
+- All providers (theme, query, toaster, tooltip) live in `AppProviders` (`aspire.svc/components/providers/`). **Do not add a new top-level provider** without updating that file.
+
+---
+
+## 3. Color tokens — the only colors you may use
+
+### 3.1 Allowed token classes
+
+Use **only** these Tailwind utility roots, all of which resolve to CSS variables in `aspire.svc/app/globals.css`:
+
+| Surface | Class |
+|---|---|
+| Page bg | `bg-background` |
+| Body text | `text-foreground` |
+| Muted surface | `bg-muted` |
+| Muted text | `text-muted-foreground` |
+| Card bg | `bg-card` |
+| Card text | `text-card-foreground` |
+| Popover/dropdown bg | `bg-popover` |
+| Popover text | `text-popover-foreground` |
+| Brand fill | `bg-primary` |
+| On-brand text | `text-primary-foreground` |
+| Brand text | `text-primary` |
+| Subtle filled surface | `bg-secondary` / `text-secondary-foreground` |
+| Hover/highlight surface | `bg-accent` / `text-accent-foreground` |
+| Destructive fill | `bg-destructive` / `text-destructive` |
+| Border | `border-border` |
+| Input border | `border-input` |
+| Focus ring | `ring-ring` (use with `ring-2`) |
+| Sidebar surface | `bg-sidebar` / `text-sidebar-foreground` |
+| Sidebar active | `bg-sidebar-accent` / `text-sidebar-accent-foreground` |
+| Sidebar brand | `bg-sidebar-primary` / `text-sidebar-primary-foreground` |
+| Sidebar border | `border-sidebar-border` |
+| Chart series | `text-chart-1` … `text-chart-5` (or `var(--chart-1)` in `chartConfig`) |
+
+### 3.2 Banned color usage
+
+- **NEVER use raw hex values** (`#1677ff`, `#111827`, `#f3f4f6`, …) in `style={{}}`, `className`, `tailwind.config`, or `globals.css` outside of the token definitions.
+- **NEVER use Tailwind palette classes** (`bg-gray-100`, `text-slate-700`, `border-zinc-200`, `text-red-500`, …) for theming. They do not invert with the active theme.
+- **EXCEPTION — semantic accents only**: for status colors that have no semantic token (warning, success, info), use these alpha-blended pairs which read correctly in both modes:
+
+  | Status | Bg | Border | Text |
+  |---|---|---|---|
+  | Warning | `bg-amber-500/10` | `border-amber-500/30` | `text-amber-600` (light) / `text-amber-400` (dark — use `dark:text-amber-400` here, this is the **only** allowed `dark:` variant) |
+  | Success | `bg-emerald-500/10` | `border-emerald-500/30` | `text-emerald-600` / `dark:text-emerald-400` |
+  | Info | `bg-sky-500/10` | `border-sky-500/30` | `text-sky-600` / `dark:text-sky-400` |
+  | Destructive | `bg-destructive/10` | `border-destructive/30` | `text-destructive` |
+
+  Prefer `text-destructive` (semantic) over `text-red-*` for errors.
+
+- **NEVER use `oklch()`/`rgb()`/`hsl()` literals in components.** They belong only inside `aspire.svc/app/globals.css` token definitions.
+- **NEVER define new top-level CSS variables in `globals.css`** without also exposing them through `@theme inline` and adding a row to the table above.
+
+### 3.3 If `--primary` is currently grayscale (shadcn default)
+
+The `PROJECT_NAME` seed `--primary` is near-black. If a brand color is needed, change it **once** in `aspire.svc/app/globals.css` for both `:root` and `.dark` (see `doc/web-stylng/08-arb-sherpa-mapping.md` §3 for OKLCH recipes). Do **not** hard-code brand hex per component.
+
+---
+
+## 4. Typography
+
+### 4.1 Font families
+
+- **Sans (default everywhere)**: `font-sans` → `var(--font-geist-sans)`. **Inherits on `<body>`** — do not respecify in components.
+- **Mono**: `font-mono` → `var(--font-geist-mono)`. Use for code, JSON, request IDs, keyboard chips, log values.
+- **Heading**: `font-heading` is aliased to `--font-sans` — same as body. Do not introduce a new heading font without updating `globals.css`.
+- **NEVER set `fontFamily` inline** (e.g. `style={{ fontFamily: "monospace" }}` or `style={{ fontFamily: '"-apple-system, …"' }}`). Use `font-sans` / `font-mono` classes only.
+
+### 4.2 Type scale (use these utilities, in this order of preference)
+
+| Use | Class |
+|---|---|
+| KPI metric | `text-3xl font-semibold tracking-tight` |
+| Page title (`h1`) | `text-2xl font-semibold tracking-tight` |
+| Section heading (`h2`) | `text-lg font-semibold` |
+| Subsection (`h3`) | `text-base font-medium` |
+| Body | `text-sm` (default) |
+| Body strong | `text-sm font-medium text-foreground` |
+| Body muted | `text-sm text-muted-foreground` |
+| Label / small caption | `text-xs` |
+| Tag / pill text | `text-xs font-medium` |
+| Code body / JSON / request ID | `font-mono text-xs` (small) or `font-mono text-sm` (medium) |
+| Section label uppercase | `text-xs font-semibold uppercase tracking-wider text-muted-foreground` |
+
+### 4.3 Line height
+
+- **Body / chat assistant text**: `leading-relaxed` (1.625) for prose.
+- **User chat bubble**: `leading-normal` (1.5).
+- **Default elsewhere**: Tailwind defaults — do not override unless the design demands it.
+
+### 4.4 Letter spacing
+
+- **Tracking-tight (`tracking-tight`)** on metric numbers and large headings only.
+- **Tracking-wider (`tracking-wider`)** on uppercase labels and short pills (e.g. `NEW`).
+- **Do not** set custom `letterSpacing` inline.
+
+### 4.5 Forbidden font-related patterns
+
+- `style={{ fontSize: 13 }}` and similar inline numeric font sizes — use `text-*` classes.
+- `style={{ fontWeight: 600 }}` — use `font-semibold` / `font-medium` / `font-bold`.
+- Custom font imports beyond Geist Sans / Geist Mono.
+
+---
+
+## 5. Border radius
+
+Use the tokenised radius scale defined in `aspire.svc/app/globals.css` (`--radius` = 0.625rem; `--radius-sm` … `--radius-4xl` derived).
+
+| Element | Class |
+|---|---|
+| Tag / chip / `<kbd>` | `rounded-sm` (≈ 6 px) |
+| Inputs, small buttons, tool blocks | `rounded-md` (≈ 8 px) |
+| Cards, popovers, dropdowns | `rounded-lg` (≈ 10 px) |
+| Modals, large surfaces, chat input bar | `rounded-xl` (≈ 14 px) |
+| Hero pills, prominent CTAs | `rounded-2xl` (≈ 18 px) |
+| Avatar / round controls (stop button, dot) | `rounded-full` |
+
+- **NEVER use `rounded-[7px]`-style arbitrary values.** Round to the nearest scale step.
+- **Sharp corners (`rounded-none`)** only for full-bleed dividers or table-internal borders.
+
+---
+
+## 6. Shadow
+
+| Use | Class |
+|---|---|
+| Subtle elevation (cards on page) | `shadow-sm` |
+| Inputs, chat input bar | `shadow-sm` |
+| Dropdowns, popovers, dialogs | `shadow-md` |
+| Floating overlays (toasts) | `shadow-lg` (Sonner default) |
+| Focus halo on inputs | `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0` |
+| Brand focus halo on chat-style input | `focus-within:ring-2 focus-within:ring-primary/20` |
+
+- **NEVER set `boxShadow:` inline** with a custom rgba.
+- **NEVER stack two shadow utilities on the same element.**
+
+---
+
+## 7. Spacing, padding, gap
+
+### 7.1 Use Tailwind's 4-px scale
+
+| Token | Use |
+|---|---|
+| `p-1` / `gap-1` (4 px) | Inline icon ↔ chip gap |
+| `p-2` / `gap-2` (8 px) | Tag inner padding, tight stack |
+| `p-3` / `gap-3` (12 px) | Tool-block padding, drawer body section |
+| `p-4` / `gap-4` (16 px) | Card content default, modal body section |
+| `p-6` / `gap-6` (24 px) | Card outer padding, drawer content padding, KPI grid gap |
+| `p-8` (32 px) | Marketing / hero |
+
+### 7.2 Layout dimensions (set in CSS variables, not per-component)
+
+| Element | Variable / value |
+|---|---|
+| Top header | `h-14` (56 px) |
+| Sidebar width expanded | `--sidebar-width: 220px` (workspace) or `260px` (chat) |
+| Sidebar width collapsed | `--sidebar-width-icon: 80px` (workspace) or `56px` (chat) |
+| Drawer width | `w-[60%] sm:max-w-none` for log-detail style; `w-[400px]` for narrow side sheets |
+| Modal width | `max-w-lg` (520) confirm · `max-w-xl` (576) form · `max-w-3xl` (768) multi-section · `max-w-[90vw]` full-bleed |
+| Provider logo (drawer) | `size-6` (24 × 24) |
+| Provider logo (table cell) | `size-[18px]` |
+| Stop button (chat) | `size-8` rounded-full |
+| Inner stop glyph | `size-2.5 rounded-sm` (10 × 10) |
+| Send button padding | `px-4 py-1.5` |
+
+- **Do not** invent sidebar / header heights per page. Adjust the CSS variable in `globals.css` and reuse.
+
+### 7.3 Z-index
+
+- **`z-10`**: sticky page header, sticky drawer header, sticky table header.
+- **`z-50`**: tooltips, popovers, dropdowns (shadcn defaults).
+- **`z-[60]`+**: modals, sheets (shadcn defaults).
+- Do not invent intermediate z-index values; choose `10`, `20`, `30`, `40`, `50`, `60`.
+
+### 7.4 Transitions
+
+| Need | Class |
+|---|---|
+| Hover color/bg swap | `transition-colors` |
+| Layout collapse | `transition-[width,grid-template-columns] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]` |
+| Generic | `transition-all duration-150` |
+
+- Use `tw-animate-css` for keyframe-driven animations (already imported).
+- **NEVER set `transition:` inline.**
+
+---
+
+## 8. Class composition
+
+- **MUST use `cn()`** from `@/lib/utils` to merge classes. **NEVER use raw template literals** for conditional classes.
+
+  ```tsx
+  import { cn } from "@/lib/utils";
+  <Button className={cn("w-full", isActive && "bg-accent")} />
+  ```
+
+- **Variants live in `cva()`** (from `class-variance-authority`). Define one `cva` block per component, **not** per call site.
+
+  ```tsx
+  const card = cva("rounded-lg border", {
+    variants: { tone: { default: "bg-card", danger: "bg-destructive/5 border-destructive/30" } },
+    defaultVariants: { tone: "default" },
+  });
+  ```
+
+- **NEVER chain `tailwind-merge` directly** — it is invoked inside `cn()`.
+
+- **shadcn `buttonVariants`** must be used when styling a non-`<button>` element to look like a button (e.g. `<Link className={buttonVariants({ variant: "outline" })}>`).
+
+- **Avoid `style={{}}` props.** Permitted only for: dynamic CSS variables, sizing values that come from a server response (e.g. avatar URL height), and library-required inline styles. **Never** for color, font, padding, margin, radius, shadow, or display.
+
+---
+
+## 9. Icons (lucide only)
+
+- **Import from `lucide-react`.** No other icon library.
+- **Sizing**: use `size-3` (12), `size-4` (16, default for inline), `size-5` (20, navbar/buttons), `size-6` (24, drawer headers).
+
+  ```tsx
+  import { ChevronDown } from "lucide-react";
+  <ChevronDown className="size-4 text-muted-foreground" />
+  ```
+
+- **Color**: always via Tailwind utility (`text-foreground`, `text-muted-foreground`, `text-primary`, `text-destructive`). Never via `style={{ color: … }}`.
+- **Stroke width**: do not override — Lucide ships `2`. Override only with `strokeWidth={1.5}` for lighter rendering on small sizes; never inline-styled.
+- **Inline SVG is forbidden** for new icons. If the glyph is not in Lucide:
+  1. Look harder (Lucide has 1,500+).
+  2. If still missing, add a typed React component to `components/icons/<Name>.tsx` and import it. Never inline SVG at the call site.
+- **Loading spinner**: `<Loader2 className="size-4 animate-spin" />` — every loading state, no exceptions.
+- **Replacement table** (most common Antd → Lucide) is in `doc/web-stylng/07-iconography.md` §11.1. Use it.
+
+---
+
+## 10. Component substitution — mandatory mapping
+
+When you see a LiteLLM pattern (or training-data-default Antd/Tremor pattern) in source you are porting, substitute as below. The full table is in `doc/web-stylng/08-arb-sherpa-mapping.md` §11; the most-used rows:
+
+| Pattern | Use in `PROJECT_NAME` |
+|---|---|
+| Antd `Modal` | shadcn `Dialog` |
+| Antd `Drawer` | shadcn `Sheet` |
+| Antd `Tooltip` | shadcn `Tooltip` (requires `<TooltipProvider>` in `AppProviders` — already there) |
+| Antd `Popover` | shadcn `Popover` |
+| Antd `Switch` / `Radio` | shadcn `Switch` / `RadioGroup` |
+| Antd `Tag` / Tremor `Badge` | shadcn `Badge` |
+| Antd `Form` | shadcn `Form` (`react-hook-form` + `zod`) |
+| Antd `Input` / `Input.TextArea` / Tremor `TextInput` / `Textarea` | shadcn `Input` / `Textarea` |
+| Antd `Select` (single) | shadcn `Select` |
+| Antd `Select showSearch` | shadcn `Combobox` |
+| Antd `Select mode="multiple"` / Tremor `MultiSelect` | shadcn `Combobox` with multi-select or `MultiSelect` from registry |
+| Antd `Upload.Dragger` | `react-dropzone` + shadcn styling |
+| Antd `notification` | `sonner` (`toast.success/error/warning/info`) |
+| Antd `Alert` | shadcn `Alert` |
+| Antd `Layout.Sider` + `Menu` | shadcn `Sidebar` + `SidebarMenu` |
+| Antd `Typography.Text/Title` | semantic HTML + Tailwind |
+| Antd `Spin` | `<Loader2 className="size-4 animate-spin" />` |
+| Antd `Collapse` / `Panel` | shadcn `Collapsible` |
+| Antd `Card` driven by `theme.useToken()` | shadcn `Card` + tinted variant (see §4 of this file's component rules below, and `doc/web-stylng/06-components/17-themed-cards-error.md`) |
+| Tremor `Card` / `Title` / `Text` / `Metric` | shadcn `Card`, semantic HTML |
+| Tremor `TabGroup`/`TabList`/`Tab`/`TabPanels` | shadcn `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent` |
+| Tremor `Table*` + `@tanstack/react-table` | shadcn `Table*` + `@tanstack/react-table` (keep tanstack) |
+| Tremor `BarChart`/`LineChart`/`DonutChart`/`AreaChart` | shadcn `Chart*` (Recharts) |
+| Tremor `Button` (any variant) | shadcn `Button` (`variant="default" | "outline" | "ghost" | "destructive" | "link"`) |
+| Tremor `Icon variant="shadow"` | shadcn `Button variant="ghost" size="icon"` + lucide icon |
+| `react-syntax-highlighter style={coy}` | same lib, swap to `oneDark` (dark default) |
+| `react-json-view-lite defaultStyles` | same lib, swap to `darkStyles` |
+
+If a pattern is missing from this table, **read** `doc/web-stylng/08-arb-sherpa-mapping.md` before improvising.
+
+---
+
+## 11. Per-component rules
+
+> Every per-component file in `doc/web-stylng/06-components/` ends with the rules below extracted as do/don't. This section is the binding summary. Where a recipe is too long for inline, follow the link.
+
+### 11.1 App header (top navbar) — `doc/web-stylng/06-components/01-navbar.md`
+
+- **MUST**: 56-px tall (`h-14`), full width, sticky (`sticky top-0 z-10`), `bg-background`, `border-b border-border`. No padding tricks; just `px-4`.
+- **MUST**: place sidebar collapse button on the left, brand logo right next to it. Account / theme controls on the right (`ml-auto` cluster).
+- **MUST**: the `<button>` for the sidebar toggle uses `lucide-react` `PanelLeftClose` / `PanelLeftOpen` icons inside a `Button variant="ghost" size="icon"`.
+- **SHOULD**: render a version pill via shadcn `<Badge variant="secondary" className="text-xs">v{version}</Badge>`. The pill must link to release notes (target `_blank` with `rel="noopener noreferrer"`). Pure decorative bouncing emojis are not required.
+- **MUST NOT**: hardcode `#1677ff`, `bg-white`, `text-gray-*`. Use semantic tokens.
+- **MUST NOT**: nest `<button>` inside `<button>` (per `nextjs.mdc`). Use `buttonVariants` for non-`<button>` triggers.
+
+### 11.2 Sidebar — `doc/web-stylng/06-components/02-sidebar.md`
+
+- **MUST** use shadcn `Sidebar` family from `aspire.svc/components/ui/`. Do not roll a custom sider.
+- **MUST** drive widths from CSS variables `--sidebar-width` (220 or 260) and `--sidebar-width-icon` (80 or 56) — set in `globals.css`, do not override per page.
+- **MUST** persist collapse state via `SidebarPreferences` + `AppConfig.sidebarStorageKey` (per `nextjs.mdc`). Do not invent new storage keys.
+- **MUST** group menu items with shadcn `SidebarGroup` + `SidebarGroupLabel`. Group label class: `text-xs font-semibold uppercase tracking-wider text-muted-foreground`.
+- **MUST** resolve nav item icons in the **client** via `NavigationIconResolver` (icons are not serializable across the Server→Client boundary; `nextjs.mdc` rule).
+- **MUST** use `bg-sidebar` / `text-sidebar-foreground` (not generic `bg-background`).
+- **MUST** mark active item with `bg-sidebar-accent text-sidebar-accent-foreground`. Hover: `hover:bg-sidebar-accent/50`.
+- **MUST** divide pinned bottom block (e.g. usage indicator, "Open Chat") with `border-t border-sidebar-border`.
+- **NEW BADGE** alongside menu labels uses `<Badge variant="secondary" className="text-[10px] uppercase tracking-wider">NEW</Badge>`. Do not inline-style it.
+
+### 11.3 Cards & metrics — `doc/web-stylng/06-components/03-cards-and-metrics.md`
+
+- **MUST** use shadcn `Card` + `CardHeader` + `CardContent` + `CardTitle` + `CardDescription`. Default padding `p-6` is correct; do not override.
+- **KPI label** = `text-sm font-medium text-muted-foreground`.
+- **KPI value** = `text-3xl font-semibold tracking-tight text-foreground`.
+- **Compact KPI value** (two-up grid inside a card) = `text-2xl font-semibold text-foreground`.
+- **Label-to-value spacing**: `mt-2`.
+- **KPI grid**: `grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3`. Do not use Tremor `<Grid>` / `<Col>`.
+- **Filter strip above charts**: `grid grid-cols-1 gap-4 sm:grid-cols-3` (or appropriate). Use `gap-4` for filters, `gap-6` for KPIs.
+- **NEVER** use `text-tremor-content`, `text-tremor-content-strong`, etc. Tremor classes are forbidden.
+
+### 11.4 Tables — `doc/web-stylng/06-components/04-tables.md`
+
+- **MUST** use shadcn `Table*` family + `@tanstack/react-table` for logic.
+- **Wrapper**: `<div className="rounded-lg border border-border overflow-x-auto">`.
+- **Density default**: `[&_td]:py-2 [&_th]:py-2`. For dense log-style tables: `[&_td]:py-1 [&_th]:py-1` and `h-8` rows.
+- **Cell truncation**: `overflow-hidden text-ellipsis whitespace-nowrap` on cells holding identifiers or paths.
+- **Hover**: `hover:bg-muted/50` on `<TableRow>` whenever the row is clickable.
+- **Sortable header**: `<Button variant="ghost" size="sm">` containing label + `<ArrowUpDown className="ml-2 size-3" />` (or `<ArrowUp />` / `<ArrowDown />` when sorted).
+- **Empty state**: `<TableCell colSpan={…} className="h-24 text-center text-muted-foreground">No results.</TableCell>`.
+- **Loading state**: shadcn `Skeleton` rows OR `<Loader2 className="mx-auto size-4 animate-spin" />` in a single full-span row.
+- **Row identity**: pass `getRowId: (row) => row.id ?? String(index)` so expansion/selection survives re-fetches.
+- **Sub-rows**: render as real `<TableRow>` siblings (preferred) or as a single full-`colSpan` cell. Match the LiteLLM `renderChildRows` / `renderSubComponent` split — never both for the same table.
+
+### 11.5 Buttons — `doc/web-stylng/06-components/05-buttons.md`
+
+- **MUST** use shadcn `<Button>` for every clickable affordance. The variant grid:
+
+  | Need | Variant |
+  |---|---|
+  | Primary CTA | `variant="default"` |
+  | Secondary | `variant="outline"` |
+  | Tertiary / icon-only | `variant="ghost"` |
+  | Inline link | `variant="link"` |
+  | Destructive | `variant="destructive"` |
+
+- **Sizes**: `default`, `sm`, `lg`, `icon`. **Always pass an explicit size for icon-only buttons**: `size="icon"`.
+- **Loading state** is `disabled={true}` plus `<Loader2 className="mr-2 size-4 animate-spin" />` before the label. Do not change the label text to "Loading…".
+- **Disabled state** must come from props, not from inline color overrides. shadcn `disabled:opacity-50 disabled:cursor-not-allowed` is sufficient.
+- **Three-state Send/Stop pattern (chat)**:
+  - Idle (no text): `<Button disabled>` with `<Send className="size-4" />`.
+  - Ready: `<Button>` with `<Send className="size-4" />`.
+  - Streaming: `<Button variant="outline" size="icon" className="rounded-full">` with `<Square className="size-3" />`.
+- **NEVER inline-style** `background`, `color`, `border`, `borderRadius`, `padding` on buttons. If the design needs something not in shadcn variants, add a new `cva` variant in the same file.
+- **NEW pill** inside a button: `<Badge variant="secondary" className="ml-2 text-[9px] font-bold uppercase tracking-wider px-1.5">NEW</Badge>`. Never roll a custom `<span>`.
+
+### 11.6 Tags & badges — `doc/web-stylng/06-components/06-tags-and-badges.md`
+
+- **MUST** use shadcn `Badge` for status pills, version pills, count chips.
+- **Variants**:
+  - `variant="default"` for brand / primary count.
+  - `variant="secondary"` for neutral / version / count.
+  - `variant="outline"` for outlined chips (rare).
+  - `variant="destructive"` for error.
+  - **Status colors** beyond destructive: use the alpha-blended pairs from §3.2.
+- **Status semantics**:
+
+  | Status | Class |
+  |---|---|
+  | Success | `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30` |
+  | Warning | `bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30` |
+  | Info / Processing | `bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30` |
+  | Destructive | `bg-destructive/10 text-destructive border-destructive/30` |
+  | Purple (policy) | `bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30` |
+
+- **Keyboard chip (`<kbd>`)**: see §11.16 — never a custom `<span>`.
+- **Function-name chip on tool blocks**: `absolute -top-2 left-3 bg-background text-muted-foreground border border-border rounded-sm px-1.5 text-[10px] font-mono`. Position the parent `relative`.
+
+### 11.7 Forms & inputs — `doc/web-stylng/06-components/07-forms-and-inputs.md`
+
+- **MUST** use shadcn `Form` + `react-hook-form` + `zod` for any form with more than one field.
+- **MUST** wrap each control in `<FormField>` → `<FormItem>` → `<FormLabel>` → `<FormControl>` → `<FormDescription>` → `<FormMessage>`.
+- **Input height**: shadcn default. Do not override.
+- **Required marker**: rely on `<FormMessage>` + zod schema, not a manual red asterisk.
+- **Multi-line text**: shadcn `Textarea`. **NEVER** roll a bare `<textarea>` outside of `chat` (see §11.14).
+- **Single-select with search**: shadcn `Combobox`. Plain `Select` only when the option list is < 10 fixed items.
+- **Multi-select**: shadcn registry `MultiSelect` (or Combobox in multi mode). Never `<select multiple>`.
+- **Switch**: shadcn `Switch`. Always pair with a `<Label>`.
+- **Radio**: shadcn `RadioGroup` + `RadioGroupItem`. For card-style radios see §11.15.
+- **File upload**: `react-dropzone` styled with shadcn primitives. No custom drag handlers.
+- **Numeric**: shadcn `Input type="number"` with `min` / `max` / `step` attributes.
+- **Date range**: shadcn `Calendar` inside a `Popover` (shadcn `DateRangePicker` recipe).
+- **Help icon next to label**: `<Tooltip><TooltipTrigger asChild><HelpCircle className="ml-1 size-4 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent side="top" className="max-w-xs">…</TooltipContent></Tooltip>`. Never roll a custom tooltip atom.
+- **Submit button**: `<Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}Save</Button>`.
+- **Form-item gap**: `space-y-4` between items (16 px), `space-y-6` between sections.
+
+### 11.8 Modals (Dialog) — `doc/web-stylng/06-components/08-modals.md`
+
+- **MUST** use shadcn `Dialog`. Banned: `antd Modal`, `<dialog>` element directly.
+- **Sizing**:
+  - Confirm: `<DialogContent className="sm:max-w-md">` (≈ 28 rem).
+  - Single-form: `sm:max-w-lg`.
+  - Multi-section: `sm:max-w-2xl` or `sm:max-w-3xl`.
+  - Full-bleed: `sm:max-w-[90vw]`.
+- **Header**: `<DialogHeader>` containing `<DialogTitle>` + `<DialogDescription>`. Title may include a leading lucide icon for tone (`AlertCircle` for destructive).
+- **Body wrapper**: `<div className="space-y-4">` for stacked sections.
+- **Footer**: `<DialogFooter>` with **`<Button variant="outline">Cancel</Button>` first, primary action second**. Reverse the visual order with `flex-row-reverse` if needed — this is the keyboard tab order.
+- **Destructive confirmation pattern (typed-to-confirm)**:
+  1. Wrap resource summary in a tinted `<Card className="bg-destructive/5 border-destructive/30">` with header `bg-destructive/10`.
+  2. Show key/value pairs as `<dl className="space-y-2 text-sm">` with `<dt className="font-semibold">` / `<dd>`.
+  3. Below, `<Label>Type <code className="font-mono">{name}</code> to confirm</Label>` then a shadcn `<Input autoFocus value={typed} onChange={…}>`.
+  4. Disable the destructive button: `disabled={typed !== name || loading}`.
+  5. Show `<Loader2 className="mr-2 size-4 animate-spin" />` when `loading`.
+- **NEVER** use `theme.useToken()`. Use the alpha-blended status colors from §3.2.
+
+### 11.9 Drawers (Sheet) — `doc/web-stylng/06-components/09-drawer-log-details.md`
+
+- **MUST** use shadcn `Sheet` (Radix Dialog with `side="right"`). Banned: `antd Drawer`.
+- **Width**: `<SheetContent className="w-[60%] sm:max-w-none">` for log-detail style; `w-[400px] sm:max-w-md` for a narrow side sheet.
+- **Custom sticky header pattern** (when default `SheetHeader` isn't enough — e.g. log details with J/K/ESC nav):
+  ```tsx
+  <SheetContent className="w-[60%] sm:max-w-none p-0">
+    <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 space-y-2">
+      {/* row 0: provider logo + model name */}
+      {/* row 1: request id (left) + nav cluster (right) */}
+      {/* row 2: status tag + env tag + timestamps */}
+    </div>
+    <div className="p-6">
+      <Tabs defaultValue="request">…</Tabs>
+    </div>
+  </SheetContent>
+  ```
+- **Padding constants**:
+  - Header: `px-6 py-4`.
+  - Content: `p-6`.
+  - Section gap: `space-y-3` to `space-y-4`.
+- **Keyboard nav (J/K/ESC)** must be wired with a `useEffect` that adds a `keydown` listener on `window` and removes it on cleanup. Use the same pattern as LiteLLM (`doc/web-stylng/06-components/09-drawer-log-details.md` §12). The chips use the `<Kbd>` component (§11.16).
+- **Request ID** rendered as `<button>` with shadcn `<Button variant="ghost">` containing a `<Copy />` lucide icon. On click: `navigator.clipboard.writeText(...)` with the non-secure-context fallback (`doc/web-stylng/06-components/13-code-and-json.md` §7), then `toast.success("Copied")`.
+- **Timestamps**: `date-fns` `format(date, "MMM d, yyyy h:mm:ss a")` and `formatDistanceToNow(date)`. **Never `moment`.**
+- **Drawer max-height for embedded JSON**: 400 px → `max-h-[400px] overflow-auto`. For metadata blocks: 300 px → `max-h-[300px] overflow-auto`.
+
+### 11.10 Notifications (Sonner) — `doc/web-stylng/06-components/10-notifications.md`
+
+- **MUST** use `sonner`. Mount **once** in `AppProviders` as `<Toaster position="top-right" richColors />`. Banned: `antd notification`.
+- **API**: `toast.success("Title", { description: "…" })`, `toast.error`, `toast.warning`, `toast.info`. Use a thin wrapper at `aspire.svc/lib/notifications.ts`.
+- **`Notifications.fromBackend(err)` is mandatory** for API errors. Port the LiteLLM 14-category classifier verbatim from `src/components/molecules/notifications_manager.tsx`. The classifier owns: title selection, severity mapping (auth/forbidden/rate-limit/budget/server/etc. → `error`/`warning`/`info`), and duration (3.5 / 4 / 5 / 6 / 7 / 8 s).
+- **Durations** (default by variant — Sonner's `duration` in ms):
+  - success: `3500`
+  - info: `4000`
+  - warning: `5000`
+  - error: `6000`
+  - server error / rate limit / budget: `7000`–`8000`
+- **Position**: `top-right`. Do not change per call.
+- **Show progress / pause on hover**: enable globally on `<Toaster richColors closeButton />`.
+- **NEVER** call `toast(...)` inline in a component for an API error — always go through `Notifications.fromBackend(err)`.
+
+### 11.11 Tooltips & popovers — `doc/web-stylng/06-components/11-tooltips-and-popovers.md`
+
+- **Tooltip**: shadcn `<Tooltip>` only. Wrap with `<TooltipTrigger asChild>` to forward to a real control. `<TooltipProvider>` is already mounted in `AppProviders`.
+- **Popover**: shadcn `<Popover>` for click-triggered rich content (filters, MCP picker, column settings).
+- **NEVER** roll a custom positioned `<div className="absolute …">` with `getBoundingClientRect` math. Radix Popper handles flip/shift.
+- **Help-icon tooltip pattern** (replaces LiteLLM's custom `Tooltip` atom):
+
+  ```tsx
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <HelpCircle className="ml-1 size-4 text-muted-foreground hover:text-foreground cursor-help" />
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-xs">{content}</TooltipContent>
+  </Tooltip>
+  ```
+- **Tooltip side**: `top` default; `right` for sidebar collapsed-mode item labels; `bottom` only when no space above.
+
+### 11.12 Charts — `doc/web-stylng/06-components/12-charts.md`
+
+- **MUST** use shadcn `Chart*` (Recharts) family. Banned: `@tremor/react` charts.
+- **Series colors come from `--chart-1` … `--chart-5`**. Define them in `aspire.svc/app/globals.css` (both `:root` and `.dark`). Suggested OKLCH values are in `doc/web-stylng/08-arb-sherpa-mapping.md` §5 — sky / teal / indigo / amber / rose. Use these.
+- **`chartConfig`** maps logical series keys to color references:
+
+  ```tsx
+  const chartConfig = {
+    apiRequests: { label: "API Requests", color: "var(--chart-1)" },
+    cacheHits:   { label: "Cache Hits",   color: "var(--chart-2)" },
+  } satisfies ChartConfig;
+  ```
+
+- **Tooltip**: `<ChartTooltip cursor={false} content={<ChartTooltipContent />} />`. Do not write a custom tooltip unless data shape forces it.
+- **Legend**: `<ChartLegend content={<ChartLegendContent />} />`.
+- **Series dot in custom tooltip** (if needed): `<span className="size-2 shrink-0 rounded-full ring-2 ring-background" style={{ backgroundColor: "var(--chart-N)" }} />` — the `style` here is permitted because the color comes from a theme variable.
+- **NEVER** pass color names like `"sky"` / `"teal"` / `"indigo"` directly to charts — pass `var(--chart-N)`.
+- **Y-axis width** for currency / large numbers: `width={48}`. For percentages: `width={32}`.
+- **Number formatters** live in `aspire.svc/lib/format.ts` (create if absent). Reuse — do not redefine in components.
+
+### 11.13 Code & JSON — `doc/web-stylng/06-components/13-code-and-json.md`
+
+- **Inline `<pre>`** for ad-hoc JSON: `<pre className="rounded-md bg-muted p-3 text-xs text-foreground font-mono whitespace-pre-wrap break-words">`. No inline `style`.
+- **Syntax-highlighted code blocks**:
+  - Library: `react-syntax-highlighter` (Prism).
+  - **Style**: `oneDark` (import from `react-syntax-highlighter/dist/esm/styles/prism`). `coy` is forbidden (light-only).
+  - Wrap with `<SyntaxHighlighter language={lang} style={oneDark} PreTag="div" wrapLongLines>`.
+- **Markdown**: `react-markdown` + `remark-gfm`. Pass a `code` renderer that routes fenced blocks to `SyntaxHighlighter` and inline code to `<code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">`.
+- **JSON tree**: `react-json-view-lite` with `darkStyles` (not `defaultStyles`). Wrapper: `<div className="rounded-md bg-muted/40 p-3 max-h-[400px] overflow-auto">`. Force tree contrast via `<div className="[&_[role='tree']]:bg-card [&_[role='tree']]:text-card-foreground">`.
+- **Side-by-side request/response**: `<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">` with two shadcn `<Card>` blocks each containing `<CardHeader>` + a copy `<Button variant="ghost" size="icon"><Copy className="size-4" /></Button>` + a `<CardContent className="overflow-auto max-h-96">`.
+- **Copy** uses `navigator.clipboard.writeText(...)` with a non-secure-context fallback (`document.execCommand("copy")`). Put the helper in `aspire.svc/lib/clipboard.ts`. Always toast result through `Notifications.success("Copied")` / `Notifications.fromBackend(err)`.
+
+### 11.14 Chat surface — `doc/web-stylng/06-components/14-chat.md`
+
+> Chat is the largest porting cost. Every hex must be replaced with a token.
+
+- **Outer shell**: `<div className="flex h-screen w-screen overflow-hidden bg-background font-sans">`. **Do not** override `fontFamily` to a system stack.
+- **Left sidebar** (chat-specific): `<div className="flex flex-col bg-sidebar border-r border-sidebar-border transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]" style={{ width: collapsed ? 56 : 260 }}>` — width via CSS variable is preferred (`--chat-sidebar-width`).
+- **Sidebar nav item**: `<Button variant="ghost" className={cn("justify-start gap-2.5 h-9 w-full", isActive && "bg-sidebar-accent text-sidebar-accent-foreground")}>`. Hover: handled by `variant="ghost"` defaults.
+- **User message bubble**: `<div className="bg-muted text-foreground rounded-2xl px-3.5 py-2.5 text-sm leading-normal max-w-[72%] whitespace-pre-wrap break-words">`. Right-align via parent `flex justify-end`.
+- **Assistant message body** (no bubble): `<div className="text-sm text-foreground leading-relaxed max-w-[80%] prose prose-sm dark:prose-invert">` with `<ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: MarkdownCodeRenderer }}>`. Left-align.
+- **Edit mode for user message**: surround with `<div className="bg-background border border-input rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20">` then a `<Textarea className="border-0 focus-visible:ring-0 resize-none">` plus a footer row `border-t border-border` with shadcn `<Button variant="outline" size="sm">Cancel</Button>` and `<Button size="sm">Save & Send</Button>`.
+- **Input bar**: `<div className="bg-background border border-input rounded-xl shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-primary/20">` containing a `<Textarea>` + a footer row with `border-t border-border`.
+- **Send button** (three states) — see §11.5.
+- **MCP picker button**: `<Button variant="outline" size="sm" className="gap-1"><Plus className="size-4" />{count > 0 && <span className="text-xs text-primary font-medium">{count}</span>}</Button>` inside a shadcn `<Popover>`.
+- **Tool-call block**: shadcn `<Collapsible>` containing the function-name chip pattern from §11.6 and a `<pre>` body styled per §11.13. Section labels above each section: `text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1`.
+- **Typing indicator**: a small 3-dot pulse component using `tw-animate-css`. Centralise in `components/chat/typing-dots.tsx`.
+- **Hover edit / hover copy** buttons: `<Button variant="ghost" size="icon" className="size-7 opacity-0 group-hover:opacity-100">`. Wrap parent with `group`.
+
+### 11.15 Mode picker (card-style radio) — `doc/web-stylng/06-components/15-mode-picker.md`
+
+- **MUST** be a real radio (accessible). Pattern:
+
+  ```tsx
+  <RadioGroup value={value} onValueChange={onChange} className="flex gap-4">
+    {options.map((opt) => {
+      const selected = value === opt.value;
+      const Icon = opt.icon;
+      return (
+        <Label key={opt.value} htmlFor={opt.value} className={cn(
+          "flex-1 cursor-pointer rounded-xl border-2 p-6 transition-all",
+          selected ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-accent/50",
+        )}>
+          <RadioGroupItem id={opt.value} value={opt.value} className="sr-only" />
+          <div className={cn(
+            "mb-4 flex size-10 items-center justify-center rounded-[10px]",
+            selected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+          )}>
+            <Icon className="size-5" />
+          </div>
+          <div className="text-base font-semibold text-foreground">{opt.title}</div>
+          <div className="mt-1 text-sm text-muted-foreground">{opt.description}</div>
+        </Label>
+      );
+    })}
+  </RadioGroup>
+  ```
+
+- **Banned**: `<div onClick>` cards (not keyboard-accessible).
+- **Banned**: hex colors (`#4f46e5`, `#eef2ff`, `#e0e7ff`). Use `border-primary` / `bg-primary/10` / `bg-primary/15`.
+
+### 11.16 Keyboard chips — `doc/web-stylng/06-components/16-keyboard-shortcut-chips.md`
+
+- **MUST** use a shared `<Kbd>` component at `aspire.svc/components/ui/kbd.tsx`:
+
+  ```tsx
+  export function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
+    return (
+      <kbd className={cn(
+        "inline-flex items-center justify-center rounded border border-border bg-muted",
+        "px-1.5 py-0 font-mono text-xs text-muted-foreground ml-1",
+        className,
+      )}>
+        {children}
+      </kbd>
+    );
+  }
+  ```
+
+- Use for J / K / ESC navigation, command-palette `⌘K` hints, sidebar quick-find labels.
+- **NEVER** roll a `<span>` with inline `border` / `borderRadius` / `padding` / `background` for shortcut chips.
+
+### 11.17 Themed cards (semantic surfaces) — `doc/web-stylng/06-components/17-themed-cards-error.md`
+
+- **Use a `ThemedCard` component** at `aspire.svc/components/ui/themed-card.tsx` with variants `destructive | warning | success | info`. Recipe in `doc/web-stylng/06-components/17-themed-cards-error.md` §6.
+- **NEVER** use `theme.useToken()`. Antd is banned.
+- **NEVER** hard-code red/amber/sky/emerald hex.
+- **For inline single-line notices**: shadcn `Alert` (`variant="default" | "destructive"`). For warning/info, use the alpha-blended classes from §3.2 inside `<Alert>` until shadcn adds those variants natively.
+
+---
+
+## 12. Provider logos & images
+
+- Brand / provider logos (OpenAI, Anthropic, …) are **not icons**. Store under `public/providers/<key>.svg` and load via `next/image`:
+  ```tsx
+  <Image src={`/providers/${key}.svg`} alt={displayName} width={24} height={24} className="shrink-0" />
+  ```
+- **Sizes**: `24` in drawer headers; `18` in table cells; `14` inline next to text.
+- **`object-contain`** for logos with non-square art.
+- **Runtime branding override** (LiteLLM-style logo / favicon swap) — if needed, read from a server endpoint and store in a `BrandingService` (`aspire.svc/lib/`) per `nextjs.mdc`'s `aspire.svc/lib/` rule. **Do not** mutate `<head>` from a leaf component.
+
+---
+
+## 13. Loading, empty, and error states
+
+Every list, table, card, panel, page **MUST** handle three states explicitly.
+
+### 13.1 Loading
+
+- **Inline / button**: `<Loader2 className="size-4 animate-spin" />`.
+- **Block / row**: shadcn `<Skeleton className="h-N w-full" />` repeated 3–5 times.
+- **Page-level (between Suspense boundaries)**: a centred `<Loader2 className="size-6 animate-spin text-muted-foreground" />`.
+- **Optimistic UI**: prefer `useOptimistic` (React 19) over a spinner when the action is fast and reversible.
+
+### 13.2 Empty
+
+- Centered text: `<p className="text-sm text-muted-foreground">No results.</p>` inside a min-height container (`min-h-32`).
+- Page-level empty: shadcn community `<EmptyState>` if available, otherwise a `<Card>` with icon + title + description + primary action.
+
+### 13.3 Error
+
+- API errors → `Notifications.fromBackend(err)` (toast).
+- Form errors → `<FormMessage>` rendered by shadcn `Form`.
+- Page-level fatal → `aspire.svc/app/error.tsx` / `aspire.svc/app/global-error.tsx` (per `nextjs.mdc`).
+
+---
+
+## 14. Accessibility (mandatory)
+
+- Every interactive control **MUST** be a real `<button>`, `<a href>`, or `<input>` — never `<div onClick>`. Card-style radios use `<Label>` + `<RadioGroupItem className="sr-only">` (§11.15).
+- Every `<Button size="icon">` **MUST** have either visible text inside or an `aria-label`.
+- Every `<Label>` **MUST** be tied to a control via `htmlFor` (or implicit nesting).
+- Every `<img>` **MUST** have `alt` (decorative: `alt=""`).
+- Every interactive list **MUST** support keyboard navigation. Tables with row clicks: rows are `<tr>` (not focusable) — render row-level interactivity via a `<Button variant="ghost">` cell or via a checkbox column.
+- Focus states: rely on shadcn's `focus-visible:ring-2 focus-visible:ring-ring` defaults. **Do not** disable focus rings.
+- Color contrast: text on `bg-background` already meets WCAG AA via OKLCH lightness gap. Custom semantic colors (amber/sky/emerald) **must** be checked for AA when used as text.
+- Modals (`Dialog`) and drawers (`Sheet`) trap focus by default (Radix). Do not bypass with `restoreFocus={false}` style props.
+- Tooltips **must not** be the only carrier of essential information.
+
+---
+
+## 15. Theme-driven layout & responsive design
+
+Layout for **pages** and **components** must read as one coherent system: modern, fluid across devices, and anchored in the **theme** (semantic tokens + shared variables in `aspire.svc/app/globals.css`), not one-off styling.
+
+### 15.1 Theme-first layout (mandatory)
+
+- **Surfaces, type, borders, radius, shadows, and spacing** for layout shells (page background, cards, headers, sidebars, main scroll regions) **MUST** use semantic Tailwind token classes and the documented CSS variables (see §2–§7, especially §7.2 for shell dimensions). Prefer tokens over raw values so light/dark and future token tweaks stay consistent.
+- **Do not** hard-code layout colors or theme-adjacent values (`bg-white`, `#…`, arbitrary `h-[413px]` for chrome) when a token or shared variable exists. If a new layout token is truly needed, add it **once** in `aspire.svc/app/globals.css` + `@theme inline` (per §3.2) rather than scattering literals in components.
+- **Fluid width**: constrain content with `max-w-*`, `min-w-0`, and flex/grid `fr` units so layouts **adapt** to viewport width; reserve fixed widths for small controls and documented patterns (e.g. icon buttons, drawer recipes in §11.9).
+
+### 15.2 Modern layouts on every screen class
+
+- **Target devices**: phone (small touch), **tablet**, **laptop**, and **large desktop** (home / workstation monitors). Every screen must remain **usable**: readable type, adequate tap targets (≥ ~44 px where primary actions are touch), no accidental overflow except **intentional** horizontal scroll (e.g. data tables).
+- **Modern bar**: prefer clear hierarchy, consistent spacing scale (§7), responsive grids/flex, and shadcn primitives that already encode accessible patterns — avoid cramped fixed multi-column desktop-only layouts that break on narrow viewports.
+- **Dynamic behavior**: navigation chrome (sidebar, sheets, dialogs) should **respond** to viewport (collapse, full-width modals on small screens, scrollable regions with `min-h-0` in flex parents) rather than assuming a single desktop width.
+
+### 15.3 Breakpoints & Tailwind patterns
+
+- **Mobile-first**: write base classes for the smallest viewport, then scale up with `sm:` (640), `md:` (768), `lg:` (1024), `xl:` (1280), `2xl:` (1536).
+- **KPI grid**: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6`. Always.
+- **Sidebar**: collapse on `<lg` automatically (shadcn `Sidebar` does this).
+- **Modals**: max-width caps with `sm:max-w-*`. Full-screen on mobile is the shadcn default for narrower phones.
+- **Drawers**: side sheet becomes bottom sheet on `<sm` when appropriate (use `<Sheet side="right" className="w-[60%] sm:max-w-none data-[state=open]:slide-in-from-bottom sm:data-[state=open]:slide-in-from-right">` or split components).
+- **Tables**: wrap in `overflow-x-auto`. Do not hide columns silently — use a column-visibility menu.
+- **Never** use fixed pixel widths for primary content surfaces. Use `max-w-*` and let the parent constrain.
+
+---
+
+## 16. Server vs client styling concerns
+
+- **Icons are not serializable.** Server components must pass icon **string ids**; client code resolves them via `NavigationIconResolver` or equivalent (`nextjs.mdc` rule).
+- **CVA variants** can be evaluated in server components. **`useTheme()`** cannot. If a component needs theme-aware values at render time (rare), mark it `"use client"`.
+- **Class strings produced by `cn()` are pure** — fine in either environment.
+- **Do not** import `sonner` from a server component. Toasts are client-side; throw or return an error and let a client boundary toast it.
+
+---
+
+## 17. File and directory rules (UI-specific)
+
+- New shadcn primitives: `npx shadcn@latest add <name>` → land in `aspire.svc/components/ui/<name>.tsx`. **Never edit a primitive directly** unless adding a variant via `cva`; prefer wrapping it in `components/<feature>/`.
+- New non-shadcn UI components (layout chrome, feature-specific blocks): `components/<feature>/<KebabCase>.tsx`.
+- Page UI: `aspire.svc/components/pages/<route-segment>/...` per `nextjs.mdc`. Route `page.tsx` files are **containers only**.
+- Icons (only when truly missing from Lucide): `components/icons/<Name>.tsx` as a typed React component.
+- Theming: edit `aspire.svc/app/globals.css` only.
+- Hooks: `hooks/use-*.ts(x)`. Component-local hooks may live next to the component.
+- Variant tables (`cva`): co-locate with the component file or extract to `components/<feature>/<name>.variants.ts` if reused.
+
+---
+
+## 18. Pre-merge checklist for any UI change
+
+A change is **not** ready to merge until **every** box is checked.
+
+1. [ ] No `dark:*` Tailwind variant added (except the documented status-text exception in §3.2).
+2. [ ] No raw hex value in any `style` prop, `className`, or `globals.css` outside token definitions.
+3. [ ] No Tailwind palette class (`bg-gray-*`, `text-slate-*`, etc.) used for theming.
+4. [ ] No `style={{ fontFamily: … }}`, `style={{ fontSize: N }}`, `style={{ fontWeight: N }}`.
+5. [ ] No banned dependency imported (`antd`, `@tremor/react`, `@heroicons/react`, `@remixicon/react`, `moment`).
+6. [ ] All icons from `lucide-react`, sized with `size-N`, colored with token classes.
+7. [ ] Class composition uses `cn()`; variants use `cva()`.
+8. [ ] All clickable affordances are `<Button>` (or `buttonVariants` on a real control).
+9. [ ] Loading state uses `<Loader2 className="animate-spin" />` or shadcn `Skeleton`.
+10. [ ] Empty state explicit.
+11. [ ] Error state goes through `Notifications.fromBackend(err)` for API errors, `<FormMessage>` for form errors.
+12. [ ] Tooltip / popover via shadcn (no custom positioning math).
+13. [ ] Modal via shadcn `Dialog`; drawer via shadcn `Sheet`.
+14. [ ] Tables use shadcn `Table*` + `@tanstack/react-table` with explicit `getRowId`.
+15. [ ] Charts read colors from `var(--chart-N)` via `chartConfig`.
+16. [ ] Code blocks use `oneDark` Prism style; JSON viewer uses `darkStyles`.
+17. [ ] Date formatting uses `date-fns` or `dayjs` (not `moment`).
+18. [ ] Every interactive control is keyboard-navigable; icon-only buttons have `aria-label`.
+19. [ ] Layout uses CSS variables for sidebar widths and header height — not per-component overrides.
+20. [ ] Page/component layout uses theme tokens and shared variables where possible; no ad hoc theme-adjacent hex or one-off chrome dimensions.
+21. [ ] Layout verified (or clearly constrained) for phone, tablet, laptop, and large desktop — fluid width, no unintended horizontal bleed.
+22. [ ] Page route files are containers only; UI lives in `aspire.svc/components/pages/<segment>/`.
+23. [ ] Any new exported props/types have TSDoc (`nextjs.mdc` rule).
+24. [ ] Component looks correct in **both** `:root` (light) and `.dark` modes — verified by toggling, not assumed.
+
+If any box is unchecked, the change is incomplete.
+
+---
+
+## 19. Where to look when this rule file isn't enough
+
+| Question | Document |
+|---|---|
+| What does Tremor token X mean? | `doc/web-stylng/02-tailwind-config.md` §2.2 |
+| What hex did LiteLLM use for Y? | `doc/web-stylng/01-design-tokens.md` |
+| Why doesn't dark mode work in LiteLLM? | `doc/web-stylng/03-theme-system.md` §2.3 |
+| What is the full type scale? | `doc/web-stylng/04-typography.md` |
+| Why are there 5 icon libraries in LiteLLM? | `doc/web-stylng/07-iconography.md` |
+| Exact recipe for component X? | `doc/web-stylng/06-components/<NN>-<x>.md` |
+| Token-by-token migration map? | `doc/web-stylng/08-arb-sherpa-mapping.md` |
+| Notification classifier source? | `src/components/molecules/notifications_manager.tsx` (LiteLLM) — port verbatim |
+
+If the answer is not in any of those, **ask before improvising**.

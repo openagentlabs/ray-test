@@ -1,0 +1,60 @@
+---
+description: >-
+  Arb Aspire TypeScript: compiler, types, Result-style errors, and module
+  conventions for the aspire.svc/ application host (see solution.mdc for Aspire scope).
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx}"
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Arb Aspire — TypeScript rules
+
+Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+
+Apply when writing or editing **TypeScript** (`.ts`, `.tsx`).
+
+## Compiler and project context
+
+- **`strict`** is on in **`aspire.svc/tsconfig.json`**. Do not weaken options or add `@ts-ignore` / `@ts-expect-error` except documented, unavoidable exceptions.
+- **`isolatedModules`** and **`moduleResolution: "bundler"`** apply: avoid patterns that break single-file transpilation; use **`import type`** / **`export type`** where value elision matters.
+- Use the **`@/*`** path alias when it matches the rest of the file.
+
+## Types and APIs
+
+- **Do not use `any`**. Prefer `unknown` + narrowing, generics, discriminated unions, or explicit **`interface`**s.
+- Keep **public surfaces** strongly typed: props, exported functions/classes, route handlers, shared helpers. Let inference handle locals when it stays clear.
+- Put shared object shapes in **`aspire.svc/lib/types/`** as small modules.
+
+## `Result` types and functional error handling (Rust-style)
+
+- For **domain logic, `aspire.svc/services/`, and `aspire.svc/lib/` helpers** where failure is an **expected outcome** (validation, I/O, parsing, external APIs), **return `Result<T, E>`** instead of throwing or returning ad-hoc `{ ok, error }` shapes. Treat this like Rust’s **`Result`** (and compositional workflows similar in spirit to **`anyhow`-style** pipelines): success and failure are **explicit in the type**.
+- **Standard library**: use **`neverthrow`** (`Result`, `ResultAsync`, `ok`, `err`, `Ok`, `Err`). Import it consistently (prefer a single **`@/lib/...`** re-export if the repo adds one) rather than sprinkling different error patterns.
+- **Functional style**: chain with **`map`**, **`mapErr`**, **`andThen`**, and collapse with **`match`** or **`unwrapOr`** at intentional boundaries. Prefer **`ResultAsync.fromPromise`** / **`fromThrowable`** at the edges of async or throwable code, then stay in **`andThen`** land for the rest of the flow. Avoid **`try` / `catch`** for control flow when the same path can be expressed as **`Result`** composition.
+- **Where this does not apply**: React components (they return UI), Next.js special entrypoints that must match framework signatures, and tiny inline callbacks may stay imperative — but **they should receive or produce `Result` at the boundary** when the work underneath is failable (unwrap or **`match`** once, not scattered throws).
+
+## Style of types
+
+- Prefer **`interface`** over **`type`** for object shapes where both fit.
+- **Optional properties**: when a field is **not always required**, declare it with the **optional construct** — **`property?: T`** on the **`interface`** (or equivalent object type) instead of requiring every call site to pass a dummy value. Prefer **`?:`** over **`property: T | undefined`** unless you truly need to distinguish “key missing” from “key present with value `undefined`”.
+- **Selective optionality**: when a **base type has required keys** but a **subset** should be optional (e.g. update DTOs, partial overrides), use the standard **`Optional<T, K extends keyof T>`** pattern — `Omit<T, K> & Partial<Pick<T, K>>` — and **define it once** in **`aspire.svc/lib/types/`** (or a single shared utilities module) rather than copy-pasting per feature.
+- **No enums** — use **`const` maps** (or unions) instead.
+- Avoid **`as`** as the default fix; prefer guards, **`satisfies`**, or refactors that make types derivable.
+- When narrowing `unknown` or wide unions, use **exhaustive** checks and **`never`** in default branches where the codebase already does so.
+
+## Complexity and readability
+
+- **Cognitive complexity cap**: aim for **5/10 or lower** on any **function**, **method**, **hook**, or **cohesive block of logic** (if you mentally rate it higher, it is too heavy for one unit).
+- **When complexity would exceed ~5/10**: **split** the work into **smaller, named functions** (or focused components) with **one clear job** each; use **early returns**, **guard clauses**, and **shallow nesting** instead of growing a single mega-routine.
+- **Prefer boring, obvious code** over clever abstractions, dense one-liners, or deep indirection unless the repo already uses that pattern nearby.
+- **Junior-friendly bar**: a **junior developer** should be able to **read the code top-to-bottom** and understand **what it does and why** without reverse-engineering tricks. If not, simplify names, structure, or decomposition before shipping.
+
+## Consistency
+
+- Match **naming, export style, and typing patterns** of neighboring code in the same layer (`aspire.svc/app/`, `aspire.svc/components/`, `aspire.svc/lib/`).
+- Do not add comments that only restate what the types already express.

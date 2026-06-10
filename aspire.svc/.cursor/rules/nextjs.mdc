@@ -1,0 +1,169 @@
+---
+description: >-
+  Arb Aspire edge: Next.js App Router shell, routes, thin containers, and UI
+  conventions for the aspire.svc/ host. Composes presentation with aspire.svc/services/*
+  via server boundaries — see solution.mdc for Arb Aspire vs .NET Aspire role.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/*.mjs"
+  - "aspire.svc/app/**/*.{ts,tsx,css,mjs}"
+  - "aspire.svc/components/**/*.{ts,tsx,css,mjs}"
+  - "aspire.svc/lib/**/*.{ts,tsx,mjs}"
+  - "aspire.svc/services/**/*.{ts,tsx,mjs}"
+  - "aspire.svc/test/**/*.{ts,tsx,mjs}"
+  - "aspire.svc/package.json"
+  - "aspire.svc/tsconfig.json"
+  - "aspire.svc/components.json"
+alwaysApply: false
+---
+
+# Arb Aspire — Next.js and app rules
+
+Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+
+For **TypeScript** language and type conventions, see **`typescript.mdc`**. For **database** access, see **`database.mdc`**. For **logging and observability**, see **`logging.mdc`**.
+
+## Ground truth
+
+- **Versions**: Use **`package.json`** (this repo: **Next.js 16** App Router, **React 19**, **Tailwind 4**). Do not assume training-default Next/React APIs.
+- Before non-trivial Next work, read **`node_modules/next/dist/docs/`** and heed deprecations (**`AGENTS.md`**).
+
+## Before you implement
+
+1. **Classify** the task, languages, explicit/implicit requirements, and constraints.
+2. **Plan** files, dependencies, error/a11y edges, and how you will validate.
+3. **Implement** with patterns that match **neighboring code** in the same layer (`aspire.svc/app/`, `aspire.svc/components/`, `aspire.svc/lib/`).
+
+## Next.js App Router (installed major)
+
+- **Default Server Components**. Use **`"use client"`** only for browser APIs, event handlers, and client-only state — not as a blanket for data fetching.
+- **Async dynamic APIs** on the server — **await** (match this Next version; verify in local types/docs if unsure):
+
+```ts
+const cookieStore = await cookies()
+const headersList = await headers()
+const { isEnabled } = await draftMode()
+// In layouts/pages, await when props are Promises:
+const params = await props.params
+const searchParams = await props.searchParams
+```
+
+- **`error.tsx` / `global-error.tsx`** for unexpected failures; **`Suspense`** with fallbacks for async segments and lazy client boundaries.
+- **`<Image>`** with appropriate `sizes` / priority where it affects LCP; prefer efficient formats at source when you control assets.
+- **Web Vitals**: avoid unnecessary client JS; keep the critical path lean.
+
+## Server / client data
+
+- Only pass **JSON-serializable** data from Server Components into Client Components (no functions, class instances, or React nodes in those props).
+- Prefer **string ids** on the server; resolve icons and other non-serializable UI **inside client** code.
+
+## React 19
+
+- **`useActionState`** for action-backed form state (do **not** use deprecated **`useFormState`**).
+- **`useFormStatus`** for submit pending/disabled state in descendant components.
+- Minimize **`useEffect`** and client state; prefer server data and stable server patterns where possible.
+
+## UI code style
+
+- **Functional components** in `aspire.svc/app/` and `aspire.svc/components/` (e.g. `function Component()`). **DRY**, declarative JSX, early returns / guard clauses, shallow nesting, no redundant `else`.
+- **Naming**: auxiliary verbs (`isLoading`, `hasError`); handlers **`handleSubmit`**, **`handleClick`**, etc.
+- **Directories**: **kebab-case** segments (e.g. `components/auth-wizard`). **Named exports** for components unless the file already uses a different pattern.
+
+## `aspire.svc/lib/` (this repo)
+
+- Use **classes** for cohesive app rules: e.g. **`NavigationService.getInstance()`**, **`NavigationIconResolver`**, **`AppConfig`**, **`SidebarPreferences`**, small placeholder classes — not loose globals.
+
+## Stack (UI)
+
+- **Tailwind v4** + **shadcn/ui** (Base UI). Theme tokens in **`aspire.svc/app/globals.css`** — semantic tokens (`background`, `foreground`, `sidebar`, …), not ad hoc global hex.
+- **shadcn**: add via **`npx shadcn@latest add …`** into **`aspire.svc/components/ui/`** only.
+- **Theming**: **`next-themes`** via **`AppProviders`**, **`defaultTheme: "light"`**, `attribute="class"`; **`suppressHydrationWarning`** on `html` where required for hydration. Light mode is the brand-aligned default (EXL Services orange palette in `:root`); dark mode is opt-in via `.dark`.
+
+## Directory layout
+
+| Concern | Location |
+|--------|----------|
+| Routes / layouts | `aspire.svc/app/` — e.g. authenticated shell under `aspire.svc/app/pages/`. |
+| Primary workspace UI | `aspire.svc/app/pages/` + `aspire.svc/app/pages/layout.tsx`. |
+| **Page composition (feature UI for a route)** | **`aspire.svc/components/pages/<route-segment>/`** — one subfolder per page or logical page surface; see **Page routes and page components** below. |
+| Shared non-shadcn UI | `aspire.svc/components/` — `aspire.svc/components/layout/`, `aspire.svc/components/providers/`, etc. |
+| shadcn primitives | `aspire.svc/components/ui/` only. |
+| Domain logic, config, platform helpers | `aspire.svc/lib/`. |
+| Backend domains (extractable “microservices”) | `aspire.svc/services/<name>/` — public **`index.ts`** only from outside the folder; see **`architetcure.mdc`** (this folder). |
+| Shared types | `aspire.svc/lib/types/`. |
+
+## Page routes and page components
+
+Every page in this solution is delivered as **two pieces**. **Both pieces are mandatory** — when you create a new page **or** modify an existing one, the route file **must** stay a thin container and the corresponding page-component folder **must** exist in **`aspire.svc/components/pages/<segment>/`** (paths in this section are relative to the **solution root**, i.e. the repository root).
+
+### 1. The route file (container only)
+
+- **Location**: **`aspire.svc/app/**/page.tsx`** (and parallel-route `page` files) — e.g. **`aspire.svc/app/pages/<segment>/page.tsx`** for a workspace section.
+- **Role**: **container only**. It **MUST** do at most three things:
+  1. `await` Next.js dynamic APIs and `props.params` / `props.searchParams` when needed (see "Next.js App Router" above).
+  2. Fetch any **server-side** data the page needs and reduce it to **JSON-serializable** props.
+  3. Import the **single** page component from **`aspire.svc/components/pages/<segment>/`** and render it, passing the serializable props.
+- **MUST NOT**: build page UI inline in the route file, import client-only modules (`sonner`, browser APIs) directly, or duplicate logic that belongs in the page component, **`aspire.svc/lib/`**, or **`aspire.svc/services/`** (via their public APIs from server code only).
+- **Default export**: the route file's `default export` is a thin wrapper function (e.g. `export default async function SettingsRoute(props) { … return <SettingsPage {...} />; }`). Name it `<Segment>Route` to keep route and page identities distinct.
+
+### 2. The page component (container for the page's UI)
+
+- **Location**: **`aspire.svc/components/pages/<segment>/`** — one folder per page, **kebab-case**, **mirroring the route segment exactly**. Examples (relative to solution root):
+
+  | Route file | Page-component folder | Page component file |
+  |---|---|---|
+  | `aspire.svc/app/pages/home/page.tsx` | `aspire.svc/components/pages/home/` | `aspire.svc/components/pages/home/home-page.tsx` |
+  | `aspire.svc/app/pages/settings/page.tsx` | `aspire.svc/components/pages/settings/` | `aspire.svc/components/pages/settings/settings-page.tsx` |
+  | `aspire.svc/app/pages/user/settings/page.tsx` | `aspire.svc/components/pages/user-settings/` | `aspire.svc/components/pages/user-settings/user-settings-page.tsx` |
+  | `aspire.svc/app/pages/analytics/page.tsx` | `aspire.svc/components/pages/analytics/` | `aspire.svc/components/pages/analytics/analytics-page.tsx` |
+
+- **File and symbol naming**:
+  - **Page file**: **`<segment>-page.tsx`** (kebab-case, suffix **`-page`**). Nested segments are flattened with a `-` separator in the folder name (e.g. `user/settings` → `user-settings`).
+  - **Named export**: **`<Segment>Page`** in PascalCase (e.g. `SettingsPage`, `UserSettingsPage`). **Named exports only** — the page component is **not** a `default export` (the route file owns that).
+  - **Props type**: co-located, **exported**, named **`<Segment>PageProps`** (e.g. `SettingsPageProps`). Required if the route passes props.
+- **Role**: the page component is **itself a container** that composes every UI piece the page needs (sections, headers, client boundaries, data-presentation blocks). Page-specific sub-components live **alongside it in the same folder** (e.g. `aspire.svc/components/pages/settings/settings-form.tsx`, `aspire.svc/components/pages/settings/settings-header.tsx`) and are **module-private** unless they are part of the page's public surface.
+- **Server vs client**: keep the page component a **Server Component** by default; mark `"use client"` only on the leaves that need it (the same rule as everywhere else in `aspire.svc/app/`).
+
+### 3. Public contract and encapsulation
+
+- **Public surface** of a page-component folder = the **exported page component** + its **exported `<Segment>PageProps`** + any helpers/types the route file or a sibling page explicitly needs. **Everything else is private to the folder.**
+- Other folders **MUST NOT** import a page's private sub-components, types, or helpers. If a piece becomes reusable across pages, move it to **`components/<feature>/`** or **`aspire.svc/lib/`** before re-importing.
+- **Documentation**: add **TSDoc/JSDoc on exported (public) APIs** — especially **`<Segment>PageProps`** and any exported helpers/classes. **Do not** document private helpers, unexported symbols, or non-public class members; keep those understandable via naming and local structure instead.
+
+### 4. Mandatory checklist when adding or modifying a page
+
+A page change is **incomplete** until every box is checked:
+
+1. [ ] Route file at **`aspire.svc/app/.../page.tsx`** is a thin container — only `await`s dynamic APIs, prepares serializable props, and renders the page component.
+2. [ ] Page-component folder exists at **`aspire.svc/components/pages/<segment>/`** (kebab-case, mirrors the route segment; nested segments flattened with `-`).
+3. [ ] Page component file is **`aspire.svc/components/pages/<segment>/<segment>-page.tsx`** with a **named** export **`<Segment>Page`**.
+4. [ ] Props type **`<Segment>PageProps`** is exported and TSDoc'd if props exist.
+5. [ ] Page-specific sub-components live in the same **`aspire.svc/components/pages/<segment>/`** folder and are **not** imported from outside that folder.
+6. [ ] Navigation entry (if user-visible) is added to **`NavigationService`** in `aspire.svc/lib/navigation/navigation-service.ts`, with an icon mapping in **`NavigationIconResolver`** when needed.
+7. [ ] No `"use client"` on the route file; client boundaries live inside the page component only where required.
+
+If you are **modifying** a page that still inlines UI in `aspire.svc/app/.../page.tsx`, the modification **must** include extracting the UI into the corresponding `aspire.svc/components/pages/<segment>/` folder before adding new behavior.
+
+## Shell and navigation
+
+- **`DashboardShell`**: **`AppSidebar`** + **`AppHeader`** + scrollable **`<main>`**. New shell sections: under **`aspire.svc/app/pages/`** or deliberate extension of **`aspire.svc/app/pages/layout.tsx`** — do not duplicate full shells per page.
+- **Sidebar**: collapse via **`SidebarPreferences`** + **`AppConfig.sidebarStorageKey`** only — no new storage keys in random components.
+- **Header**: account controls in **`AppHeader`**; **`ThemeToggle`** exists in `aspire.svc/components/layout/theme-toggle.tsx` but is **not mounted** in the shell — theme still applies via **`AppProviders`**; remount when product needs an in-app toggle.
+
+## Client effects
+
+- If ESLint forbids synchronous **`setState`** in **`useEffect`**, follow repo patterns (**`queueMicrotask`** for mount-only init, or **`useSyncExternalStore`** when appropriate).
+
+## shadcn / a11y triggers
+
+- Triggers must render valid controls (e.g. no **`<button>`** inside **`<button>`**). Use **`buttonVariants`** + **`cn()`** when styling triggers.
+
+## Do not
+
+- Hide domain rules in large client components — use **`aspire.svc/lib/`** or server modules.
+- Add a parallel **`component/`** root — use **`aspire.svc/components/`** only.
+
+## Persistence
+
+- **Database / DynamoDB**: **`database.mdc`** — **`DatabaseDriver`**, repositories, migrations; never bypass the driver abstraction.

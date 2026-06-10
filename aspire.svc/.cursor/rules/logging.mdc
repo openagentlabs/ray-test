@@ -1,0 +1,181 @@
+---
+description: >-
+  Arb Aspire observability: structured logging and OTel registration across the
+  aspire.svc/ host and composed domains — same cross-cutting intent as .NET Aspire
+  dashboards/telemetry; implementation follows this file and aspire.svc/lib/logging/*.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx}"
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Arb Aspire — logging and observability rules
+
+Project identity values (`PROJECT_NAME`, `PROJECT_SLUG`) are defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+
+## Agent workflow (read first)
+
+When you touch code that **crosses a trust boundary**, **persists data**, or **recovers from failure**, decide logging **before** shipping:
+
+1. **Classify runtime**: **Server** (RSC, route handlers, `aspire.svc/lib/`, `"use server"` modules) → **`ServerLogging.emit`**. **Client** (files with `"use client"`, browser-only handlers) → **`sendClientLog` / `sendClientLogs`** only—never AWS or OTel SDK in the browser for routine logs.
+2. **Pick one layer** per request/action: log the **outcome** where the **decision or I/O** happens (repository, driver, server action, service in `aspire.svc/lib/`). Avoid logging the same outcome at **both** a thin `page.tsx` wrapper **and** the `aspire.svc/lib/` module unless the outer log adds **new** correlation fields.
+3. **Choose severity** using the table in **Severity guidance** below; default new diagnostics to **`debug`** unless the event belongs on an operator timeline (**`info`**+).
+4. **Shape the payload**: short **`body`** string; **`attributes`** = primitive map (ids, counts, flags); **no** secrets, tokens, cookies, or full PII blobs.
+
+## Where in the stack to add logs
+
+| Location | When to add logging | API | Notes |
+|----------|---------------------|-----|--------|
+| **`aspire.svc/lib/**`** (repositories, drivers, services, migrations) | After **successful** or **failed** I/O; invariant / “impossible” branch; migration step start/end | `ServerLogging.emit` | **Preferred** home for persistence and domain outcomes. |
+| **`aspire.svc/app/actions/**`** (server actions) | Action **rejected** input, auth/authorization denial, unexpected throw **after** validation | `ServerLogging.emit` | Keep **one** summary line; heavy detail stays in `aspire.svc/lib/` where the failure originated. |
+| **Route handlers** (`aspire.svc/app/**/route.ts`) | HTTP boundary errors, upstream timeouts | `ServerLogging.emit` | If the handler only delegates to `aspire.svc/lib/`, prefer logging **inside** `aspire.svc/lib/` to avoid duplicates. |
+| **Server Components** (`aspire.svc/app/**/page.tsx` or layouts) | Rare—only when the component performs **non-trivial server-only** branching not already logged lower | `ServerLogging.emit` | **`aspire.svc/app/**/page.tsx` containers stay thin** (per `nextjs.mdc`); do not stuff logging into route files if `aspire.svc/components/pages/...` or `aspire.svc/lib/` already logs. |
+| **`components/**` with `"use client"`** | User-visible client failure, client-only heuristic (stale cache, failed `fetch`), important UX milestones **not** visible on server | `sendClientLog` | Emits on server pipeline with `log.origin = "client"`. |
+| **`aspire.svc/instrumentation.ts` / OTel exporters** | Do **not** add product logs here | — | Only registration / export plumbing. |
+
+## When to add logging (yes / no)
+
+**Add logs when:**
+
+- **External I/O** completes or fails (database, HTTP APIs, queues, file/object storage).
+- **Security / abuse** signals: repeated validation failures, throttling, suspicious parameter combinations (without logging raw secrets).
+- **Recovery paths**: retry scheduled, fallback data used, degraded mode entered.
+- **Data integrity**: migration failed, constraint violation, unexpected empty result where data must exist.
+
+**Do not add logs when:**
+
+- The line is **pure UI layout** with no I/O or risk (no `ServerLogging` / `sendClientLog`).
+- You would log **inside a hot inner loop** at `info` or lower—use **`debug`** + sampling, or omit.
+- The same event is already logged **downstream** with the same attributes (noise).
+
+## Ground truth
+
+- **Telemetry model**: All first-class application logging uses the **OpenTelemetry Logs API** on the server (`@opentelemetry/api-logs` + `@opentelemetry/sdk-logs`). Do not introduce parallel logging frameworks (e.g. Pino-only or Winston-only pipelines) for app logs unless there is an explicit product decision to replace OTel.
+- **Community runtimes**: Use the **CNCF OpenTelemetry JavaScript** packages already declared in **`package.json`** (`@opentelemetry/api`, `@opentelemetry/api-logs`, `@opentelemetry/sdk-logs`, `@opentelemetry/resources`, `@opentelemetry/semantic-conventions`). Prefer **batch processors** (`BatchLogRecordProcessor`) so export work stays off the request hot path.
+- **Sinks**: When logging is enabled, the server registers a **console** OpenTelemetry log exporter only (structured output on stdout/stderr). Do not add parallel shipping to external log services from UI, repositories, or route handlers without an explicit product decision—route through the logging layer.
+- **Configuration**: Runtime switches and sinks are defined by **`LoggingConfig`** / **`LoggingConfigFactory`** in **`aspire.svc/lib/config/logging-config.ts`** and environment variables documented in **`doc/solution-architecture/getting_started.md`**.
+
+## Where code lives
+
+| Concern | Path |
+|--------|------|
+| Env-backed logging config | `aspire.svc/lib/config/logging-config.ts` |
+| Server OTel registration (batch exporters) | `aspire.svc/lib/logging/register-server-logging.ts` (invoked from `aspire.svc/instrumentation.ts`) |
+| Server emit helper | `aspire.svc/lib/logging/server-logging.ts` |
+| Client → server log relay action | `aspire.svc/app/actions/client-logs.ts` |
+| Client fire-and-forget helper | `aspire.svc/lib/logging/client-log-sender.ts` |
+| Client payload validation | `aspire.svc/lib/logging/client-log-ingestion.ts` |
+| Shared client payload type | `aspire.svc/lib/types/client-log-entry.ts` |
+
+## Concrete examples (copy-paste patterns)
+
+### Server — domain / persistence (`aspire.svc/lib/`)
+
+Use a **stable `scope`** string: `<PROJECT_SLUG>.<area>` (match folder or bounded context).
+
+```typescript
+import { ServerLogging } from "@/lib/logging/server-logging";
+
+// After a successful write
+ServerLogging.emit({
+  scope: "arb-ai-assistant.example-entity-repository", // = PROJECT_SLUG-prefixed
+  severity: "debug",
+  body: "Example entity saved",
+  attributes: { entityId: entity.id },
+});
+
+// On catch blocks (non-rethrowing or before rethrow)
+ServerLogging.emit({
+  scope: "arb-ai-assistant.example-entity-repository", // = PROJECT_SLUG-prefixed
+  severity: "error",
+  body: "Example entity save failed",
+  attributes: {
+    entityId: entity.id,
+    errorName: error instanceof Error ? error.name : "unknown",
+  },
+});
+```
+
+### Server — server action boundary (`aspire.svc/app/actions/**`)
+
+Log **boundary-level** context; defer detail to `aspire.svc/lib/` if it already logs.
+
+```typescript
+"use server";
+
+import { ServerLogging } from "@/lib/logging/server-logging";
+
+export async function saveWidget(formData: FormData): Promise<void> {
+  try {
+    // ... call lib layer
+  } catch (error) {
+    ServerLogging.emit({
+      scope: "arb-ai-assistant.actions.widget", // = PROJECT_SLUG-prefixed
+      severity: "error",
+      body: "saveWidget action failed",
+      attributes: {
+        errorName: error instanceof Error ? error.name : "unknown",
+      },
+    });
+    throw error;
+  }
+}
+```
+
+### Client — browser-only signal (`"use client"`)
+
+```typescript
+"use client";
+
+import { sendClientLog } from "@/lib/logging/client-log-sender";
+
+function handleChartError(widgetId: string, err: unknown): void {
+  sendClientLog({
+    severity: "warn",
+    message: "Chart render failed; showing fallback",
+    attributes: {
+      widgetId,
+      errorName: err instanceof Error ? err.name : "unknown",
+    },
+    clientTimestampMs: Date.now(),
+  });
+}
+```
+
+### Agent MUST / MUST NOT
+
+- **MUST** use `ServerLogging.emit` for any new **server-side** diagnostic or audit line in application code under `aspire.svc/lib/` or `aspire.svc/app/` (except pure presentational components that perform no I/O).
+- **MUST** use `sendClientLog` / `sendClientLogs` from **`aspire.svc/lib/logging/client-log-sender.ts`** for **client-side** logs—never `console.log` as the only observability for production-critical client failures.
+- **MUST NOT** log secrets, full auth headers, session tokens, or unredacted PII.
+- **MUST NOT** import `@opentelemetry/sdk-logs` from **`aspire.svc/components/`** or **`aspire.svc/app/`** client bundles for routine logging.
+
+## Severity guidance (OpenTelemetry)
+
+Use **`ServerLogging.emit`** with a stable **`scope`** (typically module or subsystem name) and **`ApplicationLogLevel`**:
+
+- **trace / debug**: Engineering detail for reproducing tricky flows. Default minimum in dev is often **debug**; keep messages structured.
+- **info**: Lifecycle and business-significant events a responder would expect in a timeline (deployment marker, user completed primary journey).
+- **warn**: Recoverable anomalies, deprecated usage, or external dependency slowness thresholds exceeded.
+- **error**: Operation failed; user-visible failure or data not written when it should have been.
+- **fatal**: Process-level integrity loss (continue only if you deliberately handle partial outage).
+
+## Client applications (browser)
+
+- **Never** embed the full OTel server SDK in the browser bundle for routine logs.
+- Use **`sendClientLog` / `sendClientLogs`** (`aspire.svc/lib/logging/client-log-sender.ts`) so telemetry flows through **`submitClientLogs`** (`aspire.svc/app/actions/client-logs.ts`) and is emitted with `log.origin = "client"` on the server pipeline.
+- Client logs must remain **JSON-serializable**, **size-bounded**, and **free of secrets** (tokens, cookies, full URLs with query secrets).
+
+## TypeScript and quality
+
+- **No `any`** in logging helpers, exporters, or validators.
+- Prefer **static class members** on cohesive types (`ServerLogging`, `LoggingConfigFactory`) consistent with other `aspire.svc/lib/` patterns.
+- Keep exported logging surfaces **small**; extend ingestion validation when adding new optional fields rather than loosening types at the boundary.
+
+## Tests
+
+- When changing **environment parsing**, sinks, or ingestion limits, add or update Vitest coverage under **`aspire.svc/test/`** (see `test/logging-config.test.ts`).

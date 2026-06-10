@@ -1,0 +1,73 @@
+---
+description: Meta-policy for creating and maintaining Cursor rules in .cursor/rules/ — template, naming, intake, and delivery format.
+alwaysApply: true
+---
+
+# Cursor rules — meta-policy (agent guide)
+
+**Mandatory — read before any rule work.** This file governs how you create, update, and hand off **`.cursor/rules/*.mdc`** files in this repository. Follow it completely; use skill **`.cursor/skills/rules-create/`** when the user wants guided rule creation or names **`rules-create`** / **`rules_create`**.
+
+**What this file is:** Repository-wide **meta-rules** for Cursor AI agents: how to scaffold rule files from the canonical template, name them, collect content from the user, finalize prose, and report completion.
+
+**When to use it:** Whenever you add, rename, or materially edit a **`.cursor/rules/*.mdc`** file; when the user asks for a new Cursor rule, coding standard, or project convention file; or before finishing work that introduces rule content without a proper `.mdc` file.
+
+**How to use it:** Apply the sections below in order. For interactive creation, run the **`rules-create`** skill workflow (parameters and steps in **`.cursor/skills/rules-create/SKILL.md`**). For manual creation, follow **Rule creation** yourself step by step.
+
+---
+
+## Rule creation (mandatory process)
+
+### 1. Scaffold from template
+
+1. Copy **`.cursor/templates/rule.mdc.tmpl`** to **`.cursor/rules/<name>.mdc`**.
+2. Do **not** keep the `.tmpl` extension; the deliverable is **`<name>.mdc`** only.
+3. **`<name>`** must be a **single lowercase word** (no hyphens unless the user explicitly requires one word with a hyphen): concise and descriptive so a human can tell what the rule covers (e.g. `docs`, `python`, `terraform`, `grpc`).
+
+### 2. Intake from the user
+
+1. Ask for a **short description** of what the rule file is for (`rule_purpose`). Use it to fill **What this file is**, **When to use it**, and **How to use it** in the template (agent-oriented, not marketing copy).
+2. Ask whether the rule **always applies** (`always_apply`: `true` | `false`). If `false`, ask for **`globs`** (file patterns) or infer from purpose.
+3. Set frontmatter **`description`** to one sentence for the rule picker.
+4. Collect **rules one at a time**: ask for the next rule; append under **## Rules**; repeat until the user says **`finished`** (or equivalent: done, no more, stop).
+5. After each rule, ask: **“Next rule, or `finished`?”**
+
+### 3. Finalize
+
+1. Re-read the full file; tighten wording; remove duplication; keep under **~80 lines** when possible (split into a second `.mdc` if scope is large).
+2. Remove HTML comments and any leftover `REPLACE_ME` placeholders.
+3. Do not duplicate values from **`.cursor/rules/constants.mdc`** — link instead.
+
+### 4. Handoff to the user
+
+Output **only** the completion table below (no long prose). Populate from the finished file.
+
+| Field | Value |
+|-------|--------|
+| **File** | `.cursor/rules/<name>.mdc` |
+| **What (agent view)** | One sentence: what the rule file is |
+| **When** | Bulleted triggers (max 3–5) |
+| **How** | Bulleted usage steps (max 3–5) |
+| **alwaysApply** | `true` or `false` |
+| **globs** | Patterns or `—` if N/A |
+| **Rules (concise)** | Numbered list of rule summaries (one line each) |
+| **Totals** | Rules: *n* · Lines: *approx* · alwaysApply: *yes/no* |
+
+---
+
+## Content standards
+
+- **One concern per file** when possible; prefer multiple focused `.mdc` files over one huge file.
+- **Actionable rules** — verifiable behaviors, not vague principles.
+- **Frontmatter** — `description` required; `alwaysApply` required; `globs` only when `alwaysApply: false` and the rule is path-specific.
+- **Naming conflicts** — if `<name>.mdc` exists, ask before overwrite or suggest an alternate single word.
+
+---
+
+## Related artifacts
+
+| Artifact | Path |
+|----------|------|
+| Rule template | `.cursor/templates/rule.mdc.tmpl` |
+| Guided creation skill | `.cursor/skills/rules-create/SKILL.md` |
+| Project constants (link, do not copy) | `.cursor/rules/constants.mdc` |
+| Documentation README policy | `.cursor/rules/docs.mdc` |

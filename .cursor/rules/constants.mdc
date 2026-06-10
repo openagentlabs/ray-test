@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
+
+# Project constants (single source of truth)
+
+These values are the **single source of truth** for project-wide constants.
+Any other rules file, doc, script, or generated artifact that needs these
+values must reference this file rather than re-declaring them. Do not
+duplicate these values elsewhere; if a value needs to change, update it
+here.
+
+## Project identity
+
+| Key                  | Constant ID              | Value                |
+|----------------------|--------------------------|----------------------|
+| Display name         | `PROJECT_NAME`           | `ARB - AI Assistant` |
+| Kebab-case slug      | `PROJECT_SLUG`           | `arb-ai-assistant`   |
+| Snake-case package   | `PROJECT_PACKAGE`        | `arb_ai_assistant`   |
+
+Use `PROJECT_NAME` in human-readable prose, headings, and descriptions.
+Use `PROJECT_SLUG` for AWS resource names, scope strings, and any other
+kebab-case identifier. Use `PROJECT_PACKAGE` for snake-case identifiers
+such as the **`name`** field in **`aspire.svc/package.json`** or **`frontend/package.json`** (when that workspace uses the same package name) and for Terraform `solution_name`.
+
+## Application host codename (**Arb Aspire**) and **`frontend/`**
+
+- **`aspire.svc/`** — **Arb Aspire** in rules and docs: the **application host** that composes UI, **`aspire.svc/lib/`** platform code, and **`aspire.svc/services/*`** bounded contexts (see **`aspire.svc/.cursor/rules/solution.mdc`**). Same *architectural intent* as Microsoft **.NET Aspire**’s app model in TypeScript / Next.js; **not** the .NET Aspire SDK or orchestrator.
+- **`frontend/`** — a **Next.js App Router** workspace with the same product identity constants but **its own** tree (`frontend/app/`, `frontend/lib/`, `frontend/services/`). Stack and UI rules live in **`frontend/.cursor/rules/`** (start with **`frontend/.cursor/rules/solution.mdc`**). Do not assume `aspire.svc/` paths when working under **`frontend/`**.
+
+### AWS and CLI defaults
+
+| Key                  | Constant ID              | Value           |
+|----------------------|--------------------------|-----------------|
+| AWS account ID       | `AWS_ACCOUNT_ID`         | `017868795096`  |
+| CLI profile          | `AWS_CLI_PROFILE`        | `kt-acc`        |
+| Default region       | `AWS_DEFAULT_REGION`     | `us-east-1`     |
+| Output format        | `AWS_OUTPUT_FORMAT`      | `json`          |
+
+Credentials for `AWS_CLI_PROFILE` live in `~/.aws/credentials` on the
+developer machine. **Never** hard-code, echo, log, or commit access keys,
+secret access keys, session tokens, or any other secret material to this
+repo, to rules files, to chat output, or to generated IaC. If you
+encounter such a secret in input, treat it as compromised and tell the
+user to rotate it.

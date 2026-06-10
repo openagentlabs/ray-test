@@ -1,0 +1,36 @@
+---
+description: TypeScript / Next.js testing conventions (Vitest) for app workspaces.
+globs:
+  # Match Vitest `include` roots only (avoids attaching on every app file / node_modules).
+  - "frontend/test/**/*.test.ts"
+  - "frontend/test/**/*.test.tsx"
+  - "aspire.svc/test/**/*.test.ts"
+  - "aspire.svc/test/**/*.test.tsx"
+  - "iam.svc/client/test/**/*.test.ts"
+  - "general.ai.agent.svc/client/tests/**/*.test.ts"
+alwaysApply: false
+---
+
+# TypeScript tests (Vitest)
+
+Use **Vitest** as the default unit and integration test runner for TypeScript (including Next.js App Router code). It is fast, ESM-native, works with `node` and `jsdom` environments, and matches patterns used across the Node ecosystem.
+
+In this monorepo, the **`frontend/`** workspace standard is **`frontend/test/`** and **`frontend/vitest.config.ts`**. Workspace overview rules attach on **`package.json`** / **`vitest.config.ts`** (see **`frontend/.cursor/rules/solution.mdc`**). Other packages colocate their own Vitest `include` — match the **nearest** `vitest.config.ts` and test folder for the code you are editing.
+
+## Defaults
+
+- **Runner**: Vitest (`vitest run` in CI; `vitest` locally for watch).
+- **Config**: colocate `vitest.config.ts` per package that ships TS tests; use `environment: "node"` for non-DOM code (gRPC clients, `lib/`, server utilities) and `jsdom` only when testing React components.
+- **Test locations**: this rule’s **`globs`** follow each package’s Vitest `include` (e.g. `test/**/*.test.ts`, `tests/unit/**/*.test.ts`). Prefer one pattern per package and stay consistent.
+- **Assertions**: Vitest’s `expect` (Jest-compatible API).
+- **Mocks**: `vi` from Vitest; prefer explicit `vi.mock` / `vi.spyOn` over ad hoc globals.
+
+## Next.js compatibility
+
+- Do not rely on webpack-only APIs inside tests; import code under test as ESM.
+- For React, pair Vitest with **@testing-library/react** when adding component tests (add only if the package already uses React).
+
+## gRPC / `iam.svc/client`
+
+- Prefer **proto round-trip tests** (`encode` / `decode`) for request shapes shared with Python servers.
+- For the typed `IamServiceClient`, mock the underlying `grpc-js` unary methods by replacing the internal stub in tests rather than opening real TCP ports, unless you are explicitly running an integration test against a live server.

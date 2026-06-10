@@ -1,0 +1,213 @@
+---
+description: >-
+  Arb Aspire runtime validation (Zod): ingress, env, and AI/tool boundaries for
+  the aspire.svc/ host — schema placement and Result-based control flow per this file.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx}"
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Arb Aspire — runtime validation (Zod)
+
+Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+
+This repository uses **[Zod](https://zod.dev/) v4** as its **single, gold-standard runtime validation and parsing library** — the TypeScript equivalent of Python's `pydantic`. Zod is a **direct dependency** in `package.json`; it is also transitively required by `ai` (Vercel AI SDK), `@assistant-ui/*`, and the MCP SDK. Use **the workspace-pinned version only**; do not install `valibot`, `yup`, `joi`, `io-ts`, `ajv`, `runtypes`, or hand-rolled type guards as parallel alternatives.
+
+## Why Zod (and not another library)
+
+- **Single source of truth**: declare a schema **once** with `z.object({...})`, then derive the static type via **`z.infer<typeof Schema>`**. This kills the "duplicate interface + manual validator" anti-pattern.
+- **`strict` TypeScript compatible**: types flow through `.parse` / `.safeParse` without `any`. Fits the **no `any`** rule in `typescript.mdc`.
+- **Composes with `neverthrow`**: `safeParse` returns a discriminated result that maps **directly** onto **`Result<T, E>`** — the project-mandated error style.
+- **First-class in our stack**: Vercel **AI SDK** (`generateObject`, `streamObject`, tool inputs/outputs) accepts Zod schemas natively; **MCP**, **assistant-ui**, and many shadcn form patterns assume Zod. Picking anything else creates two competing validation ecosystems in the same repo.
+
+## When to use Zod (trust boundaries only)
+
+Use Zod at **every boundary where untyped or untrusted data enters typed code**:
+
+| Boundary | Required | Example |
+|---|---|---|
+| **HTTP route handlers / server actions** (App Router `route.ts`, `"use server"` actions) | **Yes** | Parse `await req.json()`, `formData`, query params, headers you actually depend on. |
+| **AI model output** (structured generation, tool inputs/outputs) | **Yes** | Pass Zod schemas to `generateObject`, `streamObject`, and tool `inputSchema`/`outputSchema`. |
+| **External APIs and webhooks** | **Yes** | Validate responses before returning them to repositories or UI. |
+| **Process env / runtime config** | **Yes** | Validate `process.env` **once** at boot in `aspire.svc/lib/config/` and export a typed object. |
+| **User-supplied JSON / files / clipboard / URL state** | **Yes** | Anything the user types or pastes, including saved preferences from `localStorage`. |
+| **Database driver → repository boundary for non-derived shapes** | **Yes, when the shape is not strictly derived from a typed schema you own** | E.g. legacy DynamoDB items, migration payloads, cross-version reads. |
+| **Internal, already-typed values** | **No** | Do not re-validate values that are already typed and produced inside this codebase. Validation is a **boundary** tool, not a runtime assertion library. |
+| **Hot paths inside a request after the boundary** | **No** | Validate **once** at ingress; pass the inferred type through `aspire.svc/lib/` afterwards. |
+| **React component props for trusted parent data** | **No** | Use TypeScript types; only validate props if they originate from `JSON.parse`, URL, storage, etc. |
+
+If you find yourself writing `as SomeType` on incoming data, that is almost always a sign you should have used a Zod schema instead.
+
+## Where schemas live
+
+Mirror the **OOP `aspire.svc/lib/` layout** described in `architetcure.mdc`:
+
+| Concern | Location |
+|---|---|
+| Cross-cutting shared shapes (DTOs reused by ≥2 features) | **`aspire.svc/lib/types/`** as `<thing>-schema.ts` exporting both the schema and the inferred type. |
+| Feature-local schemas | Co-located with the feature: e.g. `aspire.svc/lib/<feature>/schemas/<name>-schema.ts` or next to the consumer if used in one place only. |
+| Route-handler request/response schemas | **Same folder as the `route.ts`** (e.g. `app/api/<thing>/schemas.ts`) — keep close to the boundary that uses them. |
+| AI tool schemas | Co-located with the tool definition in `aspire.svc/lib/<ai-feature>/tools/`. |
+| Env / config schema | **`aspire.svc/lib/config/`**, parsed once and exposed via the existing **`AppConfig`** class. |
+
+**Never** put schemas inside React components, route components, or `aspire.svc/components/ui/*`. They belong to the **domain layer**, not the UI layer.
+
+## How to write schemas
+
+### 1. Schema first, type second — always
+
+```ts
+// lib/types/user-profile-schema.ts
+import { z } from "zod";
+
+export const UserProfileSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().min(1).max(80),
+  createdAt: z.coerce.date(),
+  preferences: z.object({
+    theme: z.union([z.literal("light"), z.literal("dark"), z.literal("system")]),
+  }).optional(),
+});
+
+export type UserProfile = z.infer<typeof UserProfileSchema>;
+```
+
+- **Never** declare an `interface UserProfile` next to a `UserProfileSchema`. Derive it with `z.infer` so the two cannot drift.
+- Use the **`Schema` suffix** for the Zod value; use the **bare name** for the inferred type.
+- For **selective optionality / updates**, derive new schemas with `.partial()`, `.pick()`, `.omit()`, or `.extend()` — keep the base schema canonical. Do **not** reproduce the **`Optional<T, K>`** utility on the Zod side; use Zod's own combinators.
+
+### 2. Prefer `safeParse` and return a `neverthrow` `Result`
+
+Per `typescript.mdc`, failure must be **explicit in the return type**. Adapt Zod once and reuse:
+
+```ts
+// lib/validation/zod-result.ts
+import { err, ok, type Result } from "neverthrow";
+import type { ZodError, ZodTypeAny, z } from "zod";
+
+export interface ValidationFailure {
+  readonly kind: "validation";
+  readonly issues: ZodError["issues"];
+  readonly message: string;
+}
+
+export function parseWithSchema<S extends ZodTypeAny>(
+  schema: S,
+  input: unknown,
+): Result<z.infer<S>, ValidationFailure> {
+  const parsed = schema.safeParse(input);
+  if (parsed.success) return ok(parsed.data);
+  return err({
+    kind: "validation",
+    issues: parsed.error.issues,
+    message: parsed.error.message,
+  });
+}
+```
+
+Then at the boundary:
+
+```ts
+return parseWithSchema(UserProfileSchema, raw)
+  .andThen(toDomainProfile)
+  .map(persistProfile);
+```
+
+- **Never** use `.parse(...)` (the throwing variant) in `aspire.svc/lib/`, services, route handlers, or server actions. Throwing breaks the `Result`-based control flow mandated by `typescript.mdc`.
+- `.parse(...)` is acceptable **only** at app startup for env config, where a throw is the intended fail-fast (the process should not boot with invalid env).
+
+### 3. Match the existing typing rules
+
+`typescript.mdc` already constrains how types are shaped; mirror those rules in schemas:
+
+- **No `z.any()`** — it is the Zod equivalent of `any` and is banned. Use `z.unknown()` plus a real schema downstream, or model the union explicitly.
+- **No enum-style schemas via `z.nativeEnum(SomeEnum)`** — the repo bans enums. Use `z.union([z.literal("a"), z.literal("b")])` or the **`as const` + `z.enum([...] as const)`** form with a `const` map.
+- **Optional vs nullable**: prefer **`.optional()`** (matches `property?: T`) over `.nullable()` unless the wire format truly distinguishes `null` from missing. Avoid `.nullish()` unless you really mean both.
+- **No `.transform()` to smuggle business logic** into the schema. Schemas describe **shape**; mapping to domain objects belongs in a separate function (often a class method in `aspire.svc/lib/`). A small `.transform` for normalization (trim, lowercase email, coerce date) is fine; building a `UserProfile` aggregate is not.
+
+### 4. Coerce **only** at the edge
+
+`z.coerce.number()`, `z.coerce.date()`, `z.coerce.boolean()` are appropriate for **inbound stringy data** (query params, form data, env vars). They are **not** appropriate for internal `aspire.svc/lib/` values that are already typed. Coercion is a boundary tool, like the rest of Zod.
+
+### 5. Discriminated unions over loose objects
+
+For tagged variants (events, AI tool calls, command payloads), use **`z.discriminatedUnion("kind", [...])`**. It gives O(1) narrowing and produces clean inferred unions. Avoid `z.union([...])` of structurally similar objects without a discriminator.
+
+### 6. AI SDK + tool schemas
+
+Pass Zod schemas **directly** to the AI SDK:
+
+```ts
+import { generateObject, tool } from "ai";
+import { z } from "zod";
+
+const ItineraryStepSchema = z.object({
+  day: z.number().int().positive(),
+  title: z.string().min(1),
+});
+
+await generateObject({
+  model,
+  schema: z.object({ steps: z.array(ItineraryStepSchema) }),
+  prompt,
+});
+
+const lookupTool = tool({
+  description: "Look up a record by id",
+  inputSchema: z.object({ id: z.string().uuid() }),
+  execute: async ({ id }) => {/* … */},
+});
+```
+
+- Do **not** describe AI structured output via plain TS types and then "hope" the model returns it; the schema is the contract.
+- Do **not** call `.parse` on AI tool inputs yourself — the SDK already validates against `inputSchema`. Inside `execute`, the argument is **already typed and validated**.
+
+### 7. Env / config (fail-fast)
+
+Validate process env exactly once, at boot, inside the existing `AppConfig` layer in `aspire.svc/lib/config/`. Use `.parse` here on purpose so an invalid environment **fails the build/start**.
+
+```ts
+// lib/config/env-schema.ts
+import { z } from "zod";
+
+export const EnvSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"] as const),
+  AWS_REGION: z.string().min(1),
+  DYNAMODB_ENDPOINT: z.string().url().optional(),
+});
+
+export type Env = z.infer<typeof EnvSchema>;
+export const env: Env = EnvSchema.parse(process.env);
+```
+
+### 8. Forms (only when you reach them)
+
+When/if `react-hook-form` is introduced, use **`@hookform/resolvers/zod`** with the **same `Schema`** that the server action validates against — never two parallel schemas for the same payload. Until then, validate **server-side** with Zod in the server action / route handler and surface issues back to the form.
+
+## What not to do
+
+- **Do not** install or import any other validation library (`valibot`, `yup`, `joi`, `io-ts`, `ajv`, `runtypes`, `superstruct`, `class-validator`). If you think you need one, the answer is a Zod schema.
+- **Do not** hand-write type guards (`function isUserProfile(x: unknown): x is UserProfile`) for shapes that cross a trust boundary. Use a Zod schema and `z.infer`.
+- **Do not** define an `interface` and a Zod schema for the same concept; the **schema is the source of truth**, the type is inferred.
+- **Do not** call `.parse(...)` in request paths — use `safeParse` (or the `parseWithSchema` helper) and produce a `Result`.
+- **Do not** validate the same payload twice on the same request (e.g. once in middleware, again in the handler). Validate once at the **outermost trusted layer** and pass the inferred type inward.
+- **Do not** use Zod as a runtime assertion library inside trusted code. It is a **boundary** tool.
+- **Do not** import Zod into UI primitives in `aspire.svc/components/ui/*`. Validation belongs in `aspire.svc/lib/`, route handlers, server actions, and AI tooling.
+
+## Quick checklist for agents
+
+Before merging code that touches untrusted data, confirm:
+
+1. The boundary has a **Zod schema** named `<Thing>Schema`.
+2. The TS type is **`z.infer<typeof <Thing>Schema>`**, not a parallel `interface`.
+3. The parse uses **`safeParse`** (or `parseWithSchema`) and returns a **`Result`**, except for env at boot.
+4. The schema lives in the right place (`aspire.svc/lib/types/`, feature folder, or next to its `route.ts`).
+5. No `z.any()`, no `z.nativeEnum(...)`, no duplicate validator libraries, no hand-rolled type guards for the same shape.
+6. For AI features, the model contract (structured output, tool I/O) **is** the Zod schema.

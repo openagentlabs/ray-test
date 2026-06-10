@@ -1,0 +1,206 @@
+---
+description: >-
+  Google TypeScript Style Guide (tsguide) applied under Arb Aspire (aspire.svc/ host);
+  repo-specific overrides defer to typescript.mdc and constants.mdc.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx}"
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript style (Google tsguide) — Arb Aspire workspace
+
+**Canonical specification:** [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html) (public tsguide; RFC 2119 _must_ / _should_ / _may_ terminology applies there).
+
+## When and where this rule applies
+
+| Scope | Detail |
+|--------|--------|
+| **Files** | **`*.ts`** / **`*.tsx`** under **`app/`**, **`components/`**, **`lib/`**, **`services/`**, **`test/`**, and workspace-root `*.ts` / `*.tsx` (matches `globs` above; excludes **`node_modules`**). |
+| **Activities** | Creating, editing, or reviewing TypeScript: new modules, refactors, reviews, and AI-assisted patches. |
+| **Not for** | Pure config without TS semantics (e.g. `json`, `yaml`), generated vendor bundles you do not own, or non-TS languages—unless you are embedding TS snippets. |
+
+**Precedence in this repo:** If this document disagrees with **`PROJECT_NAME`** rules (`typescript.mdc`, `AGENTS.md`, `architetcure.mdc`), **follow the `PROJECT_NAME` rules** for this codebase. `PROJECT_NAME` is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules). The items called out in **Repo overrides** below are intentional differences.
+
+### Repo overrides (`PROJECT_NAME` wins)
+
+- **Enums:** Google allows plain `enum` and forbids `const enum`. This repo prefers **`const` object maps / unions** instead of enums—follow `typescript.mdc`.
+- **Error style:** Prefer **`Result` / `neverthrow`** where `typescript.mdc` requires it; Google’s “prefer throw” guidance is **not** a substitute for that project policy.
+- **Compiler suppressions:** Google discourages `@ts-expect-error` broadly; this repo allows **rare, documented** exceptions per `typescript.mdc`.
+- **Default exports:** Google prefers named exports only. **Next.js App Router** modules such as `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `default.tsx`, `opengraph-image.tsx`, etc. **must** use **`default export`** where the framework requires it—treat as **exempt** from “no default export.”
+- **File names:** Google’s examples often use **`snake_case.ts`**; this repo uses whatever naming **`app/`**, **`components/`**, and **`aspire.svc/lib/`** already use—stay consistent with neighbors.
+- **`any`:** Google says avoid `any`; this repo says **do not use `any`**—stricter; use `unknown` and narrowing.
+
+---
+
+The rest of this file summarizes the **Google** guide for agents. Imperatives here follow the **spirit** of tsguide; for edge cases, open the canonical URL.
+
+## Introduction
+
+- **Normative language:** _must_ / _must not_ / _should_ / _should not_ / _may_ match RFC 2119; “prefer” ≈ _should_, “avoid” ≈ _should not_.
+- **Examples** in the official guide are **illustrative**, not the only acceptable shape.
+
+## Source file basics
+
+- **Encoding:** UTF-8.
+- **Whitespace (outside line endings):** Only ASCII space `0x20`; other whitespace in source (except inside strings) is wrong—use escapes in string literals for other whitespace characters.
+- **String escapes:** Use named escapes (`\'` `\"` `\\` `\n` …) instead of numeric escapes when available; **no legacy octal** escapes.
+- **Non-ASCII:** Prefer literal Unicode in strings when clear (e.g. `μs`); use `\u…` / `\u{…}` for non-printables and add a short comment if needed.
+
+## Source file structure
+
+Top-to-bottom **order**; **exactly one blank line** between sections that appear:
+
+1. Copyright / license comment (if required).
+2. **`@fileoverview`** JSDoc (optional); wrapped lines **not** extra-indented.
+3. **Imports** (if any).
+4. **Implementation.**
+
+## Imports
+
+- **Forms:** `import * as ns`, `import {a} from '…'`, `import x from '…'` **only** when a dependency requires default import, `import '…';` **only** for side effects (e.g. polyfills, CSS side effects).
+- **Paths:** **Must** use proper module paths (relative `./` `../` or project root paths). **Prefer** relative imports within the same logical project; **limit** `../../../` depth.
+- **Named vs namespace:** Prefer **named** imports for a few clear symbols; prefer **`import * as foo`** when many symbols from a large API would clutter names—**avoid** huge destructure lists with forced `as` aliases when a namespace reads better.
+- **Renames:** Prefer fixing collisions via namespace import or fixing upstream names; **`import {X as Y}`** is acceptable when needed (collision, generated names, clarity e.g. Rx `from` → `observableFrom`).
+- **Google-internal:** Ignore Apps JSPB proto import rules unless you are in that ecosystem.
+
+## Exports
+
+- **Prefer named exports** for maintainability and consistent naming. **Do not** use default exports **except** framework-required defaults (see **Repo overrides**).
+- **Minimize** exported surface; only export what other modules need.
+- **No mutable exported bindings** in the `export let` sense; **no** pattern where importers observe reassignment. Use **`export const`** with final values, or **getters** / functions for mutable state behind a module boundary.
+- **No “container” classes** whose only job is `static` namespacing—use **module-scope** `export const` / `export function`.
+- **`import type` / `export type`:** Use **`import type`** when symbols are **type-only**; use **`export type {…} from`** for type re-exports (supports **`isolatedModules`**).
+- **Modules only:** **Do not** use `namespace Foo { … }` for app code. **Do not** use `/// <reference path="…"/>` or **`import x = require('…')`**—use **ES module** syntax. Namespaces **may** appear only to match **third-party** typings.
+
+## Language features — variables, literals, objects, arrays
+
+- **`const` / `let`:** **Always**; **never** `var`. **Default to `const`**; use `let` only when reassigned. **Do not** use variables before declaration. **One** binding per declaration (no `let a = 1, b = 2`).
+- **Arrays:** **Never** `new Array(…)` / `Array(…)` for creation—use **`[]`**, **`Array.from`**, or other clear patterns. **Do not** attach non-index properties to arrays (besides `length`); use **`Map`** / plain objects. **Spread** into arrays **only** from iterables; **do not** spread `null`, `undefined`, or non-iterables—use conditional elements or empty arrays instead.
+- **Array destructuring:** Rest `...rest` with **no space** after `...`. Omit unused slots with holes or leading commas. For optional array params, default **`= []`** and defaults on the LHS; **do not** use `= [defaults]` trick.
+- **Objects:** **Never** `new Object()`—use **`{}`**. **Avoid raw `for…in`** without `hasOwnProperty` / **`Object.hasOwn`** filter; prefer **`for…of` on `Object.keys` / `entries` / `values`**. **Spread** objects **only** from objects; **do not** spread `null`/`undefined`/arrays/primitives into object literals. **Avoid** spreading class instances / exotic prototypes when behavior is unclear.
+- **Computed keys:** Allowed; **do not** mix quoted “dict” keys and unquoted keys unless computed key is a **symbol** (e.g. `Symbol.iterator`).
+- **Object param destructuring:** Keep **one shallow level** of unquoted keys; **no** deep nesting or computed keys in parameters. Defaults on LHS; optional whole object defaults to **`{}`**.
+
+## Classes
+
+- **Class declarations** have **no** semicolon after the closing `}`; **class expressions** assigned to `const` **do** end with **`;`** (statement).
+- **No** semicolons between methods. **One blank line** between methods when it aids readability.
+- **`toString`:** Safe, no surprising side effects, no unbounded mutual recursion.
+- **Static:** Prefer **module-local functions** over **`private static`** when clearer. **Do not** rely on dynamic `cls.static()` dispatch; **do not** call static on subclass if not defined there; **no `this` in static** methods.
+- **Constructors:** **`new Foo()`** always with **`()`**. Omit empty constructors **unless** parameter properties / decorators / visibility require them. **Blank line** around constructor when it helps.
+- **No `#private` fields**—use **`private`** (TS visibility) for compatibility and tooling.
+- **`readonly`:** On properties never reassigned outside ctor.
+- **Parameter properties** when they only plumb obvious dependencies.
+- **Field initializers** at declaration when possible; avoid **shape changes** after ctor—initialize optional fields to `undefined` explicitly if needed.
+- **Template / external use:** Properties read from outside lexical scope (e.g. templates) **must not** be `private`; use **`protected`/`public`** as appropriate. **Never** bypass visibility with **`obj['field']`**.
+- **Getters / setters:** Getters **pure** (no observable mutation). If accessors are trivial pass-through, expose the field instead. **No** `Object.defineProperty` accessors (breaks rename).
+- **Computed class fields:** Only **`symbol`** keys for true builtins like iterator—avoid dict-style quoted keys on classes.
+- **Visibility:** Narrow exports; **omit redundant `public`** except **non-readonly public parameter properties** in constructors.
+- **Do not** mutate **`prototype`** of builtins or ad-hoc mixin patterns in app code.
+
+## Functions
+
+- **Top-level named functions:** Prefer **`function foo()`** over **`const foo = () =>`** unless a type annotation forces a variable form.
+- **Nested:** Nested functions **may** be declarations or arrows—arrows common inside methods for **`this`** lexical capture.
+- **No `function () {}` expressions**—use **arrow** unless you need dynamic `this` (discouraged) or **`function*`** generators.
+- **Arrow bodies:** Use **expression body** only when the **return value is used**; otherwise **block body** (or **`void expr`** to discard) so callers do not accidentally depend on a leaked value.
+- **`this`:** Non-method functions **must not** use **`this`** unless annotated / rebound intentionally—prefer explicit parameters or arrows.
+- **Callbacks:** Prefer **`arr.map((n) => parseInt(n, 10))`** over **`arr.map(parseInt)`** (optional args bug). Prefer **inline arrow** wrapping a named callback unless signatures are intentionally stable.
+- **Arrow fields on classes:** Usually **avoid** storing arrow functions as fields—prefer **`() => this.method()`** at use site; **exception:** stable listener reference for **add/remove** symmetry (see guide’s event-handler section).
+- **Event listeners:** **Do not** `bind` inline in `addEventListener` if you need **`removeEventListener`** with the same reference—use a **stable** bound field or inline wrapper you can remove.
+- **Default parameters:** **No side effects** in defaults; keep simple. Prefer **options object** + destructure when many optionals.
+- **Rest / spread:** Use **`...args`** instead of **`arguments`**; **never** name a parameter **`arguments`**. Prefer **spread** over **`Function.prototype.apply`** where natural.
+- **Formatting:** No blank lines at start/end of function body; single internal blank line **may** separate logical groups. **Generator** syntax: **`function*`** and **`yield*`** with `*` attached to keyword. **No space** after `...` in rest/spread.
+
+## `this`
+
+Use **`this`** only in class constructors/methods, arrow functions closing over that `this`, or functions with an explicit **`this` parameter type**. **Never** use **`this`** for global object, **`eval`** context, or “clever” `call`/`apply` games.
+
+## Primitives and strings
+
+- **Strings:** **`'single quotes'`** for normal string literals; use **template literals** for interpolation or multiline; **no** backslash **line continuations** in strings—concatenate or template.
+- **Numbers:** Decimal / **`0x` `0o` `0b`** with **lowercase** prefix; **no** spurious leading **`0`** except hex/oct/bin.
+- **Coercion:** Prefer **`String()`**, **`Boolean()`** (not `new`), **`!!`**, templates. **Do not** coerce **enum** values with **`Boolean`/`!!`**—compare explicitly. **`Number()`** for parsing with explicit **`NaN`/`isFinite`** handling; **no unary `+`** for parse; **avoid `parseInt`/`parseFloat`** except controlled non–base-10 with validated input. **No** redundant **`!!`** in **`if`/`while`/`for`** conditions when truthiness is already idiomatic.
+- **No `new String` / `new Boolean` / `new Number`.**
+
+## Control flow
+
+- **`if` / `else` / `for` / `while` / `do`:** Always **braced** blocks except a **single-line `if`** that fits on one line.
+- **Assignment in conditions:** Avoid; if intentional, wrap assignment in **extra parentheses**, e.g. **`while ((x = next())) { … }`**.
+- **Iteration:** Prefer **`for…of`** on arrays; index loops allowed when index needed; **`forEach`** allowed. **Never** `for…in` on arrays (indices as strings). For plain objects, **`for…of Object.keys/entries`** or guarded **`for…in`**.
+- **Grouping parens:** Add when precedence is non-obvious; **no** extra parens around **`return`/`throw`/`typeof`/`void`/etc.** operand alone.
+- **Exceptions:** **`throw new Error(…)`** (always **`new`**). **Reject / throw only `Error` subclasses** (or `unknown` wrapped) so stacks exist. **`catch (e: unknown)`**; narrow to **`Error`** before using; document **string-throwing** third-party APIs if unavoidable. **Empty `catch`** only with a **comment** explaining why safe. **`try`** blocks small—only code that can throw, unless perf requires widening (e.g. loop).
+- **`switch`:** **Always** include final **`default`** (may be empty comment). Non-empty cases **must not** fall through (TS usually enforces); multiple **empty** cases may group.
+- **Equality:** **`===` / `!==`** always; **`== null`** / **`!= null`** **allowed** intentional null-or-undefined checks.
+- **Assertions:** Minimize **`as`** and **`!`**. Prefer **runtime checks** (`instanceof`, truthiness, custom type guards). Use **`as`** syntax (not angle-bracket assertions). **Double assertions** go through **`unknown`**, not `any`. Prefer **`: Interface`** on object literals over **`as Interface`**.
+
+## Decorators
+
+**Do not** author **new** decorator abstractions; **use** decorators only as provided by **your** framework (in this repo, typically none beyond what dependencies define). Decorator **immediately** precedes target—**no** blank line between decorator and declaration; **JSDoc goes above** decorators.
+
+## Disallowed / discouraged features
+
+- **ASI:** **Do not** rely on automatic semicolon insertion—**terminate statements explicitly** with semicolons (per Google; if the formatter disagrees, formatter wins—**prefer formatter output**).
+- **`const enum`:** **Forbidden** (invisible at runtime / inlining hazards)—Google forbids; this repo also avoids enums entirely.
+- **`debugger`:** Not in committed production code.
+- **`with`:** Forbidden.
+- **`eval` / `Function(string)`:** Forbidden except true loaders; CSP-sensitive.
+- **Non-standard / pre-standard** language or web features: avoid unless explicitly targeting a runtime that supports them and team agrees.
+- **Monkey-patching builtins** or global pollution: forbidden.
+
+## Naming
+
+- **Characters:** ASCII letters, digits, **`_`** (constants / structured test names), rarely **`$`** (e.g. **`Observable`** `$` suffix conventions).
+- **Casing table:** **UpperCamelCase** — classes, interfaces, types, enums, decorators, type parameters, component functions in TSX. **lowerCamelCase** — vars, parameters, functions, methods, properties, namespace import aliases. **CONSTANT_CASE** — true module-level / static readonly constants intended immutable.
+- **Names carry meaning** not duplicated by types: no **`I`** prefix on interfaces; no **`opt_`**; no **`m_`** Hungarian noise; **`Id`** capital **`d`** in **`customerId`**; treat acronyms as words (`loadHttpUrl`).
+- **No leading/trailing `_`** on identifiers (including “unused” params—**omit** with holes in destructure or ESLint-unused config).
+- **Type parameters:** Single letter **`T`** or **UpperCamelCase** when clearer.
+- **Tests:** **`test_when_condition_doesResult`** style **allowed** with underscores.
+- **Constants:** **`CONSTANT_CASE`** only for module-scope / static readonly “global constants”; locals—even if never reassigned—stay **lowerCamelCase** unless team constant table says otherwise.
+
+## Type system (summary)
+
+- **Inference:** Omit redundant annotations on obvious literals / `new` if clarity unchanged. **Do** annotate generics that would become **`unknown`** (`new Map<string, Foo>()`). **Return types:** optional unless they clarify complex contracts—this repo may ask for them in public APIs.
+- **`null` / `undefined`:** No universal preference—match DOM vs JS APIs. **Do not** bake `|null`/`|undefined` into **aliases** “just in case”—attach nullability at **use** sites. Prefer **`?:`** optional fields over **`| undefined`** when omission is meaningful.
+- **Structural typing:** For object literals implementing an interface, **annotate the binding** (`const x: Foo = {…}`) so errors surface at definition.
+- **Object shapes:** Prefer **`interface`** over **`type` alias** for object-only aliases when either works.
+- **Arrays in types:** Use **`T[]` / `readonly T[]`** for simple `T`; use **`Array<…>`** / **`ReadonlyArray<…>`** when **`T` is complex** (unions, inline object types) to avoid unreadable postfix brackets.
+- **Index signatures:** Use meaningful key name in **`[userId: string]: number`**. Prefer **`Map`/`Set`** for many dynamic keys / non-string keys. **`Record<Keys, T>`** when keys are a **finite union**.
+- **Mapped / conditional types:** Allowed but **prefer simplest** construct; repetition is OK if it aids IDE / readability / refactors.
+- **`any`:** Avoid; prefer **`unknown`** + guards; if truly needed, narrow scope + comment (see repo: prefer **no `any`**).
+- **`{}` type:** Avoid as “any object”; prefer **`unknown`**, **`object`**, or **`Record<string, T>`** as intent dictates.
+- **Tuples vs interfaces:** Prefer **tuples** for small anonymous pairs; prefer **named properties** when call sites read clearer.
+- **Primitive types:** Use **`string` / `number` / `boolean`**, not wrapper types; use **`object`** / **`Record`** / **`unknown`** instead of abusing **`Object`** type.
+- **Return-type-only generics:** Avoid designing such APIs; when calling them, **pass type arguments explicitly**.
+
+## Toolchain (Google vs this repo)
+
+- **Typecheck:** All TS must pass **`tsc`** / project checks in CI.
+- **Google:** Avoid **`@ts-ignore`**, **`@ts-expect-error`**, **`@ts-nocheck`**. **This repo:** follow **`typescript.mdc`** for rare suppressions and test-only use.
+
+## Comments and documentation
+
+- **`/** JSDoc */`:** For **documentation** consumers read. **`//`:** For **implementation** notes. **Multiline non-JSDoc:** use **multiple `//` lines**, not **`/* … */`** blocks.
+- **JSDoc shape:** Opening `/**` on its own line for multi-line; **`@param` / `@return` tags on their own lines**; continuation indent **4 spaces** for wrapped tags (except `@fileoverview` / `@desc` text—no indent on wrap).
+- **Markdown in JSDoc:** Use **lists** and structure—plain multi-line text won’t render line breaks.
+- **`.ts` files:** **Do not** duplicate TS types inside **`@param`/`@return`**; avoid redundant **`@implements`** etc. when keywords exist.
+- **Document** non-obvious **exported** APIs and non-obvious members; skip noise that repeats names. **Class JSDoc** explains usage; ctor may omit prose if redundant.
+- **Method summary:** Third-person verb phrase (“Loads user preferences …”), not imperative “Load …”.
+- **Call-site “parameter name” comments** when meaning unclear: **`/* paramName= */ value`** (or legacy trailing style **only** for consistency inside a file).
+- **Decorators + JSDoc:** **JSDoc first**, then decorator, then declaration.
+
+## Policies
+
+- **Consistency:** If the guide is silent, match **the same file**, then **directory**. **New files** should be fully on-style; touching legacy files, avoid unrelated reformat churn unless you are already doing a large edit—see Google’s “reformatting existing code” policy.
+- **Deprecation:** **`@deprecated`** with **clear migration** instructions.
+- **Generated code:** Exempt from style, but **identifiers** crossing into hand-written code should still be readable and stable.
+
+---
+
+**Reference again:** [https://google.github.io/styleguide/tsguide.html](https://google.github.io/styleguide/tsguide.html)

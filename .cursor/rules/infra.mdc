@@ -1,0 +1,120 @@
+---
+description: >-
+  Mandatory AWS account / CLI binding for this monorepo. Attaches when editing
+  Terraform, Helm, or Cursor IaC templates — pair with `.cursor/rules/constants.mdc`.
+globs:
+  - "infra/**/*.tf"
+  - "infra/**/*.tfvars"
+  - "infra/**/*.tf.json"
+  - "infra/**/*.tfvars.json"
+  - "infra/**/.terraform.lock.hcl"
+  - "infra/deployed/**/helm/**/*.yaml"
+  - "infra/deployed/**/helm/**/*.yml"
+alwaysApply: false
+---
+
+# AWS account & CLI rules (MANDATORY)
+
+Mandatory! Every AWS-touching action in this project — CLI commands, SDK calls, IaC
+deploys, MCP tool invocations (`awsiac`, `awspricing`, `awsknowledge`),
+scripts, CI, ad-hoc one-liners — **must** target the single AWS account
+defined in **`.cursor/rules/constants.mdc`**. No other account, profile,
+or region may be used unless the user explicitly overrides this rule in
+the same turn.
+
+## Target account
+
+The AWS account ID, CLI profile, default region, and output format are
+defined as constants in **`.cursor/rules/constants.mdc`** (see
+`AWS_ACCOUNT_ID`, `AWS_CLI_PROFILE`, `AWS_DEFAULT_REGION`,
+`AWS_OUTPUT_FORMAT`). Treat that file as the single source of truth; do
+not re-declare these values here or anywhere else.
+
+Credential handling rules also live in `constants.mdc`. Never hard-code,
+echo, log, or commit access keys, secret access keys, session tokens, or
+any other secret material to this repo, to rules files, to chat output,
+or to generated IaC.
+
+## Required pre-flight validation
+
+Before the first AWS action in any session (and again any time the
+profile, region, or environment looks ambiguous), validate identity
+using `AWS_CLI_PROFILE` from `constants.mdc`:
+
+```bash
+aws sts get-caller-identity --profile "$AWS_CLI_PROFILE" --output "$AWS_OUTPUT_FORMAT"
+```
+
+Proceed only if the response satisfies **all** of:
+
+- `Account` equals `AWS_ACCOUNT_ID` (from `constants.mdc`)
+- `Arn` is an identity in that account
+- The command exited 0
+
+If validation fails (wrong account, expired creds, profile missing,
+non-zero exit), **stop**. Do not retry against another profile. Report
+the mismatch to the user and wait for guidance.
+
+## Invocation requirements
+
+- Always pass `--profile <AWS_CLI_PROFILE>` explicitly on every `aws`
+  CLI call, even when `AWS_PROFILE` appears to be set; never rely on
+  ambient env.
+- Always pass `--region <AWS_DEFAULT_REGION>` explicitly unless the user
+  requests a different region for a specific resource and the override
+  is logged in the same response.
+- For AWS SDK code, read the profile and region from configuration that
+  resolves to `AWS_CLI_PROFILE` / `AWS_DEFAULT_REGION`; do not embed
+  credentials in source.
+- For MCP AWS tools, ensure they are configured to use
+  `AWS_CLI_PROFILE` and `AWS_DEFAULT_REGION`. If a tool call lands in a
+  different account, abort and surface the discrepancy.
+- For IaC (CDK, Terraform, SAM, CloudFormation), pin the target account
+  to `AWS_ACCOUNT_ID` and region to `AWS_DEFAULT_REGION` in the
+  stack/provider config; fail the synth/plan if it would deploy
+  elsewhere.
+
+## Repository infrastructure layout (agents)
+
+Use this layout when adding or changing **AWS** infrastructure or **Helm**
+releases for this repo. Full Terraform conventions remain in
+**`.cursor/rules/terrafrom.mdc`**.
+
+| Path | Purpose |
+|------|---------|
+| **`infra/aws_tf/`** | **Single Terraform root** — the only directory where you run `terraform init`, `plan`, or `apply`. Compose child modules from **`infra/aws_tf/main.tf`**. Account and region values flow from **`infra/aws_tf/terraform.tfvars`** and **`local.solution`** (see `terrafrom.mdc`). |
+| **`infra/aws_tf/modules/<name>/`** | **Runnable module implementations** copied from templates or authored here. Each child module must accept **`var.solution`** per `terrafrom.mdc` §1.4. |
+| **`infra/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/`** | **Human-oriented map** of what ships **for which app** in this account and region. Not a separate Terraform root. |
+| **`.../services/<service>/terraform/aws/<primitive>/`** | **Ownership markers** for AWS primitives (e.g. `s3`, `dynamodb`, `iam`). Use **`.gitkeep`** (or future thin `README`) so reviewers see which service owns which cloud surface; **do not** add standalone `terraform { }` / `provider` blocks here — all HCL that participates in apply lives under **`infra/aws_tf/`**. |
+| **`.../services/<service>/helm/<chart>/`** | **Helm charts** for workloads tied to that service (e.g. `helm upgrade` from CI or a cluster operator). Charts are independent of the Terraform root path. |
+| **`infra/tf_lib/s3`** and **`infra/tf_lib/dynamodb`** | **Read-only canonical templates** used by **`.cursor/skills/`** (and mirrored under service `.cursor/skills/`). Agents **copy** from here into **`infra/aws_tf/modules/...`**; do not treat `tf_lib` as the apply root. |
+
+**`<service>`** is one of **`frontend`**, **`iam.service`**, **`solutions.svc`**, **`storage.svc`** (extend only with an explicit product decision and matching folder under `services/`).
+
+### Adding a new AWS module (agent checklist)
+
+1. Pick **`infra/aws_tf/modules/<snake_case_name>/`** (unique, descriptive; often `<primitive>_<purpose>`).
+2. **Copy** the template tree from **`infra/tf_lib/s3`** or **`infra/tf_lib/dynamodb`** (all `*.tf` + `.terraform.lock.hcl`; never copy `.terraform/`).
+3. Add a **`module`** block in **`infra/aws_tf/main.tf`** with `source` relative to that file (typically `"./modules/<snake_case_name>"`). Prefer **`solution = local.solution`** so metadata matches `terraform.tfvars` without duplication.
+4. If this resource is owned by a service, ensure **`infra/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/terraform/aws/<primitive>/`** exists (add **`.gitkeep`** when creating a new service or primitive folder). This keeps the deployed map aligned with reality.
+5. Run **`terraform fmt`** and **`terraform validate`** from **`infra/aws_tf/`** (see `terrafrom.mdc` for backend/init expectations).
+
+### Helm
+
+Package and version charts under the **`infra/deployed/.../helm/<chart>/`** tree for the owning **`services/<service>`**. Do not move Helm into **`infra/aws_tf/`** unless deliberately colocating artifacts; Terraform state still applies only to the **`infra/aws_tf`** root.
+
+## Forbidden
+
+- Using `default` (or any profile other than `AWS_CLI_PROFILE`) for this
+  project.
+- Cross-account assume-role hops away from `AWS_ACCOUNT_ID` without
+  explicit per-turn user approval.
+- Writing AWS credentials, secrets, or session tokens into any file
+  under this repository, including this rules file.
+- Re-declaring `AWS_ACCOUNT_ID`, `AWS_CLI_PROFILE`,
+  `AWS_DEFAULT_REGION`, or `AWS_OUTPUT_FORMAT` literal values in this
+  file or in other rules or human docs — **except** fenced Terraform
+  examples inside **`terrafrom.mdc`** that document the locked
+  `infra/aws_tf/` and **`infra/deployed/`** layout (those snippets may mirror the live stack;
+  **`constants.mdc`** remains authoritative for actual values). Elsewhere,
+  always reference **`.cursor/rules/constants.mdc`**.

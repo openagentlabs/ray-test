@@ -1,0 +1,28 @@
+---
+description: >-
+  Arb Aspire host has no persistence service or database wiring in-tree. When a
+  new aspire.svc/services/<domain>/ is added for storage, reintroduce driver ports,
+  config factories, and migrations per architetcure.mdc — do not scatter ad hoc DB
+  access in app/ or components/.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx}"
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Arb Aspire — database (host has no persistence layer)
+
+The **`aspire.svc/`** host currently ships **no** `aspire.svc/services/*` persistence domain: there is **no** `IDatabaseDriver`, **no** DynamoDB/PynamoDB config in this workspace, and **no** migrations or repositories in the app tree.
+
+## Rules for agents
+
+- **Do not** add DynamoDB/Mongo/SQL clients, connection strings, or table schemas under **`aspire.svc/app/`**, **`aspire.svc/components/`**, or **`aspire.svc/lib/`** unless you first add a proper **`aspire.svc/services/<domain>/`** bounded context with a public **`index.ts`** (see **`architetcure.mdc`**).
+- **Do not** reintroduce **`aspire.svc/requirements.txt`** for this host unless Python tooling in this folder again talks to a real datastore; other services (**`iam.service/`**, **`solutions.svc/`**) own their own pins.
+- When persistence returns, follow the modular-monolith layout in **`doc/solution-architecture/modular-monolith.md`** and expand this file with concrete port + migration rules again.
+
+Project identity (`PROJECT_NAME`) lives in **`.cursor/rules/constants.mdc`** at the repository root.

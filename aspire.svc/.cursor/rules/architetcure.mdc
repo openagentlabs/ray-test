@@ -1,0 +1,64 @@
+---
+description: >-
+  Arb Aspire architecture: Next.js host + composed aspire.svc/services/* domains with
+  mandatory import boundaries and extraction path to real microservices. Same
+  composition intent as Microsoft .NET Aspire (host + projects); implemented
+  here as a TypeScript modular monolith — see solution.mdc for the mapping table.
+globs:
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx,css}"
+  - "aspire.svc/components/**/*.{ts,tsx,css}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Arb Aspire — architecture (**mandatory**)
+
+The **Arb Aspire** host is a **single deployable** (monolith) organized so each **`aspire.svc/services/<name>/`** folder can later become a **real microservice** with **no hidden coupling**. Treat boundaries as **hard**: wrong imports are architectural defects, not style nits.
+
+**Do not duplicate** stack rules from **`nextjs.mdc`**, type rules from **`typescript.mdc`**, or persistence details from **`database.mdc`**. This file defines **who may import whom** and **where domain logic lives**.
+
+## Web boundary (Next.js presentation layer)
+
+**`aspire.svc/app/`** and **`aspire.svc/components/`** are the **presentation layer** only: routing, layouts, composition, UX state, and visual logic.
+
+**Allowed**
+
+- Route files stay **thin** (see **`nextjs.mdc`**) and render page components from **`aspire.svc/components/pages/<segment>/`**.
+- **Server** code in `aspire.svc/app/` (RSC, route handlers, **`aspire.svc/app/actions/`**) may call **`aspire.svc/services/<domain>`** through its **public barrel only**: `import { … } from "@/services/<domain>"` (which resolves to **`aspire.svc/services/<domain>/index.ts`**).
+
+**Forbidden**
+
+- **Deep imports** into any service: paths such as `@/services/<domain>/repositories/...` from **`aspire.svc/app/`**, **`aspire.svc/components/`**, **`aspire.svc/lib/`**, or **another** `aspire.svc/services/*` tree. Only **`@/services/<domain>`** (the folder root module / `index.ts`).
+- **Client Components** importing service implementation modules. Prefer **Server Components** or **server actions** as façades; pass **JSON-serializable** props to clients (per **`nextjs.mdc`**).
+- **Business rules or persistence** that belong to a backend domain implemented only inside **`aspire.svc/components/`** (keep UI dumb; orchestrate from server code + **`aspire.svc/services/`**).
+
+**Presentation platform in `aspire.svc/lib/`** (navigation, shell config, logging helpers, etc.) is **not** a product domain: it must **not** own database tables, migrations, or domain invariants that should move with an extracted service.
+
+## Backend domain boundary (`aspire.svc/services/`)
+
+Each **`aspire.svc/services/<domain>/`** directory is one **bounded context** and a **candidate microservice**.
+
+- **Public API**: **`aspire.svc/services/<domain>/index.ts`** is the **only** import surface for other layers. Re-export types, factories, and façade functions that define the contract.
+- **Internals** (`driver/`, `repositories/`, `migration/`, `types/`, …) are **private** to that service. Same-service code may use `@/services/<domain>/...` paths **inside** the folder only if **`database.mdc`** / service README allows; **outside** the folder, use **`@/services/<domain>`** only.
+- **No upward dependencies**: **`aspire.svc/services/*` must not import** from **`aspire.svc/app/`** or **`aspire.svc/components/`**.
+- **No peer “sneak” dependencies**: **`aspire.svc/services/foo`** must not import implementation files from **`aspire.svc/services/bar`**. If two domains must coordinate, introduce an explicit **contract** (shared minimal **`aspire.svc/lib/types/`** DTOs, or a future API client)—never reach into **`aspire.svc/services/bar/repositories`**.
+
+**Databases, drivers, repositories, and migrations** (when present) live **inside** the service that owns that persistence—for example a future **`aspire.svc/services/persistence/`**. There is **no** persistence service in the host today. Other domains must use **`@/services/<domain>`** only, never deep paths into another service’s internals.
+
+## Shared platform (`aspire.svc/lib/`)
+
+Use **`aspire.svc/lib/`** for **cross-cutting platform** code: navigation service, app config keys, logging utilities, small shared types. Do **not** place extractable domain logic here—put it under **`aspire.svc/services/<domain>/`** so the folder can be lifted out later.
+
+## Extraction checklist (future real microservice)
+
+1. Take **`aspire.svc/services/<name>/`** as the service root in a new repo.
+2. Replace in-process calls to **`@/services/<name>`** at call sites with a network client that preserves the same **behavioral contract** exposed today by **`index.ts`**.
+3. Verify no remaining references to **`aspire.svc/services/<name>/`** internal paths outside that tree.
+
+## Human-readable reference
+
+See **`doc/solution-architecture/modular-monolith.md`** for the folder map and examples. Vitest suites for a service mirror **`aspire.svc/test/services/<name>/`** when that service exists.

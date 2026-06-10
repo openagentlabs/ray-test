@@ -1,0 +1,57 @@
+[project]
+name = "aspire-registry-tool"
+version = "0.1.0"
+description = "CLI to introspect and edit the Arb Aspire service-registry SQLite (AI-facing manifest + add/list/remove)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "aiosqlite>=0.20",
+  "pydantic>=2.10",
+  "returns>=0.23",
+  "sqlalchemy[asyncio]>=2.0.36",
+  "typer>=0.15",
+]
+
+[project.scripts]
+aspire-tool = "aspire_tool.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+aspire_tool = ["py.typed"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.8",
+]
+
+[tool.ruff]
+src = ["src", "tests"]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ANN"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["returns.contrib.mypy.returns_plugin"]
+mypy_path = "src"
+packages = ["aspire_tool"]
+
+[[tool.mypy.overrides]]
+module = "returns.*"
+implicit_reexport = true

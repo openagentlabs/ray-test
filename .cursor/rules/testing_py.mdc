@@ -1,0 +1,33 @@
+---
+description: Python testing conventions (pytest) for service packages in this repo.
+globs:
+  - ".cursor/tools/aspire/tests/**/*.py"
+  - "solutions.svc/server/tests/**/*.py"
+  - "iam.svc/server/tests/**/*.py"
+  - "storage.svc/server/tests/**/*.py"
+  - "general.ai.agent.svc/server/tests/**/*.py"
+  - "notification.svc/server/tests/**/*.py"
+alwaysApply: false
+---
+
+# Python tests (pytest)
+
+Use **pytest** as the default unit and integration test framework for Python services in this repository.
+
+## Defaults
+
+- **Runner**: `pytest` (async tests via **pytest-asyncio** with `asyncio_mode = "auto"` where applicable).
+- **Layout**: `tests/unit/` for fast isolated tests; `tests/integration/` for multi-layer tests (e.g. gRPC servicer + application with mocked I/O). Shared fixtures live in `tests/conftest.py`.
+- **Naming**: `test_*.py` modules and `test_*` functions.
+- **Assertions**: plain `assert` with clear messages where helpful; avoid heavyweight custom assertion libraries unless already adopted in the package.
+
+## Async gRPC / DynamoDB services (e.g. `iam.svc/server`)
+
+- **Unit**: mock `aioboto3` / repository boundaries; test validation and argument forwarding without a real DynamoDB.
+- **Integration (lightweight)**: exercise `IamGrpcServicer` with a mocked `ServicerContext` and async repository mocks — no network — to verify RPC wiring and error paths (`context.abort`).
+- **Full stack** (optional): local DynamoDB or moto only when a change specifically requires persistence semantics beyond what mocks provide.
+- **Async guard**: from repo root, **`make check-async`** and per-service **`uv run ruff check --select ASYNC src`** must pass before merging transport or I/O changes.
+
+## Configuration
+
+- Prefer `[tool.pytest.ini_options]` in the package’s `pyproject.toml` (`testpaths`, `pythonpath`) so `pytest` can be run from the package root without extra env vars.
