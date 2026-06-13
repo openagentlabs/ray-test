@@ -1,5 +1,5 @@
 ---
-description: TypeScript / Next.js testing conventions (Vitest) for app workspaces.
+description: TypeScript / Next.js testing conventions (Vitest) for app workspaces and client libraries.
 globs:
   # Match Vitest `include` roots only (avoids attaching on every app file / node_modules).
   - "frontend/test/**/*.test.ts"
@@ -8,22 +8,37 @@ globs:
   - "aspire.svc/test/**/*.test.tsx"
   - "iam.svc/client/test/**/*.test.ts"
   - "general.ai.agent.svc/client/tests/**/*.test.ts"
+  - "clients/**/ts/testing/**/*.test.ts"
 alwaysApply: false
 ---
 
 # TypeScript tests (Vitest)
 
-Use **Vitest** as the default unit and integration test runner for TypeScript (including Next.js App Router code). It is fast, ESM-native, works with `node` and `jsdom` environments, and matches patterns used across the Node ecosystem.
+## Framework choice (decision)
 
-In this monorepo, the **`frontend/`** workspace standard is **`frontend/test/`** and **`frontend/vitest.config.ts`**. Workspace overview rules attach on **`package.json`** / **`vitest.config.ts`** (see **`frontend/.cursor/rules/solution.mdc`**). Other packages colocate their own Vitest `include` — match the **nearest** `vitest.config.ts` and test folder for the code you are editing.
-
-## Defaults
+Use **Vitest** as the mandatory test runner for TypeScript in this repository. It is the most widely adopted modern TS/ESM test runner (Jest-compatible `expect`, fast watch mode, native ESM, `node` and `jsdom` environments, strong Vite integration). This is the repo **gold standard** — do not introduce Jest, Mocha, Ava, or Tape unless the user explicitly requests a migration.
 
 - **Runner**: Vitest (`vitest run` in CI; `vitest` locally for watch).
-- **Config**: colocate `vitest.config.ts` per package that ships TS tests; use `environment: "node"` for non-DOM code (gRPC clients, `lib/`, server utilities) and `jsdom` only when testing React components.
-- **Test locations**: this rule’s **`globs`** follow each package’s Vitest `include` (e.g. `test/**/*.test.ts`, `tests/unit/**/*.test.ts`). Prefer one pattern per package and stay consistent.
+- **Dev dependency**: declare `vitest` in the package `package.json` `devDependencies` (or workspace equivalent).
 - **Assertions**: Vitest’s `expect` (Jest-compatible API).
 - **Mocks**: `vi` from Vitest; prefer explicit `vi.mock` / `vi.spyOn` over ad hoc globals.
+
+## Layout by package type
+
+Every TypeScript package in this repo must include **both unit tests and integration tests**.
+
+| Package kind | Test root | Unit tests | Integration tests | Shared helpers |
+|---|---|---|---|---|
+| Next.js app (`frontend/`, `aspire.svc/`) | `test/` | `test/unit/` (or flat `test/` when small) | `test/integration/` | colocated fixtures / `test/helpers.ts` |
+| gRPC / service client (`*.svc/client/`) | `test/` or `tests/` | `test/unit/` or `tests/unit/` | `test/integration/` or `tests/integration/` | `conftest` equivalents in helpers modules |
+| Standalone TS client library (`clients/**/ts/`) | `testing/` | `testing/unit/` | `testing/integration/` | `testing/helpers.ts` |
+
+- **Unit tests** — fast, isolated tests for Zod validation, error mapping, pure helpers, and single-class behavior (mocked engines or minimal temp I/O).
+- **Integration tests** — multi-layer wiring: public API through real collaborators (e.g. `Cluster` + `NativeFileEngine` on a temp directory), CLI smoke tests, or gRPC client wiring with mocked transport.
+
+Colocate `vitest.config.ts` per package. Use `environment: "node"` for non-DOM code and `jsdom` only for React component tests. Put cross-cutting helpers in `testing/helpers.ts` or `test/helpers.ts` — not inside `vitest.config.ts`.
+
+In this monorepo, the **`frontend/`** workspace standard is **`frontend/test/`** and **`frontend/vitest.config.ts`**. Match the **nearest** `vitest.config.ts` and test folder for the code you are editing (see **`frontend/.cursor/rules/solution.mdc`**).
 
 ## Next.js compatibility
 
@@ -34,3 +49,23 @@ In this monorepo, the **`frontend/`** workspace standard is **`frontend/test/`**
 
 - Prefer **proto round-trip tests** (`encode` / `decode`) for request shapes shared with Python servers.
 - For the typed `IamServiceClient`, mock the underlying `grpc-js` unary methods by replacing the internal stub in tests rather than opening real TCP ports, unless you are explicitly running an integration test against a live server.
+
+## Configuration
+
+Prefer a colocated `vitest.config.ts` with explicit `include` globs for unit and integration folders. Run from the package root:
+
+```bash
+npm test
+# or
+npx vitest run
+```
+
+Example for standalone client libraries:
+
+```typescript
+include: [
+  "testing/unit/**/*.test.ts",
+  "testing/integration/**/*.test.ts",
+],
+environment: "node",
+```

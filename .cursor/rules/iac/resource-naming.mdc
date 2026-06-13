@@ -1,0 +1,17 @@
+---
+description: "Pointer — canonical AWS resource naming rules moved to infras/resource-naming.mdc."
+globs:
+  - "infra/**/*.tf"
+  - "infra/**/*.tfvars"
+  - "infra/**/*.tf.json"
+  - "infra/**/*.tfvars.json"
+  - "infra/**/.terraform.lock.hcl"
+  - "infra/deployed/**"
+alwaysApply: false
+---
+
+# Moved — resource naming
+
+Canonical AWS and Terraform **naming** rules live in **`.cursor/rules/infras/resource-naming.mdc`**.
+
+Edit that file only. This path is kept so existing globs and links keep resolving.

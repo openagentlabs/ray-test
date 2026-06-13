@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "arb-workload.fullname" . }}
+  labels:
+    {{- include "arb-workload.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "arb-workload.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "arb-workload.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      # Prevent legacy Service env vars (e.g. IAM_SERVICE_HOST=<ClusterIP>) from overriding gRPC bind hosts.
+      enableServiceLinks: false
+      serviceAccountName: {{ include "arb-workload.serviceAccountName" . }}
+      {{- if or .Values.lustre.enabled .Values.s3SharedFiles.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.sharedMounts.fsGroup }}
+      {{- end }}
+      {{- with .Values.compute.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.sharedMounts.initWaitEnabled (or .Values.lustre.enabled .Values.s3SharedFiles.enabled) }}
+      initContainers:
+        - name: shared-mount-wait
+          image: {{ .Values.sharedMounts.initImage }}
+          command: ["/bin/sh", "/scripts/wait-for-mounts.sh"]
+          env:
+            - name: MOUNT_PATHS
+              value: {{ include "arb-workload.sharedMountPaths" . | quote }}
+            - name: MAX_WAIT_SEC
+              value: {{ .Values.sharedMounts.initWaitMaxSeconds | quote }}
+            - name: RUN_AS_UID
+              value: {{ .Values.sharedMounts.runAsUser | quote }}
+            - name: RUN_AS_GROUP
+              value: {{ .Values.sharedMounts.runAsGroup | quote }}
+            - name: WORKLOAD_WRITE_DIRS
+              value: {{ include "arb-workload.workloadWriteDirs" . | quote }}
+          volumeMounts:
+            - name: shared-mount-health-scripts
+              mountPath: /scripts
+              readOnly: true
+            {{- if .Values.lustre.enabled }}
+            - name: {{ .Values.lustre.volumeName }}
+              mountPath: {{ .Values.lustre.mountPath }}
+            {{- end }}
+            {{- if .Values.s3SharedFiles.enabled }}
+            - name: {{ .Values.s3SharedFiles.volumeName }}
+              mountPath: {{ .Values.s3SharedFiles.mountPath }}
+            {{- end }}
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if or .Values.lustre.enabled .Values.s3SharedFiles.enabled }}
+          securityContext:
+            runAsUser: {{ .Values.sharedMounts.runAsUser }}
+            runAsGroup: {{ .Values.sharedMounts.runAsGroup }}
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            {{- if .Values.lustre.enabled }}
+            - name: {{ .Values.lustre.volumeName }}
+              mountPath: {{ .Values.lustre.mountPath }}
+            {{- end }}
+            {{- if .Values.s3SharedFiles.enabled }}
+            - name: {{ .Values.s3SharedFiles.volumeName }}
+              mountPath: {{ .Values.s3SharedFiles.mountPath }}
+            {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.probes.mountHealthEnabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.mountHealthPath }}
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.mountHealthPath }}
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          {{- else }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          {{- end }}
+      {{- if or .Values.lustre.enabled .Values.s3SharedFiles.enabled }}
+      volumes:
+        {{- if and .Values.sharedMounts.initWaitEnabled (or .Values.lustre.enabled .Values.s3SharedFiles.enabled) }}
+        - name: shared-mount-health-scripts
+          configMap:
+            name: {{ include "arb-workload.fullname" . }}-shared-mount-health
+            defaultMode: 493
+        {{- end }}
+        {{- if .Values.lustre.enabled }}
+        - name: {{ .Values.lustre.volumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.lustre.volumeName }}
+        {{- end }}
+        {{- if .Values.s3SharedFiles.enabled }}
+        - name: {{ .Values.s3SharedFiles.volumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.s3SharedFiles.volumeName }}
+        {{- end }}
+      {{- end }}

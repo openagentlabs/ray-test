@@ -16,7 +16,7 @@ alwaysApply: false
 
 # Arb Aspire — logging and observability rules
 
-Project identity values (`PROJECT_NAME`, `PROJECT_SLUG`) are defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity values (`PRJ_NAME`, `PRJ_SLUG`) are defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 ## Agent workflow (read first)
 
@@ -76,14 +76,14 @@ When you touch code that **crosses a trust boundary**, **persists data**, or **r
 
 ### Server — domain / persistence (`aspire.svc/lib/`)
 
-Use a **stable `scope`** string: `<PROJECT_SLUG>.<area>` (match folder or bounded context).
+Use a **stable `scope`** string: `<PRJ_SLUG>.<area>` (match folder or bounded context).
 
 ```typescript
 import { ServerLogging } from "@/lib/logging/server-logging";
 
 // After a successful write
 ServerLogging.emit({
-  scope: "arb-ai-assistant.example-entity-repository", // = PROJECT_SLUG-prefixed
+  scope: "arb-ai-assistant.example-entity-repository", // = PRJ_SLUG-prefixed
   severity: "debug",
   body: "Example entity saved",
   attributes: { entityId: entity.id },
@@ -91,7 +91,7 @@ ServerLogging.emit({
 
 // On catch blocks (non-rethrowing or before rethrow)
 ServerLogging.emit({
-  scope: "arb-ai-assistant.example-entity-repository", // = PROJECT_SLUG-prefixed
+  scope: "arb-ai-assistant.example-entity-repository", // = PRJ_SLUG-prefixed
   severity: "error",
   body: "Example entity save failed",
   attributes: {
@@ -115,7 +115,7 @@ export async function saveWidget(formData: FormData): Promise<void> {
     // ... call lib layer
   } catch (error) {
     ServerLogging.emit({
-      scope: "arb-ai-assistant.actions.widget", // = PROJECT_SLUG-prefixed
+      scope: "arb-ai-assistant.actions.widget", // = PRJ_SLUG-prefixed
       severity: "error",
       body: "saveWidget action failed",
       attributes: {

@@ -1,0 +1,17 @@
+---
+description: "Pointer — canonical AWS resource tagging rules moved to infras/resource-taging.mdc."
+globs:
+  - "infra/**/*.tf"
+  - "infra/**/*.tfvars"
+  - "infra/**/*.tf.json"
+  - "infra/**/*.tfvars.json"
+  - "infra/**/.terraform.lock.hcl"
+  - "infra/deployed/**"
+alwaysApply: false
+---
+
+# Moved — resource tagging
+
+Canonical AWS resource **tagging** rules live in **`.cursor/rules/infras/resource-taging.mdc`**.
+
+Edit that file only. This path is kept so existing globs and links keep resolving.

@@ -1,0 +1,83 @@
+[project]
+name = "deploy-to-aws"
+version = "0.1.0"
+description = "Modern AWS deployment CLI for ARB infrastructure (Terraform, ECR, Helm)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.13",
+  "pydantic-settings>=2.14",
+  "returns>=0.28",
+  "rich>=15.0",
+  "typer>=0.26",
+]
+
+[project.scripts]
+deploy-to-aws = "deploy_to_aws.cli:main"
+deploy-to-aws-build = "deploy_to_aws.build.package:main"
+deploy-to-aws-clean = "deploy_to_aws.build.cleanup:main"
+deploy-to-aws-format = "deploy_to_aws.build.format_code:main"
+deploy-to-aws-install = "deploy_to_aws.build.install:main"
+deploy-to-aws-run = "deploy_to_aws.build.run:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+deploy_to_aws = ["py.typed"]
+
+[dependency-groups]
+dev = [
+  "mypy>=2.1",
+  "pytest>=9.0",
+  "ruff>=0.15",
+]
+
+[tool.ruff]
+src = ["src", "testing"]
+target-version = "py312"
+line-length = 88
+exclude = [".venv", "output", "logging/builds", "dist", "build"]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "W",
+  "F",
+  "I",
+  "B",
+  "ANN",
+  "S",
+  "N",
+  "UP",
+  "RUF",
+]
+ignore = [
+  "S603",
+  "S607",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/deploy_to_aws/_injected.py" = ["E501", "ANN"]
+"testing/**" = ["S101"]
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.pytest.ini_options]
+testpaths = ["testing"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["returns.contrib.mypy.returns_plugin"]
+mypy_path = "src"
+packages = ["deploy_to_aws"]
+
+[[tool.mypy.overrides]]
+module = "returns.*"
+implicit_reexport = true

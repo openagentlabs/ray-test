@@ -1,6 +1,6 @@
 ---
 description: >-
-  Arb Aspire UI style: theme-first Tailwind v4 + shadcn for PROJECT_NAME surfaces
+  Arb Aspire UI style: theme-first Tailwind v4 + shadcn for PRJ_NAME surfaces
   in the aspire.svc/ host — mandatory visual rules; product name from constants.mdc.
 globs:
   - "aspire.svc/*.ts"
@@ -13,7 +13,7 @@ alwaysApply: false
 
 # Arb Aspire — style guide (mandatory rules)
 
-Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 For **stack/Next/React** rules see `nextjs.mdc`. For **TypeScript** see `typescript.mdc`. For **persistence** see `database.mdc`. **This file is the single source of truth for visual styling.** The long-form explainer lives in `doc/web-stylng/` (start at `00-overview.md`); the rules below are extracted from that guide and **must** be followed by every UI change.
 
@@ -49,7 +49,7 @@ For **stack/Next/React** rules see `nextjs.mdc`. For **TypeScript** see `typescr
 - **`@heroicons/react`** — replace with lucide.
 - **`@remixicon/react`** — replace with lucide.
 - **`moment`** — use `date-fns` or `dayjs`.
-- **Inter** font (LiteLLM default) — `PROJECT_NAME` is **Geist**.
+- **Inter** font (LiteLLM default) — `PRJ_NAME` is **Geist**.
 - Any new global CSS file outside `aspire.svc/app/globals.css`.
 - Any new CSS-in-JS runtime (emotion, styled-components, stitches).
 - Any UI component library outside shadcn (no Mantine, Chakra, MUI, NextUI, Radix-direct, etc. — go through shadcn wrappers).
@@ -121,7 +121,7 @@ Use **only** these Tailwind utility roots, all of which resolve to CSS variables
 
 ### 3.3 If `--primary` is currently grayscale (shadcn default)
 
-The `PROJECT_NAME` seed `--primary` is near-black. If a brand color is needed, change it **once** in `aspire.svc/app/globals.css` for both `:root` and `.dark` (see `doc/web-stylng/08-arb-sherpa-mapping.md` §3 for OKLCH recipes). Do **not** hard-code brand hex per component.
+The `PRJ_NAME` seed `--primary` is near-black. If a brand color is needed, change it **once** in `aspire.svc/app/globals.css` for both `:root` and `.dark` (see `doc/web-stylng/08-arb-sherpa-mapping.md` §3 for OKLCH recipes). Do **not** hard-code brand hex per component.
 
 ---
 
@@ -304,7 +304,7 @@ Use the tokenised radius scale defined in `aspire.svc/app/globals.css` (`--radiu
 
 When you see a LiteLLM pattern (or training-data-default Antd/Tremor pattern) in source you are porting, substitute as below. The full table is in `doc/web-stylng/08-arb-sherpa-mapping.md` §11; the most-used rows:
 
-| Pattern | Use in `PROJECT_NAME` |
+| Pattern | Use in `PRJ_NAME` |
 |---|---|
 | Antd `Modal` | shadcn `Dialog` |
 | Antd `Drawer` | shadcn `Sheet` |

@@ -1,4 +1,5 @@
 # ray-test — repository-wide ignores
+# Remote: https://github.com/openagentlabs/test001.git
 # https://help.github.com/articles/ignoring-files/
 
 # =============================================================================
@@ -39,8 +40,14 @@ Desktop.ini
 !.env.example
 !**/.env.example
 
+# AWS / deploy env files with credentials
+infra/envs/**/.env.aws
+**/secrets.auto.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
 # =============================================================================
-# Node.js — aspire.svc/ (Next.js / Vitest)
+# Node.js — Next.js apps (aspire.svc/, manager-web/, frontend/, clients/**/ts)
 # =============================================================================
 node_modules/
 **/node_modules/
@@ -53,13 +60,11 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 
-# Next.js
 .next/
 **/.next/
 out/
 **/out/
 
-# Build / bundler output
 dist/
 **/dist/
 build/
@@ -68,17 +73,14 @@ build/
 .vite/
 *.tsbuildinfo
 
-# Package manager logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 lerna-debug.log*
 
-# Vercel
 .vercel
 
-# Test runners (Vitest / Playwright)
 coverage/
 **/coverage/
 .vitest/
@@ -88,7 +90,7 @@ blob-report/
 playwright/.cache/
 
 # =============================================================================
-# Python — .cursor/tools/aspire/ (uv-managed CLI)
+# Python — tools, clients, *.svc/, deploy scripts
 # =============================================================================
 __pycache__/
 **/__pycache__/
@@ -104,14 +106,12 @@ venv/
 ENV/
 env/
 
-# Packaging / installers
 *.egg
 *.egg-info/
 **/*.egg-info/
 .eggs/
 **/.eggs/
 
-# Type checkers & linters
 .mypy_cache/
 **/.mypy_cache/
 .ruff_cache/
@@ -119,7 +119,6 @@ env/
 .pytype/
 .pyre/
 
-# Test & coverage (Python)
 .pytest_cache/
 **/.pytest_cache/
 .tox/
@@ -131,13 +130,9 @@ htmlcov/
 coverage.xml
 *.cover
 
-# uv local cache (commit uv.lock under .cursor/tools/aspire/)
 .uv/
-
-# pyenv local version pin (per-machine)
 .python-version
 
-# Local SQLite databases (service registry, tool DBs)
 *.db
 *.sqlite
 *.sqlite3
@@ -146,18 +141,16 @@ coverage.xml
 # Cursor — machine-local (commit .cursor/rules/, .cursor/skills/, templates/)
 # =============================================================================
 .cursor/mcp.json
-
-# Agent scratch: make logs, terraform apply output, ad-hoc test runs
 .cursor/scratch/
 
 # =============================================================================
-# Arb Aspire — local runtime (aspire.svc/)
+# Local runtime — apps and services
 # =============================================================================
 aspire.svc/service-registry.sqlite
 aspire.svc/.aspire/
 
 # =============================================================================
-# Terraform / OpenTofu — runnable root: infra/aws_tf/
+# Terraform / OpenTofu — runnable root: infra/aws/aws_tf/
 # =============================================================================
 .terraform/
 **/.terraform/
@@ -167,7 +160,6 @@ aspire.svc/.aspire/
 crash.log
 crash.*.log
 
-# Local overrides (never commit engineer-specific variable files)
 override.tf
 override.tf.json
 *_override.tf
@@ -175,21 +167,16 @@ override.tf.json
 **/terraform.tfvars.local
 **/terraform.tfvars.*.local
 
-# Auto-loaded var files are for secrets (e.g. secrets.auto.tfvars from scaffold_secrets.py)
-*.auto.tfvars
-*.auto.tfvars.json
-infra/envs/**/secrets.auto.tfvars
-
 # Plan artifacts
-infra/aws_tf/tfplan
 **/tfplan
 *.tfplan
+infra/aws/aws_tf/*.log
 
-# Terraform run logs (local apply/destroy output)
-infra/aws_tf/*.log
+# Legacy path (if present locally)
+infra/aws_tf/
 
 # =============================================================================
-# Misc logs & certs
+# Deploy / build artifacts
 # =============================================================================
 *.log
 !**/.gitkeep
@@ -199,3 +186,15 @@ infra/aws_tf/*.log
 *.pfx
 credentials.json
 **/secrets.json
+
+# Checkov / scanner output (local runs)
+checkov-results.*
+*.sarif
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.bak
+*.tmp
+.cache/
+**/.cache/

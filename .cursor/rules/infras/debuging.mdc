@@ -1,0 +1,484 @@
+---
+description: >-
+  Mandatory infrastructure debugging workflow — when and how to diagnose AWS,
+  Terraform, and Helm issues using tools from infras/tools.mdc; not app or
+  *.svc/ debugging.
+globs:
+  - "infra/**"
+alwaysApply: false
+---
+
+# Infrastructure debugging (MANDATORY)
+
+## For Cursor — read before any action
+
+**Stop.** Do not run commands, open tools, classify the failure, or make decisions until you have read this entire file from top to bottom.
+
+### Mandatory steps
+
+Execute these steps in order before doing anything else:
+
+- **Read the file from top to bottom** — every section, including `Workflow_Error` and the template at the bottom.
+- **Take no actions until the file is read** — no CLI, MCP, Terraform, Helm, kubectl, or ad-hoc fixes until reading is complete.
+- **Follow the instructions in the file** — use the workflow sections below as the authoritative procedure.
+- **Make decisions based on the information in the file** — classify failures and pick tools only from what this file and linked rules prescribe.
+- **Read and understand `infras/tools.mdc`** — mandatory during **`Workflow_ReadTools`**; know which tools exist, when to use each, and how to invoke them before any investigation.
+
+These steps define how the rest of this file must be used.
+
+### Scope (mandatory)
+
+**All infrastructure debugging must follow this workflow.** Every diagnosis of AWS, Terraform, Helm, Kubernetes, or platform delivery under **`infra/`** is governed by this file — **not** application debugging.
+
+- **In scope:** Live AWS state, IaC/plan failures, Helm render/deploy errors, cluster/runtime infra issues, security misconfigurations, pre-apply blockers.
+- **Out of scope:** Application code, UI, gRPC, Next.js, Playwright, **`*.svc/`** business logic — hand off per **`solution.mdc`**; do **not** route app failures through this workflow.
+
+The workflow is **mandatory** and must be **executed in full** (read → tools → intake → collect → diagnose → report) unless a **`JMP`** instruction or unhandled error applies.
+
+### Workflow layout (mandatory)
+
+This file is a **workflow**. Sections are executed **top to bottom, one section at a time**, unless a **`JMP`** instruction or an unhandled error applies.
+
+- **Section naming** — every workflow section heading uses **`Workflow_`** plus a PascalCase name (capitalize the first letter of each word). Example: `Workflow_Start`, `Workflow_ReadTools`.
+- **`Workflow_Start`** — always the **first** workflow section; entry point after this preamble.
+- **`Workflow_End`** — always the **last** normal workflow section; execute before any error handling.
+- **Middle sections** — all other non-error sections sit **between** `Workflow_Start` and `Workflow_End`, named `Workflow_<RelatedName>`.
+- **`JMP`** — a section may instruct **`JMP → Workflow_<SectionName>`** to skip ahead or branch; that is the **only** allowed deviation from strict top-to-bottom order.
+- **`Workflow_Error`** — mandatory **global error handler**; placed **immediately after** `Workflow_End`. Invoke when an error is not handled in the current section.
+- **Additional error sections** — optional sections named `Workflow_<ErrorName>` may appear **only after** `Workflow_Error` (e.g. `Workflow_ErrorWrongAccount`).
+- **No other sections after errors** — nothing except error sections may appear after `Workflow_Error`; all non-error content must live between `Workflow_Start` and `Workflow_End`.
+
+### Primary workflow sequence
+
+Execute these sections in order (branch sections are invoked via **`JMP`** from within them):
+
+| Order | Section | Purpose |
+|-------|---------|---------|
+| 1 | **`Workflow_Start`** | Scope and entry |
+| 2 | **`Workflow_ReadTools`** | Read **`infras/tools.mdc`**; decide which tools apply |
+| 3 | **`Workflow_GatherUserErrorInfo`** | Intake user error context; prompt until sufficient |
+| 4 | **`Workflow_CollectLogs`** | Plan and run tool-based evidence collection |
+| 5 | **`Workflow_Diagnose`** | Root-cause analysis; validate hypothesis |
+| 6 | **`Workflow_Report`** | Traffic-light tables + user fix selection |
+| 7 | **`Workflow_End`** | Completion criteria |
+
+---
+
+## Workflow_Start
+
+**Mandatory.** When infrastructure work fails, drifts, or behaves unexpectedly, follow this workflow before improvising commands. Pick tools from **`.cursor/rules/infras/tools.mdc`** only — do not substitute unlisted CLIs or app-level debug steps.
+
+- **What:** Infra-only diagnosis — live AWS state, IaC/plan failures, Helm render/deploy errors, security misconfigurations, and pre-apply blockers.
+- **When:** Any task under **`infra/`** where deploy/plan/apply/lint fails; live resource mismatch vs intent; user asks to debug AWS, Terraform, Helm, or platform delivery.
+- **How:** Execute the primary workflow sequence above; use branch sections (Live AWS, Terraform, Helm/K8s, etc.) during **`Workflow_CollectLogs`** and **`Workflow_Diagnose`** as **`JMP`** targets.
+- **Not for:** App logs, gRPC, Next.js, Playwright, or service business logic.
+
+Proceed to **`Workflow_ReadTools`**.
+
+---
+
+## Workflow_ReadTools
+
+**Mandatory first investigative step.** Before classifying the failure or running any CLI/MCP:
+
+1. **Read** **`.cursor/rules/infras/tools.mdc`** from top to bottom — including **`## Pipeline sequence`** and every entry under **`## Tools`**.
+2. **Understand** what each tool does, when it is mandatory, and how to invoke it (linked rules, skills, paths).
+3. **Make tools available** — ensure the agent can use the listed CLIs, skills (e.g. **tf-tool** via **`.cursor/skills/tf/SKILL.md`**), and MCP servers (`awsiac`, `awsknowledge`) per **`infras/aws.mdc`** and **`constants.mdc`**.
+4. **Decide** which tools are likely needed based on initial context (AWS live state, Terraform IaC, Helm charts, kubectl cluster inspection, security scanners, cost guardrails). Record the shortlist; refine during later sections.
+
+Do **not** run investigation commands until this read is complete. Tools selected here are **used as part of the workflow** in **`Workflow_CollectLogs`** and **`Workflow_Diagnose`**.
+
+Proceed to **`Workflow_GatherUserErrorInfo`**.
+
+---
+
+## Workflow_GatherUserErrorInfo
+
+**Use when:** Starting any infra debug session — always runs after **`Workflow_ReadTools`**.
+
+1. **Review** all error information the user has already provided (messages, screenshots, command output, paths, timestamps, service names).
+2. **Assess sufficiency** — can you discern **what** failed, **where** in the infra stack (AWS / Terraform / Helm / K8s / pipeline), and **when** it failed?
+3. **If information is insufficient** — **stop and prompt the user**. Ask targeted questions until you have a full grasp:
+   - What command or action triggered the failure?
+   - Exact error message or exit code?
+   - Which resource, chart, module, cluster, namespace, or deployment?
+   - When did it last work? What changed?
+   - **Request logs** the user can supply (CI output, `terraform plan` snippet, `helm` error, `kubectl describe` / events, CloudWatch, AWS console errors).
+4. **Repeat** steps 1–3 until the failure is classified enough to plan evidence collection. Do **not** proceed to tool execution with ambiguous scope.
+
+When sufficient → **`JMP → Workflow_CollectLogs`**.
+
+---
+
+## Workflow_CollectLogs
+
+**Use when:** User error context is sufficient to plan investigation.
+
+1. **Classify** the failure layer (live AWS, Terraform IaC, Helm chart, live K8s workload, security/compliance, cost, or cross-cutting). Use the trigger table:
+
+| Trigger | JMP target |
+|---------|------------|
+| Wrong/missing live AWS resource or account state | **`JMP → Workflow_LiveAws`** |
+| `terraform plan` / `apply` / `validate` error | **`JMP → Workflow_TerraformIac`** |
+| Helm install/upgrade failure or bad manifests | **`JMP → Workflow_HelmKubernetes`** |
+| Live pod, ingress, or node failure after deploy | **`JMP → Workflow_HelmKubernetes`** |
+| Security/compliance finding or secret suspicion | **`JMP → Workflow_SecuritySecrets`** |
+| Unexpected cost or resize before apply | **`JMP → Workflow_CostGuardrail`** |
+| Unknown or spans TF + Helm | **`JMP → Workflow_FullPipeline`** |
+
+2. **Write a collection plan** (brief, before running commands) — state which tools you will use, what logs/state you expect to retrieve, and why. Example: AWS describe + CloudWatch for a DynamoDB error; `helm template` + `kubectl logs` for a crashing pod.
+3. **Execute the plan** using only tools from **`infras/tools.mdc`**. Access AWS, Helm charts, Terraform state/plan, and cluster logs **to gather evidence** — not to apply fixes yet.
+4. **Pre-flight AWS:** **`aws sts get-caller-identity`** per **`infras/aws.mdc`** + **`constants.mdc`**. On failure → **`JMP → Workflow_ErrorWrongAccount`**.
+5. **Capture evidence** — save command output, log excerpts, plan snippets, describe results. Apply **`Workflow_AgentRules`** throughout.
+
+When enough evidence is collected to attempt root-cause analysis → **`JMP → Workflow_Diagnose`**. If evidence is still insufficient → extend the collection plan (more tools/logs) and repeat step 3; do not guess.
+
+---
+
+## Workflow_Diagnose
+
+**Use when:** Log and state evidence from **`Workflow_CollectLogs`** is available.
+
+1. **Analyze** collected logs and state against IaC intent (**`infra/aws/aws_tf/`**, chart values under **`infra/aws/deployed/`**).
+2. **Form a root-cause hypothesis** — identify the failing component(s), the mechanism (misconfig, drift, IAM, resource limit, chart error, etc.), and supporting evidence.
+3. **If root cause is not yet identifiable** — **`JMP`** back to **`Workflow_CollectLogs`** (or a branch section) to gather more information; debug infrastructure end-to-end as code + live state until the cause is clear.
+4. **Validate the hypothesis** — confirm with additional evidence where needed. Do **not** proceed to **`Workflow_Report`** until the root cause is **fully identified and validated** (treat as 100% confidence requirement; if uncertain, gather more data).
+5. **Draft fixes** — for each validated root cause, define the fix, why it is required, and expected outcome. Number fixes **1…n**.
+
+When root cause(s) and fix(es) are validated → **`JMP → Workflow_Report`**.
+
+---
+
+## Workflow_Report
+
+**Use when:** Diagnosis is complete and validated. Present findings in **scannable tables with traffic lights** — no long bullet lists or prose paragraphs.
+
+### Traffic light legend (use in every status column)
+
+| Light | Meaning |
+|-------|---------|
+| 🟢 | Validated / confirmed / ready to fix |
+| 🟡 | Likely but needs user confirmation or partial evidence |
+| 🔴 | Blocked, critical, or unvalidated — do not implement without resolution |
+
+### Table 1 — Problems (numbered **1…n**)
+
+| # | Status | Problem | Root cause | Component(s) | Why it occurred |
+|---|--------|---------|------------|--------------|-----------------|
+| 1 | 🟢/🟡/🔴 | Short title | One-line root cause | e.g. EKS, Helm chart, TF module | One-line mechanism |
+
+One row per distinct problem. Keep cells to one short line each.
+
+### Table 2 — Proposed fixes (numbered **1…n**)
+
+| # | Status | Fix | Why required | Expected outcome |
+|---|--------|-----|--------------|------------------|
+| 1 | 🟢/🟡/🔴 | Concrete action | One-line justification | One-line result |
+
+Fix **#** should map to problem **#** where applicable. One row per implementable change.
+
+### User selection (mandatory closing question)
+
+After both tables, ask the user which fixes to implement. Make selection easy:
+
+> **Which fixes should I implement?**
+>
+> - Reply with fix numbers: e.g. **`1`**, **`1, 3`**, **`2, 4, 5`**
+> - Reply **`all`** to implement every listed fix
+> - Reply **`none`** to stop without changes
+> - Reply **`info <n>`** for more detail on fix **n** before deciding
+
+Do **not** implement any fix until the user selects one or more numbers (or **`all`**). Mutating commands (`terraform apply`, `helm upgrade --install`, mutating **kubectl**) require explicit selection **and** approval per **`Workflow_AgentRules`**.
+
+Proceed to **`Workflow_End`**.
+
+---
+
+## Workflow_End
+
+Debugging workflow complete when:
+
+- **`infras/tools.mdc`** was read and tools were used per workflow.
+- User error context was sufficient (or user was prompted until it was).
+- Evidence was collected via a documented plan.
+- Root cause was validated and reported in traffic-light tables.
+- User was asked to select fix number(s); no unapproved mutating changes were applied.
+
+If an unhandled error occurred at any point → **`JMP → Workflow_Error`**.
+
+---
+
+## Workflow_LiveAws
+
+**Branch — invoke from **`Workflow_CollectLogs`** or **`Workflow_Diagnose`**.**
+
+**Use when:** Resources exist or fail in AWS but IaC is not the immediate question — connectivity, IAM, EKS, DynamoDB, S3, SNS, CloudWatch logs, etc.
+
+1. Pre-flight: **`aws sts get-caller-identity`** per **`infras/aws.mdc`** + **`constants.mdc`**. On failure → **`JMP → Workflow_ErrorWrongAccount`**.
+2. Inspect live state with **AWS** CLI/SDK/MCP — describe resources, read events and logs, check policies and tags.
+3. Compare observed state to **`infra/aws/aws_tf/`** and chart values under **`infra/aws/deployed/`**; note drift only — do **not** hand-edit AWS as the first fix.
+4. If drift is confirmed → **`JMP → Workflow_TerraformIac`** or **`JMP → Workflow_HelmKubernetes`**.
+
+**Do not** use `terraform apply` or `helm upgrade` as the first step for live-only investigation.
+
+When evidence sufficient → **`JMP → Workflow_Diagnose`**.
+
+---
+
+## Workflow_TerraformIac
+
+**Branch — invoke from **`Workflow_CollectLogs`** or **`Workflow_Diagnose`**.**
+
+**Use when:** HCL errors, plan failures, module output mismatches, or state/intent reconciliation.
+
+Run in order; stop at first failing stage and fix before continuing:
+
+| Step | Tool | Objective |
+|------|------|-----------|
+| 1 | **terraform fmt** | Format/syntax layout |
+| 2 | **TFLint** | Provider-specific invalid params |
+| 3 | **terraform validate** | Structural/graph errors (after `init`) |
+| 4 | **Trivy** / **Checkov** | Misconfigurations and compliance |
+| 5 | **terraform plan** | Compiled delta vs state |
+| 6 | **Conftest** | Custom policy on plan JSON |
+
+For module/registry questions, use **tf-tool** via **`.cursor/skills/tf/SKILL.md`** — not for live AWS inspection.
+
+When evidence sufficient → **`JMP → Workflow_Diagnose`**. Apply only after user selects fixes in **`Workflow_Report`**.
+
+---
+
+## Workflow_HelmKubernetes
+
+**Branch — invoke from **`Workflow_CollectLogs`** or **`Workflow_Diagnose`**.**
+
+**Use when:** Chart lint/template errors, bad rendered YAML, cluster release failures, or live workload misbehavior after deploy.
+
+Run in order:
+
+| Step | Tool | Objective |
+|------|------|-----------|
+| 1 | **helm lint** | Chart structure and values |
+| 2 | **helm template** | Render manifests for inspection |
+| 3 | **KubeLinter** | Production-readiness gaps |
+| 4 | **Trivy** / **Checkov** | Misconfigurations on chart or render |
+| 5 | **Conftest** | Custom policy on rendered output |
+| 6 | **kubectl** | Live cluster state — `get`/`describe`/`logs`/events |
+
+Chart paths: **`infra/aws/deployed/aws/<account>/<region>/services/<service>/helm/<chart>/`**. Configure kubeconfig via **`aws eks update-kubeconfig`** per **`infras/aws.mdc`** + **`constants.mdc`** before kubectl.
+
+When evidence sufficient → **`JMP → Workflow_Diagnose`**.
+
+---
+
+## Workflow_SecuritySecrets
+
+**Branch — invoke from **`Workflow_CollectLogs`**.**
+
+1. **Trivy** + **Checkov** on changed Terraform trees and chart paths (see **`tools/checkov-tool.mdc`**).
+2. **GitLeaks** / **Trufflehog** when variables, `values.yaml`, or `.tfvars` changed.
+3. Rotate any exposed secret; never commit credentials per **`constants.mdc`**.
+
+When evidence sufficient → **`JMP → Workflow_Diagnose`**.
+
+---
+
+## Workflow_CostGuardrail
+
+**Branch — invoke from **`Workflow_CollectLogs`**.**
+
+1. **Infracost** `breakdown` or `diff` against **`infra/aws/aws_tf/`** plan output.
+2. Report delta; do not treat Infracost as a security substitute.
+
+When evidence sufficient → **`JMP → Workflow_Diagnose`**.
+
+---
+
+## Workflow_FullPipeline
+
+**Branch — invoke from **`Workflow_CollectLogs`** when failure spans layers or trigger is unknown.**
+
+Follow **`infras/tools.mdc`** **Pipeline sequence**: fmt/lint → static → scan → plan/policy → render/lint charts → cluster inspection as needed.
+
+Branch as findings dictate → **`Workflow_LiveAws`**, **`Workflow_TerraformIac`**, **`Workflow_HelmKubernetes`**, **`Workflow_SecuritySecrets`**, or **`Workflow_CostGuardrail`**.
+
+When evidence sufficient → **`JMP → Workflow_Diagnose`**.
+
+---
+
+## Workflow_AgentRules
+
+**Apply throughout all sections — not a sequential stop.**
+
+1. **Infra only** — never route app/service failures through this file; if root cause is application code, hand off per **`solution.mdc`**.
+2. **Tools index first** — only tools listed in **`infras/tools.mdc`**; follow each tool's **When/How**; skip stages only when changed paths clearly exclude them (document why).
+3. **Evidence before fix** — capture failing command output, plan snippet, or AWS describe result; do not guess-and-retry apply.
+4. **Pipeline order** — for cross-cutting failures, follow **`infras/tools.mdc`** **Pipeline sequence**.
+5. **No silent apply** — debugging may include `plan` and renders; **`apply`**, **`helm upgrade --install`**, and mutating **kubectl** require explicit user selection in **`Workflow_Report`** and approval.
+
+---
+
+## Workflow_Error
+
+**Global error handler.** Invoke when any workflow section encounters an error that is not handled locally.
+
+1. **Stop** — do not retry apply, deploy, or mutating commands.
+2. **Capture** — record the failing command, exit code, and full error output.
+3. **Classify** — if a specialized handler matches → **`JMP → Workflow_<ErrorName>`**.
+4. **Report** — use traffic-light table format (problem row minimum); tell the user what failed and the next step.
+5. **Do not improvise** — do not substitute unlisted tools or skip evidence gathering.
+
+---
+
+## Workflow_ErrorWrongAccount
+
+**Use when:** AWS identity check fails or resources appear to belong to the wrong account/region.
+
+1. Stop all AWS/Terraform/Helm/kubectl work immediately.
+2. Verify **`AWS_CLI_PROFILE`**, region, and account ID against **`constants.mdc`** and **`infras/aws.mdc`**.
+3. Report the mismatch to the user; do not debug further until identity is confirmed.
+
+When resolved, restart from **`JMP → Workflow_Start`**.
+
+---
+
+## Workflow template (copy for new mandatory workflow rules)
+
+Use this skeleton when authoring other mandatory workflow rule files. Replace placeholders; keep section order and naming rules intact.
+
+```markdown
+# <Rule title> (MANDATORY)
+
+## For Cursor — read before any action
+
+**Stop.** Do not take any action until you have read this entire file from top to bottom.
+
+### Mandatory steps
+
+- **Read the file from top to bottom**
+- **Take no actions until the file is read**
+- **Follow the instructions in the file**
+- **Make decisions based on the information in the file**
+- **Read and understand `<linked-tools-file>`** — mandatory in **`Workflow_ReadTools`**
+
+### Scope (mandatory)
+
+**All <domain> work must follow this workflow.** <Out-of-scope handoff rule.>
+
+### Workflow layout (mandatory)
+
+- **`Workflow_Start`** — first section (entry).
+- **`Workflow_<RelatedName>`** — middle sections; execute top to bottom unless **`JMP → Workflow_<SectionName>`**.
+- **`Workflow_End`** — last normal section.
+- **`Workflow_Error`** — mandatory global error handler (immediately after `Workflow_End`).
+- **`Workflow_<ErrorName>`** — optional specialized error sections (only after `Workflow_Error`).
+
+### Primary workflow sequence
+
+| Order | Section | Purpose |
+|-------|---------|---------|
+| 1 | **`Workflow_Start`** | Scope and entry |
+| 2 | **`Workflow_ReadTools`** | Read tools index; decide which tools apply |
+| 3 | **`Workflow_GatherUserErrorInfo`** | Intake context; prompt user until sufficient |
+| 4 | **`Workflow_CollectLogs`** | Plan and run tool-based evidence collection |
+| 5 | **`Workflow_Diagnose`** | Root-cause analysis; validate hypothesis |
+| 6 | **`Workflow_Report`** | Traffic-light tables + user selection |
+| 7 | **`Workflow_End`** | Completion criteria |
+
+---
+
+## Workflow_Start
+
+<Scope, when to use, what is out of scope.>
+
+Proceed to **`Workflow_ReadTools`**.
+
+---
+
+## Workflow_ReadTools
+
+1. Read **`<linked-tools-file>`** top to bottom.
+2. Understand what, when, and how for each tool.
+3. Make tools available to the agent.
+4. Shortlist tools likely needed for this task.
+
+Proceed to **`Workflow_GatherUserErrorInfo`**.
+
+---
+
+## Workflow_GatherUserErrorInfo
+
+1. Review user-provided error information.
+2. If insufficient to discern what/where/when → prompt user; request logs; repeat until clear.
+3. Do not proceed until scope is understood.
+
+Proceed to **`Workflow_CollectLogs`**.
+
+---
+
+## Workflow_CollectLogs
+
+1. Classify failure; **`JMP → Workflow_<Branch>`** if a specialized collector applies.
+2. Write a brief collection plan (tools, targets, expected evidence).
+3. Execute plan; capture output. Pre-flight checks as required.
+4. If insufficient → extend plan and repeat.
+
+Proceed to **`Workflow_Diagnose`**.
+
+---
+
+## Workflow_Diagnose
+
+1. Analyze evidence; form root-cause hypothesis.
+2. If unclear → **`JMP → Workflow_CollectLogs`** for more data.
+3. Validate hypothesis fully before reporting.
+4. Draft numbered fixes **1…n**.
+
+Proceed to **`Workflow_Report`**.
+
+---
+
+## Workflow_Report
+
+### Traffic light legend
+
+| Light | Meaning |
+|-------|---------|
+| 🟢 | Validated / ready |
+| 🟡 | Likely; needs confirmation |
+| 🔴 | Blocked / critical |
+
+### Table 1 — Problems (1…n)
+
+| # | Status | Problem | Root cause | Component(s) | Why it occurred |
+
+### Table 2 — Proposed fixes (1…n)
+
+| # | Status | Fix | Why required | Expected outcome |
+
+### User selection
+
+> **Which fixes should I implement?** Reply with numbers (**`1`**, **`1, 3`**), **`all`**, **`none`**, or **`info <n>`**.
+
+Proceed to **`Workflow_End`**.
+
+---
+
+## Workflow_End
+
+<Completion criteria.>
+
+If unhandled error → **`JMP → Workflow_Error`**.
+
+---
+
+## Workflow_Error
+
+1. Stop. 2. Capture output. 3. Classify → **`JMP → Workflow_<ErrorName>`** if applicable. 4. Report in table format.
+
+---
+
+## Workflow_<ErrorName>
+
+<Specialized error handling — optional, only after Workflow_Error.>
+```

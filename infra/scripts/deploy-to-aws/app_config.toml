@@ -1,0 +1,31 @@
+# deploy-to-aws application configuration (PascalCase keys in TOML).
+#
+# Precedence: defaults → this file → environment variables (env wins).
+# Env format: UPPERCASE DEPLOY_TO_AWS_<SECTION>_<FIELD>
+# Example: DEPLOY_TO_AWS_AWS_PROFILE overrides [Aws] Profile.
+
+[App]
+Env = "dev"
+Target = "aws"
+
+[Aws]
+Profile = "kt-acc"
+Region = "us-east-1"
+AccountId = "017868795096"
+
+[Deploy]
+AutoApprove = false
+SkipBuild = false
+SkipScaffold = true
+SkipPreflight = false
+ImageTag = ""
+NoCache = false
+HelmStableTimeout = 900
+AlbTimeout = 600
+
+[Paths]
+RepoRoot = ""
+TerraformDir = "infra/aws/aws_tf"
+EnvsDir = "infra/aws/envs"
+HelmChartDir = "infra/aws/deployed/aws/017868795096/us-east-1/helm/workload"
+K8sNamespace = "ray-test"

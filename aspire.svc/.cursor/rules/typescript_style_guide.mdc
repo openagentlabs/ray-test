@@ -25,9 +25,9 @@ alwaysApply: false
 | **Activities** | Creating, editing, or reviewing TypeScript: new modules, refactors, reviews, and AI-assisted patches. |
 | **Not for** | Pure config without TS semantics (e.g. `json`, `yaml`), generated vendor bundles you do not own, or non-TS languages—unless you are embedding TS snippets. |
 
-**Precedence in this repo:** If this document disagrees with **`PROJECT_NAME`** rules (`typescript.mdc`, `AGENTS.md`, `architetcure.mdc`), **follow the `PROJECT_NAME` rules** for this codebase. `PROJECT_NAME` is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules). The items called out in **Repo overrides** below are intentional differences.
+**Precedence in this repo:** If this document disagrees with **`PRJ_NAME`** rules (`typescript.mdc`, `AGENTS.md`, `architetcure.mdc`), **follow the `PRJ_NAME` rules** for this codebase. `PRJ_NAME` is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules). The items called out in **Repo overrides** below are intentional differences.
 
-### Repo overrides (`PROJECT_NAME` wins)
+### Repo overrides (`PRJ_NAME` wins)
 
 - **Enums:** Google allows plain `enum` and forbids `const enum`. This repo prefers **`const` object maps / unions** instead of enums—follow `typescript.mdc`.
 - **Error style:** Prefer **`Result` / `neverthrow`** where `typescript.mdc` requires it; Google’s “prefer throw” guidance is **not** a substitute for that project policy.

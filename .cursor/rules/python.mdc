@@ -5,6 +5,8 @@ description: >-
 globs:
   - ".cursor/tools/aspire/src/**/*.py"
   - ".cursor/tools/aspire/tests/**/*.py"
+  - ".cursor/tools/tf-tool/src/**/*.py"
+  - ".cursor/tools/tf-tool/testing/**/*.py"
   - "solutions.svc/server/src/**/*.py"
   - "solutions.svc/server/tests/**/*.py"
   - "solutions.svc/server/tools/**/*.py"

@@ -1,0 +1,39 @@
+---
+description: Index for .cursor/tools/, skills, and MCP — agent tooling conventions.
+globs:
+  - ".cursor/tools/**"
+  - ".cursor/skills/**"
+  - ".cursor/mcp.json"
+  - "aspire.svc/.cursor/skills/**"
+alwaysApply: false
+---
+
+# Tooling (agents)
+
+**What:** Pointer index for repo tooling — `.cursor/tools/`, `.cursor/skills/`, `aspire.svc/.cursor/skills/`, `.cursor/mcp.json`. Opens linked skills/rules; does not duplicate stack guidance.
+
+**When:** Add/change tools, skills, or MCP; run repo CLIs (e.g. aspire registry). Not product UI or `*.svc/` domain code.
+
+**How:** Index → follow linked `SKILL.md`/rule end-to-end. No invented paths or install commands. Link `constants.mdc`, `solution.mdc`, `infra.mdc` — do not re-declare values.
+
+## Index
+
+| Task | Path |
+|------|------|
+| Project constants init (**prj**) | `.cursor/skills/prj/SKILL.md` → `.cursor/rules/constants.mdc` |
+| Terraform CLI + **tf** skill | `.cursor/skills/tf/SKILL.md` → `.cursor/tools/tf-tool/card.md` |
+| tf-tool rule pointer | `.cursor/rules/tools/terraform-tool.mdc`, `.cursor/tools/tf-tool/` |
+| Aspire registry CLI | `.cursor/tools/aspire/` |
+| Aspire registry (guided) | `aspire.svc/.cursor/skills/aspire-registry-tool/` |
+| Cursor rules | `.cursor/skills/rules-create/`, `.cursor/rules/rule.mdc` |
+| DynamoDB IaC | `.cursor/skills/aws_dynamodb_create/` |
+| S3 IaC | `.cursor/skills/aws_s3_create/` |
+| Python tools | `.cursor/rules/python.mdc` (`.cursor/tools/**/*.py`) |
+| AWS / IaC | `.cursor/rules/infra.mdc`, `.cursor/rules/iac/terrafrom.mdc` |
+
+## Rules
+
+1. **Skills first** — existing `SKILL.md` wins over improvised commands or layout.
+2. **One tool, one home** — `.cursor/tools/<name>/` + README, manifest, tests (Python: `python.mdc`).
+3. **MCP** — only `.cursor/mcp.json`; merge into `mcpServers`; user reloads MCP after edits.
+4. **Scope** — tooling invocation/maintenance only; product/UI/domain → `solution.mdc` (`frontend/`, `aspire.svc/`, `*.svc/`).

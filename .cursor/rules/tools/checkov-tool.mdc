@@ -1,0 +1,208 @@
+---
+description: "Invoke Checkov ONLY to statically scan IaC under `infra/` for security and compliance misconfigurations — run it before any `terraform apply`/deploy and when finishing an interaction that touched `infra/`. Not a replacement for `terraform fmt/validate/plan` (see `.cursor/rules/iac/terrafrom.mdc`) or for editing HCL."
+globs:
+  - "infra/**"
+alwaysApply: false
+---
+
+# checkov-tool — IaC security scanner
+
+## What this tool is for
+
+**Checkov** (https://www.checkov.io/) is a terminal CLI that performs **static analysis of infrastructure-as-code** for security and compliance misconfigurations. In this repo it scans Terraform under **`infra/aws/aws_tf/`** (root + **`modules/`**) and templates under **`infra/aws/tf_lib/`** against built-in policies (encryption, public access, logging, IAM least privilege, tagging, etc.).
+
+It installs via **`pip3 install checkov`** and runs read-only: it does **not** run `terraform init/plan/apply`, does **not** edit `.tf` files, and does **not** call AWS. It only reports findings.
+
+## When to use it
+
+| Use Checkov | Do not use Checkov |
+|-------------|--------------------|
+| **Before deploy** — right before any `terraform apply` / deploy of `infra/` | Apply/provision infrastructure → **terraform CLI** from `infra/aws/aws_tf/` |
+| **End of an `infra/` interaction** — after authoring/editing HCL under `infra/`, scan before handing back | Format/validate syntax → `terraform fmt -recursive`, `terraform validate` |
+| Find security/compliance misconfigs in Terraform, Dockerfile, Helm, k8s | Search public registry modules → **tf-tool** (`.cursor/rules/tools/terraform-tool.mdc`) |
+| Produce JSON/SARIF findings for CI or PR comments | Edit repo HCL → normal file tools + `.cursor/rules/iac/terrafrom.mdc` |
+
+**Trigger gate (mandatory):** when you are **about to deploy** `infra/`, or **about to finish** any turn that created or modified files under **`infra/`**, run a Checkov scan of the affected tree and report results before declaring the work done.
+
+## How to invoke (agents)
+
+1. **Confirm intent** matches the table above — Checkov is for scanning, not applying or editing IaC.
+2. **One-time install** (if `checkov` is not on PATH):
+
+```bash
+pip3 install checkov
+```
+
+3. **Scan the Terraform root** before deploy / at end of interaction:
+
+```bash
+checkov -d infra/aws/aws_tf --compact --quiet
+```
+
+4. **Scan a narrower path** when only one module/template changed:
+
+```bash
+checkov -d infra/aws/aws_tf/modules/<name>
+checkov -f infra/aws/aws_tf/modules/<name>/main.tf
+```
+
+5. **Machine-readable output** for CI / further parsing:
+
+```bash
+checkov -d infra/aws/aws_tf -o json
+checkov -d infra/aws/aws_tf -o sarif
+```
+
+6. **Report** the results as the **traffic-light table** below (see **On-request checks**). Do **not** silently swallow failures.
+
+## On-request checks — traffic-light report (mandatory)
+
+When the **user asks to perform the checks** (or a deploy / end-of-interaction gate fires), the agent **must**:
+
+1. **Install** Checkov: `pip3 install checkov`.
+2. **Execute** the scan against `infra/`: `checkov -d infra/aws/aws_tf -o json` (use `-d <module>` / `-f <file>` for targeted edits). Capture JSON so every observation can be tabulated.
+3. **Output a report** as a single table — **one row per observation** — with a **traffic-light** status column:
+
+| Light | Status | Meaning | When to use |
+|-------|--------|---------|-------------|
+| 🟢 | Green | No issue — check **passed** | Checkov `passed_checks` |
+| 🔴 | Red | The issue — check **failed** | Checkov `failed_checks` (hard misconfiguration) |
+| 🟠 | Amber | Warning — needs attention but not a hard failure | Skipped/soft-fail/low-severity or advisory findings |
+
+**Report table columns (in this order):**
+
+| Light | Check ID | Resource | File:Line | Observation (what it is / what it's about) |
+|-------|----------|----------|-----------|--------------------------------------------|
+
+- **Light** — 🟢 / 🟠 / 🔴 per the legend above.
+- **Check ID** — Checkov ID, e.g. `CKV_AWS_18`.
+- **Resource** — the offending/checked resource address, e.g. `aws_s3_bucket.app_logs`.
+- **File:Line** — path and line range of the finding.
+- **Observation** — for 🔴 state **what the issue is**; for 🟠 state **what the warning is about**; for 🟢 state the check that passed.
+
+4. **Lead with a one-line summary** above the table: `Green: <n> · Amber: <n> · Red: <n>` and the overall result (pass = no red; fail = one or more red).
+5. **Sort** the table 🔴 first, then 🟠, then 🟢, so issues surface at the top.
+
+## Rules
+
+1. **Intent gate** — invoke Checkov only to scan IaC under `infra/`; never as a substitute for `terraform`, `tf-tool`, or file edits.
+2. **Deploy gate** — run `checkov -d infra/aws/aws_tf` and surface results **before** any `terraform apply` / deploy; a failed scan blocks deploy unless the user explicitly overrides in the same turn.
+3. **End-of-interaction gate** — before finishing a turn that touched `infra/`, scan the affected path and report findings.
+4. **Scope to changes** — prefer `-d <module>` or `-f <file>` for targeted edits; scan the full `infra/aws/aws_tf` root before deploy.
+5. **No silent suppression** — only use `--skip-check <ID>` or `--soft-fail` with an explicit user request; record which checks were skipped and why.
+6. **Read-only** — Checkov must not modify `.tf` files; remediate findings via normal file tools per `.cursor/rules/iac/terrafrom.mdc`, then re-scan until clean.
+7. **Errors** — exit `0` = all checks passed (or soft-fail); exit `1` = one or more FAILED checks; non-zero install/parse errors must be reported, not ignored.
+
+## Related
+
+| Topic | Path |
+|-------|------|
+| Repo Terraform HCL | `.cursor/rules/iac/terrafrom.mdc` |
+| Registry module search | `.cursor/rules/tools/terraform-tool.mdc` |
+| AWS / IaC operations | `.cursor/rules/infra.mdc` |
+| Tooling index | `.cursor/rules/tool.mdc` |
+| Errors & reporting | `.cursor/rules/error.mdc` |
+
+---
+
+## Agent guide card (Checkov in this repo)
+
+```
+================================================================================
+CHECKOV-TOOL — CURSOR AI AGENT GUIDE
+================================================================================
+
+TOOL_ID:          checkov
+INSTALL:          pip3 install checkov
+RUN:              checkov -d <path> [flags]
+AUTH_REQUIRED:    no (local static analysis; no cloud calls)
+TARGET_ROOT:      infra/aws/aws_tf  (root + modules/), infra/aws/tf_lib
+
+================================================================================
+1. WHAT THIS TOOL IS
+================================================================================
+
+Checkov is a static analysis CLI for infrastructure-as-code. It scans
+Terraform/Dockerfile/Helm/Kubernetes for security and compliance
+misconfigurations and prints PASSED/FAILED checks with guidelines.
+
+It does NOT run terraform plan/apply, does NOT edit IaC, and does NOT
+call AWS. It only reports findings.
+
+================================================================================
+2. WHEN TO RUN (mandatory gates)
+================================================================================
+
+RUN Checkov WHEN:
+  - You are about to deploy / `terraform apply` anything under infra/
+  - You are about to finish a turn that created or edited files under infra/
+  - You want security/compliance findings for a module or template
+
+DO NOT RUN Checkov FOR:
+  - Applying infra → terraform CLI from infra/aws/aws_tf
+  - Syntax/format → terraform fmt -recursive, terraform validate
+  - Finding registry modules → tf-tool
+  - Editing .tf files → file tools + .cursor/rules/iac/terrafrom.mdc
+
+================================================================================
+3. COMMANDS
+================================================================================
+
+INSTALL:
+  pip3 install checkov
+  checkov --version
+
+SCAN:
+  checkov -d infra/aws/aws_tf                 Scan whole Terraform root
+  checkov -d infra/aws/aws_tf --compact       Condensed output
+  checkov -d infra/aws/aws_tf --quiet         Only show FAILED checks
+  checkov -d infra/aws/aws_tf/modules/<name>  Scan one module
+  checkov -f <file.tf>                         Scan a single file
+  checkov -d infra/aws/aws_tf --framework terraform
+
+OUTPUT:
+  -o cli        Human-readable (default)
+  -o json       JSON for parsing / CI
+  -o sarif      SARIF for code scanning
+
+SUPPRESSION (explicit user request only):
+  --skip-check <CKV_ID[,CKV_ID...]>
+  --soft-fail                                  Exit 0 even with failures
+
+================================================================================
+4. ON-REQUEST REPORT (traffic-light table)
+================================================================================
+
+When the user asks for the checks (or a deploy/end-of-interaction gate fires):
+  1. pip3 install checkov
+  2. checkov -d infra/aws/aws_tf -o json   (capture JSON)
+  3. Print ONE table, one row per observation, columns:
+       Light | Check ID | Resource | File:Line | Observation
+     Traffic lights:
+       GREEN  = no issue (passed_checks)
+       AMBER  = warning / skipped / low-severity advisory
+       RED    = the issue (failed_checks) — Observation states what is wrong
+  4. Lead with: "Green: n · Amber: n · Red: n" + overall pass/fail.
+  5. Sort RED first, then AMBER, then GREEN.
+
+================================================================================
+5. EXIT CODES
+================================================================================
+
+  0  All checks passed (or --soft-fail used)
+  1  One or more FAILED checks
+  >1 Install/parse/usage error — report, do not ignore
+
+================================================================================
+6. ONE-TIME INSTALL
+================================================================================
+
+pip3 install checkov
+
+Then from the repo root:
+  checkov -d infra/aws/aws_tf --compact
+
+================================================================================
+END OF CHECKOV-TOOL AGENT GUIDE
+================================================================================
+```

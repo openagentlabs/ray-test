@@ -20,7 +20,7 @@ alwaysApply: false
 
 # Arb Aspire — Next.js and app rules
 
-Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 For **TypeScript** language and type conventions, see **`typescript.mdc`**. For **database** access, see **`database.mdc`**. For **logging and observability**, see **`logging.mdc`**.
 

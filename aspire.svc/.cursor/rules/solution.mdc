@@ -15,9 +15,9 @@ globs:
 alwaysApply: false
 ---
 
-# Arb Aspire — `PROJECT_NAME` application host
+# Arb Aspire — `PRJ_NAME` application host
 
-**Arb Aspire** is the codename for everything under **`aspire.svc/`**: the **application host** that ships the product defined by **`PROJECT_NAME`**, **`PROJECT_PACKAGE`**, and **`PROJECT_SLUG`** in **`.cursor/rules/constants.mdc`** at the repository root. **`aspire.svc/.cursor/`** holds stack rules for this host only; AWS account binding, Terraform (**`infra/aws_tf/`** only), **`infra/deployed/`**, and Helm layout live in the root **`.cursor/`** tree (**`infra.mdc`**, **`terrafrom.mdc`**).
+**Arb Aspire** is the codename for everything under **`aspire.svc/`**: the **application host** that ships the product defined by **`PRJ_NAME`**, **`PRJ_PACKAGE`**, and **`PRJ_SLUG`** in **`.cursor/rules/constants.mdc`** at the repository root. **`aspire.svc/.cursor/`** holds stack rules for this host only; AWS account binding, Terraform (**`infra/aws_tf/`** only), **`infra/deployed/`**, and Helm layout live in the root **`.cursor/`** tree (**`infra.mdc`**, **`terrafrom.mdc`**).
 
 Use this file for **what Arb Aspire is**, **how it relates to other services in the repo**, and **where code lives under `aspire.svc/`**. Companion rules in **`aspire.svc/.cursor/rules/`** (this directory) define stack details — do not duplicate them here.
 
@@ -38,9 +38,9 @@ Microsoft **.NET Aspire** is an **app host plus composition model**: you declare
 
 **Non-goals:** we do **not** ship a generic multi-process orchestrator, YAML service manifest, or .NET **DistributedApplication** API. Python microservices (**`iam.svc/`**, **`solutions.svc/`**) remain **separate repos/folders** integrated at the network boundary, the same way .NET Aspire would talk to an external API.
 
-## What this host ships (`PROJECT_NAME`)
+## What this host ships (`PRJ_NAME`)
 
-- **Shell & UX**: **Next.js App Router** dashboard workspace, **React 19**, **TypeScript (strict)**, **Tailwind CSS v4**, **shadcn / Base UI** (`PROJECT_PACKAGE` in **`aspire.svc/package.json`**).
+- **Shell & UX**: **Next.js App Router** dashboard workspace, **React 19**, **TypeScript (strict)**, **Tailwind CSS v4**, **shadcn / Base UI** (`PRJ_PACKAGE` in **`aspire.svc/package.json`**).
 - **Persistence**: none in this workspace’s **`aspire.svc/services/`** tree; do not add DB access without a proper service boundary — **`database.mdc`**.
 - **Observability**: structured server and client logging with optional export paths — **`logging.mdc`**.
 

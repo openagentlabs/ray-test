@@ -2,6 +2,8 @@
 description: Python testing conventions (pytest) for service packages in this repo.
 globs:
   - ".cursor/tools/aspire/tests/**/*.py"
+  - ".cursor/tools/tf-tool/testing/**/*.py"
+  - "clients/**/py/testing/**/*.py"
   - "solutions.svc/server/tests/**/*.py"
   - "iam.svc/server/tests/**/*.py"
   - "storage.svc/server/tests/**/*.py"
@@ -12,14 +14,28 @@ alwaysApply: false
 
 # Python tests (pytest)
 
-Use **pytest** as the default unit and integration test framework for Python services in this repository.
+## Framework choice (decision)
 
-## Defaults
+Use **pytest** as the mandatory test runner for Python in this repository. It is the most widely adopted Python test framework (fixture model, parametrization, rich plugin ecosystem, CI and IDE integration). This is the repo **gold standard** — do not introduce stdlib `unittest` class suites, nose, or alternative runners unless the user explicitly requests a migration.
 
 - **Runner**: `pytest` (async tests via **pytest-asyncio** with `asyncio_mode = "auto"` where applicable).
-- **Layout**: `tests/unit/` for fast isolated tests; `tests/integration/` for multi-layer tests (e.g. gRPC servicer + application with mocked I/O). Shared fixtures live in `tests/conftest.py`.
-- **Naming**: `test_*.py` modules and `test_*` functions.
+- **Dev dependency**: declare `pytest` in the package `pyproject.toml` `dependency-groups.dev` (or equivalent).
 - **Assertions**: plain `assert` with clear messages where helpful; avoid heavyweight custom assertion libraries unless already adopted in the package.
+- **Naming**: `test_*.py` modules and `test_*` functions.
+
+## Layout by package type
+
+Every Python package in this repo must include **both unit tests and integration tests**.
+
+| Package kind | Test root | Unit tests | Integration tests | Shared fixtures |
+|---|---|---|---|---|
+| gRPC microservice (`*.svc/server/`) | `tests/` | `tests/unit/` | `tests/integration/` | `tests/conftest.py` |
+| UV tool or client library (`.cursor/tools/*`, `clients/**/py/`) | `testing/` | `testing/unit/` | `testing/integration/` | `testing/conftest.py` |
+
+- **Unit tests** — fast, isolated tests for validation, error mapping, pure helpers, and single-class behavior (mocked or minimal I/O).
+- **Integration tests** — multi-layer wiring: public API through real collaborators (e.g. `Cluster` + `NativeFileEngine` on `tmp_path`), CLI smoke tests, or servicer + application boundaries with mocked external I/O.
+
+Put cross-cutting helpers in `testing/helpers.py` (or `tests/helpers.py`) when they are not pytest fixtures. Do not import from `conftest.py` modules.
 
 ## Async gRPC / DynamoDB services (e.g. `iam.svc/server`)
 
@@ -30,4 +46,15 @@ Use **pytest** as the default unit and integration test framework for Python ser
 
 ## Configuration
 
-- Prefer `[tool.pytest.ini_options]` in the package’s `pyproject.toml` (`testpaths`, `pythonpath`) so `pytest` can be run from the package root without extra env vars.
+Prefer `[tool.pytest.ini_options]` in the package’s `pyproject.toml` (`testpaths`, `pythonpath`) so `pytest` can be run from the package root without extra env vars:
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["testing"]   # or ["tests"] for microservices
+```
+
+Run from the package root:
+
+```bash
+uv sync --dev && uv run pytest
+```

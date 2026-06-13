@@ -15,7 +15,7 @@ alwaysApply: false
 
 # Arb Aspire — runtime validation (Zod)
 
-Project identity (`PROJECT_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PROJECT_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 This repository uses **[Zod](https://zod.dev/) v4** as its **single, gold-standard runtime validation and parsing library** — the TypeScript equivalent of Python's `pydantic`. Zod is a **direct dependency** in `package.json`; it is also transitively required by `ai` (Vercel AI SDK), `@assistant-ui/*`, and the MCP SDK. Use **the workspace-pinned version only**; do not install `valibot`, `yup`, `joi`, `io-ts`, `ajv`, `runtypes`, or hand-rolled type guards as parallel alternatives.
 

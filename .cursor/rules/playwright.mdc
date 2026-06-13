@@ -13,7 +13,7 @@ alwaysApply: false
 
 **When to use it:** Creating or editing files under **`frontend/e2e/`**, adding E2E coverage for **`frontend/`** or **`aspire.svc/`**, scaffolding Playwright templates, or debugging flaky / parallel test failures.
 
-**How to use it:** Run **Prerequisite check (mandatory — run first)** below before any other Playwright work in this session. Keep **unit and integration** tests on **Vitest** (see **`.cursor/rules/testing_ts.mdc`**). Use Playwright only for **critical user journeys** across a running app. Link **`.cursor/rules/solution.mdc`** for local dev ports; do not duplicate **`PROJECT_*`** or AWS values from **`.cursor/rules/constants.mdc`**.
+**How to use it:** Run **Prerequisite check (mandatory — run first)** below before any other Playwright work in this session. Keep **unit and integration** tests on **Vitest** (see **`.cursor/rules/testing_ts.mdc`**). Use Playwright only for **critical user journeys** across a running app. Link **`.cursor/rules/solution.mdc`** for local dev ports; do not duplicate **`PRJ_*`** or AWS values from **`.cursor/rules/constants.mdc`**.
 
 ---
 
@@ -204,9 +204,9 @@ If any check fails, **stop**, report which step failed, and give the exact fix c
 
 ---
 
-## Playwright rules — `PROJECT_NAME`
+## Playwright rules — `PRJ_NAME`
 
-Human-readable project name: **`PROJECT_NAME`** in **`.cursor/rules/constants.mdc`** (`ARB - AI Assistant`). Apply the sections below when authoring or editing specs under **`frontend/e2e/`**.
+Human-readable project name: **`PRJ_NAME`** in **`.cursor/rules/constants.mdc`** (`ARB - AI Assistant`). Apply the sections below when authoring or editing specs under **`frontend/e2e/`**.
 
 ### Locators
 

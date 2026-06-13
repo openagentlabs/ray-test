@@ -1,0 +1,159 @@
+---
+description: >-
+  Mandatory AWS account binding, network topology pointers, IaC-vs-live
+  validation, and tool routing for all infra/ work. Pair with constants.mdc
+  and infras/tools.mdc.
+globs:
+  - "infra/**"
+alwaysApply: false
+---
+
+# AWS account, network & IaC rules (MANDATORY)
+
+**What this file is:** Agent guide for every AWS-touching action in this repo — account binding, how declared infrastructure relates to the live account, which tools to use, and where network names live.
+
+**When to use it:** Any work under **`infra/`** — CLI, SDK, Terraform plan/apply, Helm release, kubectl debugging, MCP AWS tools, CI, or ad-hoc inspection of account **`AWS_ACCOUNT_ID`** in **`constants.mdc`**.
+
+**How to use it:** (1) Confirm identity per **Pre-flight** below. (2) Read declared intent in **`infra/aws/aws_tf/`** and Helm under **`infra/aws/deployed/`**. (3) Pick tools from **`.cursor/rules/infras/tools.mdc`**. (4) Compare live AWS to declared state when understanding or changing infrastructure. (5) Resolve network **names** from **`constants.mdc`** — never hard-code VPC/subnet/SG IDs in rules or docs.
+
+---
+
+## Target account and region
+
+Account ID, CLI profile, primary region, and output format are defined **only** in **`.cursor/rules/constants.mdc`**:
+
+| Constant ID | Role |
+|-------------|------|
+| `AWS_ACCOUNT_ID` | Single allowed AWS account (`017868795096`) |
+| `AWS_CLI_PROFILE` | CLI profile (`kt-acc`) |
+| `AWS_DEFAULT_REGION` | Primary region (`us-east-1`) |
+| `AWS_OUTPUT_FORMAT` | CLI output format (`json`) |
+
+Do **not** re-declare these literal values in this file or elsewhere. Credential handling rules also live in **`constants.mdc`**.
+
+---
+
+## Network topology (names — link, do not copy IDs)
+
+VPC CIDR, three-AZ subnet layout, EKS cluster name, and security group **names** are canonical in **`constants.mdc`** § **Group 4 — Network**. Summary for agents:
+
+- **`NET_VPC_CIDR`:** `10.0.0.0/16` — carve `/24` subnets per tier across **`NET_AZ_COUNT`** (= `3`) AZs.
+- **Dedicated ALB tier:** `{prefix}-alb-public-{1..3}` on `10.0.0.0/24` … `10.0.2.0/24` (public; ALB-only).
+- **EKS tier:** `{prefix}-eks-private-{1..3}` on `10.0.10.0/24` … `10.0.12.0/24` (private; cluster, Fargate, node groups, VPC endpoints).
+- **Bastion tier:** `{prefix}-bastion-{1..3}` on `10.0.20.0/24` … `10.0.22.0/24` (private; SSM break-glass).
+- **Security groups:** `{prefix}-alb`, `{prefix}-eks-cluster`, `{prefix}-eks-workloads`, `{prefix}-bastion`, `{prefix}-vpc-endpoints`, plus FSx SG per **`constants.mdc`**.
+
+`{prefix}` = `{PRJ_SLUG}` (`ray-test`) — see **`constants.mdc`**. Terraform modules **`vpc_platform`** and **`network_security_groups`** must keep physical **Name** tags aligned with these constants.
+
+---
+
+## Infrastructure tools (mandatory routing)
+
+Before any infra CLI, skill, or MCP action, read **`.cursor/rules/infras/tools.mdc`** and use **only** listed tools:
+
+| Goal | Primary tool | Also see |
+|------|--------------|----------|
+| Author, validate, plan, apply AWS resources | **Terraform** (`infra/aws/aws_tf/`) | **`iac/terrafrom.mdc`**, **`.cursor/skills/tf/SKILL.md`** |
+| Package, template, upgrade Helm releases | **Helm** | Charts under **`infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/`** |
+| Inspect / debug live Kubernetes (pods, ingress, logs) | **kubectl** | Configure via `aws eks update-kubeconfig`; cluster name from **`NET_EKS_CLUSTER_NAME`** / `terraform output` |
+| Inspect / debug live AWS (resources, IAM, drift) | **AWS CLI** / SDK / MCP | This file + **`constants.mdc`** |
+| Infra failures and cross-tool diagnosis | **`infras/debuging.mdc`** | Follow debug flows after **`tools.mdc`** pipeline |
+
+For deploy and validation pipelines (fmt, TFLint, Trivy, Checkov, Conftest), follow the **Pipeline sequence** in **`tools.mdc`**.
+
+---
+
+## Declared infrastructure vs live account
+
+**The live AWS account may not match Terraform and Helm intent.** Always treat IaC as the declared source of truth and the account as something to **verify**, not assume.
+
+### Mandatory investigation order
+
+1. **Read the code first** — **`infra/aws/aws_tf/`** (modules, `main.tf`, `terraform.tfvars`) and Helm values/charts under **`infra/aws/deployed/`**.
+2. **Pre-flight identity** (below) — confirm you are in account **`AWS_ACCOUNT_ID`**, region **`AWS_DEFAULT_REGION`**.
+3. **Compare live state** — use **AWS CLI** / MCP to describe VPC, subnets (by **Name** tag), security groups, EKS, ALB, and Helm-managed workloads.
+4. **Reconcile drift** — if live resources differ from declared HCL/charts, fix via Terraform or Helm (with user approval for apply/upgrade), not ad-hoc console edits.
+
+Drift checks should cover at least: VPC **`NET_VPC_NAME`**, subnet **Name** tags and CIDRs per **`constants.mdc`**, security group **Name** tags, EKS cluster **`NET_EKS_CLUSTER_NAME`**, and active Helm release values vs chart paths in **`infra/aws/deployed/`**.
+
+---
+
+## Required pre-flight validation
+
+Before the first AWS action in any session (and again when profile, region, or environment looks ambiguous):
+
+```bash
+aws sts get-caller-identity --profile kt-acc --output json --region us-east-1
+```
+
+Use **`AWS_CLI_PROFILE`**, **`AWS_OUTPUT_FORMAT`**, and **`AWS_DEFAULT_REGION`** from **`constants.mdc`** in place of the literals above when scripting.
+
+Proceed only if **all** of the following hold:
+
+- `Account` equals **`AWS_ACCOUNT_ID`** from **`constants.mdc`**
+- `Arn` is an identity in that account
+- Exit code is `0`
+
+If validation fails, **stop**. Do not retry against another profile. Report the mismatch and wait for guidance.
+
+---
+
+## Invocation requirements
+
+- Pass **`--profile <AWS_CLI_PROFILE>`** explicitly on every AWS CLI call — never rely on ambient `AWS_PROFILE`.
+- Pass **`--region <AWS_DEFAULT_REGION>`** explicitly unless the user requests a different region for a specific resource and logs the override.
+- SDK code must resolve profile and region from configuration that maps to **`constants.mdc`**; never embed credentials.
+- MCP AWS tools must use **`AWS_CLI_PROFILE`** and **`AWS_DEFAULT_REGION`**. Abort and surface discrepancies if a call lands in another account.
+- IaC must pin account to **`AWS_ACCOUNT_ID`** and region to **`AWS_DEFAULT_REGION`** via **`terraform.tfvars`** / **`local.solution`** and `allowed_account_ids` on the provider. Fail synth/plan if deployment would target elsewhere.
+
+---
+
+## Repository infrastructure layout
+
+| Path | Purpose |
+|------|---------|
+| **`infra/aws/aws_tf/`** | **Single Terraform root** — only directory for `terraform init`, `plan`, `apply`. Compose modules from **`main.tf`**. |
+| **`infra/aws/aws_tf/modules/<name>/`** | Runnable module implementations (`vpc_platform`, `network_security_groups`, `workloads_infra`, …). Each accepts **`var.solution`**. |
+| **`infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/`** | Deployed map — ownership markers and **Helm** charts (not a Terraform root). |
+| **`.../terraform/aws/<primitive>/`** | Ownership markers (`.gitkeep`); no nested `terraform { }` blocks. |
+| **`.../helm/<chart>/`** | Helm charts for service workloads. |
+| **`infra/aws/tf_lib/`** | Read-only templates; copy into **`modules/`** — not an apply root. |
+
+**`<service>`** folders include **`frontend`**, **`iam.service`**, **`solutions.svc`**, **`storage.svc`**, and others under the same deployed tree.
+
+Full Terraform conventions: **`.cursor/rules/iac/terrafrom.mdc`**. Resource naming and tags: **`infras/resource-naming.mdc`**, **`infras/resource-taging.mdc`**.
+
+### Adding a new AWS module (checklist)
+
+1. Search registry with **tf-tool** per **`iac/terrafrom.mdc`** §1.0.
+2. Implement under **`infra/aws/aws_tf/modules/<snake_case_name>/`**.
+3. Wire **`module`** in **`main.tf`** with **`solution = local.solution`**.
+4. Use network and naming constants from **`constants.mdc`** — do not invent parallel CIDR or Name patterns.
+5. Add ownership marker under **`infra/aws/deployed/.../services/<service>/terraform/aws/<primitive>/`** when service-owned.
+6. Run **`terraform fmt`** and **`terraform validate`** from **`infra/aws/aws_tf/`**.
+
+### Helm
+
+Package charts under **`infra/aws/deployed/.../helm/<chart>/`**. Do not colocate Helm inside **`infra/aws/aws_tf/`** unless deliberately sharing artifacts; Terraform state applies only at the **`aws_tf`** root.
+
+---
+
+## Forbidden
+
+- Using `default` or any profile other than **`AWS_CLI_PROFILE`** for this project.
+- Cross-account assume-role hops away from **`AWS_ACCOUNT_ID`** without explicit per-turn user approval.
+- Writing credentials, secrets, or session tokens into any repo file, rules, or chat output.
+- Re-declaring **`AWS_ACCOUNT_ID`**, **`AWS_CLI_PROFILE`**, **`AWS_DEFAULT_REGION`**, **`AWS_OUTPUT_FORMAT`**, VPC CIDR, subnet CIDRs, or security group names as authoritative literals outside **`constants.mdc`** (except fenced Terraform examples in **`iac/terrafrom.mdc`** that document locked layout).
+- Hard-coding **`vpc-`**, **`subnet-`**, or **`sg-`** IDs in rules, docs, or module defaults — IDs belong only in Terraform state and data sources.
+- Hand-editing live AWS as the first fix when drift is found — reconcile through Terraform / Helm after user approval.
+
+---
+
+## Related rules
+
+| Topic | Path |
+|-------|------|
+| Account, region, network names | **`.cursor/rules/constants.mdc`** |
+| Infra tools index | **`.cursor/rules/infras/tools.mdc`** |
+| Infra debugging flows | **`.cursor/rules/infras/debuging.mdc`** |
+| Terraform layout | **`.cursor/rules/iac/terrafrom.mdc`** |

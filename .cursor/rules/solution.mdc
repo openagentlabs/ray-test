@@ -66,7 +66,7 @@ Ports **8081**, **8082**, **3000**, and **50051** are obsolete for these surface
 | Rule authoring | **`.cursor/rules/rule.mdc`** — skill **`rules-create`** |
 | Python / async gRPC | **`.cursor/rules/python.mdc`** — **`make check-async`** |
 | TypeScript / gRPC clients | **`.cursor/rules/typescript.mdc`** + workspace **`.cursor/rules/`** |
-| `PROJECT_*`, AWS account/region | **`.cursor/rules/constants.mdc`** |
+| `PRJ_*`, AWS account/region | **`.cursor/rules/constants.mdc`** |
 | AWS CLI/SDK/MCP | **`.cursor/rules/infra.mdc`** |
 | Terraform | **`.cursor/rules/terrafrom.mdc`** |
 | IAM | **`iam.svc/.cursor/rules/`** or root **python** / **testing_py** + ports above |
@@ -90,4 +90,4 @@ Apps and microservices: see **Solution components** table above. Per-service rul
 
 ## AWS / Terraform (all paths)
 
-Follow **`infra.mdc`**, **`terrafrom.mdc`**, **`.cursor/skills/`**. Never re-declare account, profile, region, or **`PROJECT_*`** outside **`constants.mdc`**. Runnable TF only in **`infra/aws_tf/`**; markers and Helm in **`infra/deployed/`**.
+Follow **`infra.mdc`**, **`terrafrom.mdc`**, **`.cursor/skills/`**. Never re-declare account, profile, region, or **`PRJ_*`** outside **`constants.mdc`**. Runnable TF only in **`infra/aws_tf/`**; markers and Helm in **`infra/deployed/`**.

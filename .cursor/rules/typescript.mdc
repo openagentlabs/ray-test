@@ -12,6 +12,7 @@ globs:
   - "storage.svc/client/src/**/*.ts"
   - "general.ai.agent.svc/client/src/**/*.ts"
   - "notification.svc/client/src/**/*.ts"
+  - "clients/**/ts/src/**/*.ts"
 alwaysApply: false
 ---
 

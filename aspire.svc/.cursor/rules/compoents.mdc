@@ -1,7 +1,7 @@
 ---
 description: >-
   Arb Aspire UI components: layout shell, architect workspace under
-  components/pages/, and shared primitives in components/ui/ for PROJECT_NAME.
+  components/pages/, and shared primitives in components/ui/ for PRJ_NAME.
 globs:
   - "aspire.svc/components/**/*.{ts,tsx}"
   - "aspire.svc/app/**/*.tsx"

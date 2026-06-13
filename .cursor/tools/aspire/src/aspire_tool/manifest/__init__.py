@@ -1,1 +1,0 @@
-"""AI-facing manifest builders."""

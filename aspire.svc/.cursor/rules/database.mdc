@@ -25,4 +25,4 @@ The **`aspire.svc/`** host currently ships **no** `aspire.svc/services/*` persis
 - **Do not** reintroduce **`aspire.svc/requirements.txt`** for this host unless Python tooling in this folder again talks to a real datastore; other services (**`iam.service/`**, **`solutions.svc/`**) own their own pins.
 - When persistence returns, follow the modular-monolith layout in **`doc/solution-architecture/modular-monolith.md`** and expand this file with concrete port + migration rules again.
 
-Project identity (`PROJECT_NAME`) lives in **`.cursor/rules/constants.mdc`** at the repository root.
+Project identity (`PRJ_NAME`) lives in **`.cursor/rules/constants.mdc`** at the repository root.

@@ -1,0 +1,68 @@
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: placeholder
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 8803
+  exposeLoadBalancer: false
+
+ingress:
+  className: alb
+  albGroupName: arb-public
+  listenPorts: '[{"HTTP": 80}]'
+  healthcheckPath: /
+
+resources:
+  requests:
+    cpu: 256m
+    memory: 512Mi
+  limits:
+    cpu: 256m
+    memory: 512Mi
+
+env: {}
+
+lustre:
+  enabled: false
+  volumeName: shared-lustre
+  mountPath: /mnt/lustre
+
+s3SharedFiles:
+  enabled: false
+  volumeName: shared-s3-files
+  mountPath: /mnt/s3-files
+
+probes:
+  mountHealthEnabled: false
+  mountHealthPath: /api/health/mounts
+
+sharedMounts:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+  initWaitEnabled: false
+  initWaitMaxSeconds: 600
+  initImage: alpine:3.21
+  workloadWriteDirLustre: /mnt/lustre/workload
+  workloadWriteDirS3: /mnt/s3-files/workload
+
+compute:
+  nodeSelector: {}
+
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
