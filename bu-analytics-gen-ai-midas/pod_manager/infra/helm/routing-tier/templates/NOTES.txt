@@ -1,0 +1,20 @@
+Routing tier deployed to namespace {{ .Values.namespace }}.
+
+1. Push images to ECR (from terraform output ecr_repository_urls):
+     docker build -t <ecr>/envoy-router:{{ .Values.envoy.image.tag }} ./envoy
+     docker build -t <ecr>/router-svc:{{ .Values.podManager.image.tag }} ./router.svc
+{{- if .Values.loginPod.enabled }}
+     docker build -t <ecr>/login-pod:{{ .Values.loginPod.image.tag }} ./pods/login_pod
+{{- end }}
+
+2. Postgres tables (created automatically at startup in schema {{ .Values.podManager.postgres.schemaName }}, prefix {{ .Values.podManager.postgres.tablePrefix }}):
+     {{ .Values.podManager.postgres.schemaName }}.{{ .Values.podManager.postgres.tablePrefix }}backend_pool
+     {{ .Values.podManager.postgres.schemaName }}.{{ .Values.podManager.postgres.tablePrefix }}login_pod_pool
+     {{ .Values.podManager.postgres.schemaName }}.{{ .Values.podManager.postgres.tablePrefix }}user_assignments
+     {{ .Values.podManager.postgres.schemaName }}.{{ .Values.podManager.postgres.tablePrefix }}assignment_events
+     {{ .Values.podManager.postgres.schemaName }}.{{ .Values.podManager.postgres.tablePrefix }}solution_documents
+     {{ .Values.podManager.postgres.schemaName }}.{{ .Values.podManager.postgres.tablePrefix }}service_config
+   Ensure secret {{ .Values.podManager.databaseUrlSecret.name }} (key {{ .Values.podManager.databaseUrlSecret.key }}) exists in namespace {{ .Values.namespace }}.
+
+3. Verify pods:
+     kubectl -n {{ .Values.namespace }} get pods -l app=envoy-router

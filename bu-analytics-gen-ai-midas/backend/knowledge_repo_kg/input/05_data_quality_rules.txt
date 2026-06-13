@@ -1,0 +1,79 @@
+kb:
+  data_quality_rules:
+    completeness:
+      max_missing_rate_per_feature: <MAX_MISS|0.25>
+      required_not_null_patterns:
+      - '*account*id*'
+      - <AS_OF_DATE>
+      - '*loan*amount*|*credit*limit*'
+      - '*interest*rate*'
+      - '*term*'
+      - '*income*'
+      - '*dti*'
+      - '*score*'
+    consistency_examples:
+    - "balance \u2264 limit (revolvers)"
+    - "paid_to_date \u2264 original_amount (installments)"
+    - "age \u2265 18"
+    - "application_date \u2264 as_of_date"
+    high_cardinality:
+      action: rare-label to '__OTHER__' if share < <RARE_FLOOR|0.005>
+      threshold_levels: <HI_CARD_THRESH|100>
+    monitoring:
+      batch_checks:
+      - distribution_shifts
+      - correlation_stability
+      - feature_importance_drift
+      real_time_checks:
+      - schema_compliance
+      - value_ranges
+      - null_rates
+    outliers:
+      detection_methods:
+      - z_score
+      - iqr
+      - isolation_forest
+      - mahalanobis_distance
+      strategy: winsorize at [p1, p99] per vintage & segment; log1p for heavy skew
+    remediation:
+      on_fail:
+      - halt if STRICT_MODE=true
+      - emit sample offending ids (first 100)
+      - suggest fix
+      on_warn:
+      - proceed
+      - mark in dq_audit.json
+    severity:
+      fail:
+      - schema_contract
+      - leakage
+      info:
+      - samples
+      warn:
+      - consistency
+      - outliers
+      - high_cardinality
+    validity_ranges_policy:
+      explicit_overrides:
+        age_years:
+        - 18
+        - 120
+        bureau_score:
+        - 300
+        - 850
+        dti_pct:
+        - 0
+        - 200
+        income:
+        - 0
+        - 10000000
+        interest_rate_pct:
+        - 0
+        - 80
+        term_months:
+        - 1
+        - 1200
+        utilization_pct:
+        - 0
+        - 300
+      numeric_bounds_source: "p1/p99 by segment with \xB15% buffer"

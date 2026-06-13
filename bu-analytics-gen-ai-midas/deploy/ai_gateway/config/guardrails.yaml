@@ -1,0 +1,83 @@
+# MIDAS Bedrock Guardrails — us-east-1 / account 811391286931
+#
+# Strategy (per guardrails-developer-guide.md):
+#   - exlerate-no-grounding   → default_on: true  (fires on ALL requests automatically)
+#   - exlerate-full-compliance → default_on: false (opt-in: RAG / retrieval workflows)
+#   - exlerate-pii-only        → default_on: false (opt-in: teams with upstream content moderation)
+#   - exlerate-content-only    → default_on: false (opt-in: confirmed non-PII public workflows)
+#
+# All guardrails:
+#   - mode: pre_call        → evaluates input before model is called, streaming-safe
+#   - guardrailVersion: DRAFT → tracks latest console edits (use numeric "1" for UAT/prod)
+#   - disable_exception_on_block: false → returns HTTP 400 on block
+#
+# IDs are account-scoped (us-east-1 only). Never reuse IDs from another account/region.
+# To update: edit guardrailIdentifier + guardrailVersion, redeploy via ORD5 pipeline.
+#
+# Merged into proxy_config at deploy time by Jenkinsfile_ORD5_litellm:
+#   deploy/ai_gateway/config/guardrails.yaml → ai_gateway/config/guardrails.yaml
+#   → merged by create_model_config.sh into ai_gateway/config/config.yaml
+
+guardrails:
+
+  # ── DEFAULT: applied to ALL requests automatically ───────────────────────────
+  # Content moderation (text, MEDIUM strength) + PII anonymize (28 types) + profanity.
+  # No contextual grounding — safe for all workflow types: chat, code, summarisation,
+  # document analysis, and RAG pipelines.
+  # PII is replaced with placeholder tokens (e.g. {EMAIL}, {PHONE}) — not blocked.
+  - guardrail_name: "exlerate-no-grounding"
+    litellm_params:
+      guardrail: bedrock
+      mode: pre_call
+      guardrailIdentifier: "tmdxtmkix50n"
+      guardrailVersion: "DRAFT"
+      aws_region_name: us-east-1
+      disable_exception_on_block: false
+      default_on: true
+
+  # ── OPT-IN: RAG / retrieval workflows ────────────────────────────────────────
+  # Everything in exlerate-no-grounding PLUS contextual grounding:
+  #   - BLOCK responses scoring below 0.7 on grounding accuracy
+  #   - BLOCK responses scoring below 0.7 on relevance to conversation context
+  # Select per-request: "guardrails": ["exlerate-full-compliance"]
+  # or assign to a team in the LiteLLM UI.
+  - guardrail_name: "exlerate-full-compliance"
+    litellm_params:
+      guardrail: bedrock
+      mode: pre_call
+      guardrailIdentifier: "htuuyeq3ot6w"
+      guardrailVersion: "DRAFT"
+      aws_region_name: us-east-1
+      disable_exception_on_block: false
+      default_on: false
+
+  # ── OPT-IN: teams with upstream content moderation ───────────────────────────
+  # PII anonymize only (28 types) — content filter OFF, profanity OFF, grounding OFF.
+  # Use when your team already runs its own content-moderation layer upstream
+  # and only wants PII protection at the gateway level. Lower latency.
+  # Select per-request: "guardrails": ["exlerate-pii-only"]
+  - guardrail_name: "exlerate-pii-only"
+    litellm_params:
+      guardrail: bedrock
+      mode: pre_call
+      guardrailIdentifier: "6b5900i8ty9m"
+      guardrailVersion: "DRAFT"
+      aws_region_name: us-east-1
+      disable_exception_on_block: false
+      default_on: false
+
+  # ── OPT-IN: confirmed non-PII public-content workflows ───────────────────────
+  # Content moderation (text + image, MEDIUM strength) — PII OFF, profanity OFF, grounding OFF.
+  # Use for public-content workflows where no personal data flows through
+  # (e.g. content generation from public datasets, image classification pipelines).
+  # Faster — skips PII scanning entirely.
+  # Select per-request: "guardrails": ["exlerate-content-only"]
+  - guardrail_name: "exlerate-content-only"
+    litellm_params:
+      guardrail: bedrock
+      mode: pre_call
+      guardrailIdentifier: "3b0rr0pdqsm7"
+      guardrailVersion: "DRAFT"
+      aws_region_name: us-east-1
+      disable_exception_on_block: false
+      default_on: false

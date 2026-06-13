@@ -1,0 +1,50 @@
+## Identification of Target Variable (Objectives)
+
+**Overview**  
+Selecting the target (response) variable is the first contractual step in any supervised project. The target anchors the entire modeling objective, dictates metric selection, informs feature engineering, and aligns stakeholders on the business question you’re solving. Treat it as a formal requirement with traceability.
+
+**Scenarios & Practices**
+
+- **Business Traceability**
+  - Start from the business decision: what action/outcome needs prediction? Map that to a measurable column (e.g., churn flag, claim amount, time-to-failure).
+  - Document ownership: who creates the label (ops team, finance, analyst)? Capture refresh cadence and data lineage.
+
+- **Data Availability Checks**
+  - Confirm coverage (percentage of records with non-null target). Flag structural missing values (e.g., only available after a long delay).
+  - Validate timestamp alignment: target must not leak future info when training; use event timestamps to enforce prediction windows.
+
+- **Label Granularity**
+  - Decide resolution (customer-level vs transaction-level). Sometimes aggregate labels (monthly churn) are better suited than raw events.
+  - If multiple targets exist, prioritize by business impact and data maturity; consider multi-task setups only when label definitions are stable.
+
+- **Binary vs Multiclass vs Regression**
+  - For classification, ensure positive-class rate is sufficient; consider collapsing rare classes or re-labeling to ordinal/regression if thresholds matter.
+  - For continuous targets, inspect distribution; log-transform or winsorize heavy tails before declaring it a regression target.
+
+- **Target Engineering**
+  - Derived targets: e.g., “customer becomes high value within 90 days” requires constructing future windows; document calculations clearly for reproducibility.
+  - Use rule-based labeling for complex events (e.g., fraud) and maintain a labeling policy file capturing rule versions.
+
+- **Quality & Noise Handling**
+  - Audit label noise: cross-validate with manual reviews, compare to external systems, or use weak-supervision heuristics.
+  - Track label drift: dashboards showing class rate or mean target over time, with alerts when it moves beyond tolerance.
+
+- **Ethical & Compliance Considerations**
+  - Verify label definitions don’t encode protected attributes or policy violations (e.g., “default” defined differently across regions).
+  - Record the legal basis and consent for using the target data.
+
+**Technical Techniques**
+
+- **Profiling & Visualization**
+  - Univariate profiling (nulls, variance) and correlation with candidate features to detect leakage early.
+  - Temporal plots showing label availability vs feature timestamps to verify supervised learning feasibility.
+
+- **Automated Checks**
+  - Data contracts or Great Expectations tests ensuring target columns exist, have valid ranges, and refresh per SLA.
+  - DAG-based pipelines that fail fast if target refresh lags behind features.
+
+- **Versioning**
+  - Assign semantic versions to target definitions; store in metadata tables so models can reference the exact label version used.
+
+- **Fallback Strategies**
+  - If target quality is poor, plan alternatives: proxy targets, semi-supervised approaches, or problem reframing (unsupervised anomalies).

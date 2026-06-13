@@ -1,0 +1,60 @@
+Here’s a knowledge-repository style entry you can drop into your docs or prompts for the “Segmenting Data” capability.
+
+---
+
+### Segmenting Data (Segmentation Module)
+
+**Purpose**  
+Partition datasets into homogeneous subgroups so downstream modeling can tailor treatments, handle heterogeneous behaviors, and surface localized risks/opportunities. Supports CART (Gini) and CHAID (entropy/χ²) splits with configurable minimum segment size and maximum segment count.
+
+**Key Scenarios**
+
+- **Customer risk stratification**: break borrowers into credit-risk tiers where repayment behaviors differ markedly (income bands, utilization patterns, delinquency history).
+- **Operational anomaly isolation**: identify production batches with distinct defect rates or sensor drift patterns.
+- **Marketing personalization**: carve cohorts by engagement propensity or lifetime value before designing offers.
+- **Regulatory or fairness monitoring**: create compliance-sensitive segments (region, demographic, product) to inspect disparate impacts.
+
+**Technical Practices**
+
+1. **Pre-segmentation hygiene**  
+   - Normalize/clip outliers when metrics drive splits; CART is sensitive to extreme values.  
+   - Encode categorical variables with consistent ordering (CHAID handles high-cardinality categoricals but pruning rarely).  
+   - Remove columns with >XX% missing; otherwise treat missingness as separate levels to preserve signal.
+
+2. **Hyperparameter tuning**  
+
+   - `min_segment_size`: set to a business-valid support threshold (e.g., 2-5% of total rows) to avoid brittle micro-segments.  
+
+   - `max_segments`: align with downstream analyst bandwidth (e.g., 8-15 segments for storytelling).  
+
+   - CART-specific: limit tree depth or use cost-complexity pruning to prevent overfitting; prefer Gini for classification balance, entropy when interpretability of information gain matters.  
+   - CHAID-specific: adjust α-split and α-merge levels; stricter α reduces branching and focuses on strong relationships.
+
+3. **Validation & Stability**  
+   - Use cross-validation to test whether segments persist across folds (report segment overlap, e.g., Jaccard similarity).  
+   - Track χ² p-values for CHAID nodes, Gini reduction for CART; flag splits below significance thresholds.  
+   - Monitor drift: rerun segmentation periodically and compare segment compositions with PSI/JS divergence.
+
+4. **Outcome-linked insights**  
+   - For each segment produce: target distribution, key differentiating features, dominant rules (“If tenure < 6 months & utilization > 80% → High risk”).  
+   - Attach segment metadata: size, support %, purity (e.g., default rate), stability metrics.  
+
+   - Highlight actionable levers (e.g., “Segment 3 driven by missing income documentation-route to verification workflow”).
+
+5. **Integration with downstream steps**  
+   - Ensure segment IDs propagate to Feature Engineering for tailored transformations (WOE bins per segment).  
+   - Enable per-segment model training; enforce minimum rows per model to keep variance manageable.  
+   - Feed segment definitions into monitoring dashboards to catch performance regressions per cohort.
+
+6. **Governance & reproducibility**  
+   - Log split parameters, seed, feature list, and time stamp; serialize tree structures for auditability.  
+   - Version control segmentation configs; treat each rerun as a snapshot that can be compared or rolled back.
+
+**Troubleshooting Tips**
+
+- Segments explode in count → tighten max_segments, raise min_segment_size, or increase α-merge (CHAID).  
+- Highly imbalanced splits → force monotonic constraints or merge child nodes with low lift.  
+
+- Segment rules hard to interpret → limit tree depth or perform surrogate splits on the top 2-3 most interpretable variables.  
+
+- Segment drift after new data ingestion → schedule automatic re-training with drift triggers (e.g., PSI > 0.2).

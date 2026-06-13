@@ -1,0 +1,412 @@
+// midas-ai-gateway-langfuse-ORD4
+//
+// Pipeline: helm install/upgrade Langfuse (web + worker) into midas-eks-aigtw-dev.
+// Reads:    deploy/ai_gateway/helm/langfuse/values-midas-${ENVIRONMENT}.yaml
+// Depends:  ORD1 (RDS, Redis, S3, Cognito, langfuse-* secrets, langfuse-alb-config CM, ClickHouse SC),
+//           ORD2/skopeo bootstrap (langfuse, langfuse-worker images in MIDAS ECR),
+//           ORD3 (ClickHouse pods running).
+// Chart:    https://langfuse.github.io/langfuse-k8s, release `langfuse`.
+// Mirrors the upstream Jenkins_langfusedeploy structure (alb-values overlay built from
+// the langfuse-alb-config CM that ORD1 publishes).
+//
+// Bootstrap-mode shortcuts:
+//   * Uses EXLJenkinsCrossAccountRole-BU instead of the dedicated AI-GW role (M-14 pending).
+//   * No HTTPS_PROXY credential — `cicd` agent has corporate egress configured at the host.
+// SOP: .cursor/scratch/sop-capture-2026-04-19_1529.md (Step 33)
+
+pipeline {
+    agent { label 'cicd' }
+
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev'], description: 'Target environment.')
+        choice(name: 'ACTION',      choices: ['install', 'uninstall'], description: 'Helm action.')
+        booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Render without applying.')
+        string(name: 'WEB_REPO',     defaultValue: '811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-langfuse',        description: 'Langfuse web image repo.')
+        string(name: 'WORKER_REPO',  defaultValue: '811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-langfuse-worker', description: 'Langfuse worker image repo.')
+        string(name: 'IMAGE_TAG',    defaultValue: '3.163', description: 'Langfuse web+worker image tag.')
+        string(name: 'CHART_REPO',   defaultValue: 'https://langfuse.github.io/langfuse-k8s', description: 'Langfuse helm chart repo.')
+    }
+
+    environment {
+        AWS_REGION       = 'us-east-1'
+        AWS_ACCOUNT_ID   = '811391286931'
+        // TODO(isolation): swap to EXLJenkinsAIGatewayCrossAccountRole-BU after M-14.
+        AWS_ROLE_ARN     = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/EXLJenkinsCrossAccountRole-BU"
+        EKS_CLUSTER      = "midas-eks-aigtw-${params.ENVIRONMENT}"
+        NAMESPACE        = 'langfuse'
+        RELEASE          = 'langfuse'
+        VALUES_FILE      = "deploy/ai_gateway/helm/langfuse/values-midas-${params.ENVIRONMENT}.yaml"
+        DRY_FLAG         = "${params.DRY_RUN ? '--dry-run' : ''}"
+        WEB_REPO         = "${params.WEB_REPO}"
+        WORKER_REPO      = "${params.WORKER_REPO}"
+        IMAGE_TAG        = "${params.IMAGE_TAG}"
+        CHART_REPO       = "${params.CHART_REPO}"
+    }
+
+    stages {
+        stage('Checkout') { steps { checkout scm } }
+
+        stage('Configure kubectl + helm against dedicated EKS') {
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+                        kubectl get nodes
+                        helm version
+                    '''
+                }
+            }
+        }
+
+        stage('Sync Cognito K8s secrets from Secrets Manager') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        CLIENT_ID=$(aws secretsmanager get-secret-value \
+                            --secret-id "langfuse-cognito-client-id-${EKS_CLUSTER}" \
+                            --region "$AWS_REGION" \
+                            --query SecretString --output text)
+                        CLIENT_SECRET=$(aws secretsmanager get-secret-value \
+                            --secret-id "langfuse-cognito-client-secret-${EKS_CLUSTER}" \
+                            --region "$AWS_REGION" \
+                            --query SecretString --output text)
+                        kubectl -n "$NAMESPACE" patch secret langfuse-cognito-client-id \
+                            -p "{\\\"data\\\":{\\\"langfuse-cognito-client-id\\\":\\\"$(echo -n $CLIENT_ID | base64 -w0)\\\"}}"
+                        kubectl -n "$NAMESPACE" patch secret langfuse-cognito-client-secret \
+                            -p "{\\\"data\\\":{\\\"langfuse-cognito-client-secret\\\":\\\"$(echo -n $CLIENT_SECRET | base64 -w0)\\\"}}"
+                        echo "Cognito secrets synced: client_id=${CLIENT_ID}"
+                        # Pods loaded env vars from the previous secret values at startup; patching
+                        # the K8s secret does NOT restart them. Force a rollout so they pick up the
+                        # new Cognito client_id / client_secret. The Helm stage that follows uses
+                        # --wait, so the new pods will be Ready before the smoke test runs.
+                        kubectl -n "$NAMESPACE" rollout restart deploy/langfuse-web deploy/langfuse-worker || true
+                        kubectl -n "$NAMESPACE" rollout status deploy/langfuse-web --timeout=5m
+                        kubectl -n "$NAMESPACE" rollout status deploy/langfuse-worker --timeout=5m
+                    '''
+                }
+            }
+        }
+
+        stage('Helm install/upgrade Langfuse') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    // Build the ALB ingress overlay from the configmap ORD1 publishes
+                    // (mirrors the upstream pipeline). Keeps the values overlay free of
+                    // environment-specific ARNs/IDs.
+                    sh '''
+                        set -e
+                        helm repo add langfuse-k8s "$CHART_REPO" >/dev/null 2>&1 || true
+                        helm repo update >/dev/null
+
+                        ACM_CERT_ARN=$(kubectl -n "$NAMESPACE" get cm langfuse-alb-config -o jsonpath='{.data.ACM_CERT_ARN}')
+                        SUBNETS=$(kubectl -n "$NAMESPACE" get cm langfuse-alb-config -o jsonpath='{.data.SUBNETS}')
+                        AWS_ALB_SG=$(kubectl -n "$NAMESPACE" get cm langfuse-alb-config -o jsonpath='{.data.AWS_ALB_SG}')
+
+                        TS=$(date +%s)
+                        cat > /tmp/alb-values.yaml <<EOF
+langfuse:
+  ingress:
+    enabled: true
+    annotations:
+      alb.ingress.kubernetes.io/certificate-arn: "$ACM_CERT_ARN"
+      alb.ingress.kubernetes.io/subnets: "$SUBNETS"
+      alb.ingress.kubernetes.io/security-groups: "$AWS_ALB_SG"
+EOF
+
+                        # --wait + --atomic: block until every resource is Ready; roll back
+                        # automatically on any failure. Prevents "Helm said success but the web
+                        # pod is CrashLoopBackOff" regressions.
+                        # IMPORTANT: the langfuse-k8s chart's web Deployment template reads
+                        # `langfuse.web.image.repository` (NOT `langfuse.image.repository`).
+                        # The latter is a shared-fallback that the web template does NOT use.
+                        # Setting only `langfuse.image.repository` leaves the web pods pulling
+                        # `langfuse/langfuse:*` directly from Docker Hub (observed in build #4).
+                        # Both `web` and `worker` must be overridden explicitly.
+                        helm upgrade --install "$RELEASE" langfuse-k8s/langfuse \
+                            --namespace "$NAMESPACE" --create-namespace \
+                            --values "$VALUES_FILE" \
+                            --values /tmp/alb-values.yaml \
+                            --set langfuse.web.image.repository="$WEB_REPO" \
+                            --set langfuse.web.image.tag="$IMAGE_TAG" \
+                            --set langfuse.worker.image.repository="$WORKER_REPO" \
+                            --set langfuse.worker.image.tag="$IMAGE_TAG" \
+                            --set langfuse.web.podAnnotations.deploy-timestamp="$TS" \
+                            --set langfuse.worker.podAnnotations.deploy-timestamp="$TS" \
+                            --wait --atomic --timeout 15m \
+                            ${DRY_FLAG:-}
+                    '''
+                }
+            }
+        }
+
+        stage('Recycle stale langfuse pods that kept the old image') {
+            // WHY THIS STAGE EXISTS
+            //   `helm upgrade --wait --atomic` guarantees that every resource in the
+            //   release becomes Ready — it does NOT guarantee that stuck-Terminating
+            //   pods from earlier ReplicaSets are gone.  In practice we see exactly
+            //   one pod hanging on to the upstream `langfuse/langfuse:3.163` image
+            //   after every rollout; its parent ReplicaSet is at 0 replicas but the
+            //   pod itself is stuck in Terminating (usually because of a slow
+            //   preStop hook or a finalizer the new-RS rollout doesn't force).
+            //
+            //   We force-delete any pod still running a non-MIDAS-ECR image.
+            //   The parent Deployment controller will not respawn a replacement
+            //   because it already has `spec.replicas` up-to-date new-RS pods.
+            //   Safe to re-run.  If nothing is stale this stage is a no-op.
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        echo "=== Inspecting all pod images in $NAMESPACE ==="
+                        kubectl -n "$NAMESPACE" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\\t"}{range .spec.containers[*]}{.image}{" "}{end}{range .spec.initContainers[*]}{.image}{" "}{end}{"\\n"}{end}' | tee /tmp/langfuse-images-before.txt
+
+                        STALE=$(awk '{
+                            pod=$1
+                            for(i=2;i<=NF;i++) if ($i !~ /^811391286931\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com\\//) {print pod; break}
+                        }' /tmp/langfuse-images-before.txt | sort -u)
+
+                        if [ -z "$STALE" ]; then
+                            echo "PASS(early): every pod already runs a MIDAS ECR image — nothing to recycle."
+                            exit 0
+                        fi
+
+                        echo "=== Force-deleting stale pods (grace=0) ==="
+                        echo "$STALE" | while read -r pod; do
+                            [ -z "$pod" ] && continue
+                            echo "--> kubectl delete pod $pod -n $NAMESPACE --force --grace-period=0"
+                            kubectl -n "$NAMESPACE" delete pod "$pod" --force --grace-period=0 --ignore-not-found=true --wait=false || true
+                        done
+
+                        echo "=== Waiting up to 3 min for namespace to settle ==="
+                        kubectl -n "$NAMESPACE" wait --for=condition=Ready pod --all --timeout=3m || {
+                            echo "WARN: some pods did not reach Ready — the post-deploy sanity stage will print residual state."
+                        }
+                    '''
+                }
+            }
+        }
+
+        stage('Post-deploy sanity: confirm every image comes from MIDAS ECR') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        # Fail fast if any running pod references a non-MIDAS-ECR image.
+                        # Scans BOTH spec.containers and spec.initContainers (Langfuse has
+                        # a dozen or so init hooks for DB migration).
+                        echo "=== All container + initContainer images in $NAMESPACE ==="
+                        kubectl -n "$NAMESPACE" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\\n"}{range .spec.containers[*]}  container={.image}{"\\n"}{end}{range .spec.initContainers[*]}  init={.image}{"\\n"}{end}{end}' \
+                          | tee /tmp/langfuse-images.txt
+
+                        BAD=$(grep -oE "(container|init)=[^ ]+" /tmp/langfuse-images.txt | awk -F= '{print $2}' \
+                              | grep -vE '^811391286931\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/' || true)
+                        if [ -n "$BAD" ]; then
+                            echo "FAIL: non-MIDAS-ECR images detected:" >&2
+                            echo "$BAD" >&2
+                            exit 1
+                        fi
+                        echo "PASS: every running image is MIDAS ECR."
+                    '''
+                }
+            }
+        }
+
+        // Langfuse NLB path (see deploy/ai_gateway/terraform/modules-midas/alb.tf):
+        //   midas-eks-aigtw-dev-nlb-langfuse :443 (TCP) → TG midas-eks-aigtw-dev-lf-tg443
+        //   (target type ALB) → midas-aigtw-langfuse-alb-dev :443 (HTTPS, ACM langfuse_cert).
+        // Security: NLB reuses exlerate-langfuse-alb-sg-* — same ingress rules as the ALB
+        // (local.tf alb_ingress_rules_langfuse): TCP 443 from langfuse_alb_cidr_blocks;
+        // TCP 3000 from 10.0.0.0/8 for direct pod-path diagnostics.
+        stage('Validate Langfuse ALB + NLB path (SG, HTTPS, TG health)') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        CLUSTER="midas-eks-aigtw-dev"
+                        ALB_NAME="midas-aigtw-langfuse-alb-dev"
+                        NLB_NAME="${CLUSTER}-nlb-langfuse"
+                        TG_NAME="${CLUSTER}-lf-tg443"
+                        HEALTH_PATH="/api/public/health"
+
+                        echo "=== A) langfuse-alb-config — ACM + SG from ORD1 ConfigMap ==="
+                        ACM_CERT_ARN=$(kubectl -n "$NAMESPACE" get cm langfuse-alb-config -o jsonpath='{.data.ACM_CERT_ARN}')
+                        AWS_ALB_SG=$(kubectl -n "$NAMESPACE" get cm langfuse-alb-config -o jsonpath='{.data.AWS_ALB_SG}')
+                        echo "ACM_CERT_ARN=$ACM_CERT_ARN"
+                        echo "AWS_ALB_SG=$AWS_ALB_SG"
+                        if [ -z "$ACM_CERT_ARN" ] || [ "$ACM_CERT_ARN" = "None" ]; then
+                          echo "FAIL: ACM_CERT_ARN empty — Langfuse Ingress cannot serve HTTPS." >&2
+                          exit 1
+                        fi
+
+                        echo "=== B) Security group — expect inbound TCP 443 (NLB + clients share this SG) ==="
+                        aws ec2 describe-security-groups --region "$AWS_REGION" --group-ids "$AWS_ALB_SG" \
+                          --output json > /tmp/langfuse-sg-full.json
+                        python3 - <<'PY'
+import json
+sg=json.load(open("/tmp/langfuse-sg-full.json"))["SecurityGroups"][0]
+ok=False
+for p in sg.get("IpPermissions", []):
+    if p.get("IpProtocol") not in ("tcp", "6", 6):
+        continue
+    fp, tp = p.get("FromPort"), p.get("ToPort")
+    if fp is None or tp is None:
+        continue
+    if fp <= 443 <= tp:
+        ok = True
+if not ok:
+    raise SystemExit("FAIL: SG has no inbound TCP rule covering port 443 (required for NLB/ALB HTTPS).")
+print("PASS: SG covers TCP 443.")
+PY
+
+                        echo "=== C) Internal ALB — HTTPS listener + certificate ==="
+                        ALB_ARN=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" \
+                          --query "LoadBalancers[?LoadBalancerName=='${ALB_NAME}'].LoadBalancerArn | [0]" --output text)
+                        if [ -z "$ALB_ARN" ] || [ "$ALB_ARN" = "None" ]; then
+                          echo "FAIL: ALB '${ALB_NAME}' not found." >&2
+                          exit 1
+                        fi
+                        LIST443=$(aws elbv2 describe-listeners --region "$AWS_REGION" --load-balancer-arn "$ALB_ARN" \
+                          --query 'Listeners[?Port==`443`].ListenerArn | [0]' --output text)
+                        if [ -z "$LIST443" ] || [ "$LIST443" = "None" ]; then
+                          echo "FAIL: no :443 listener on Langfuse ALB." >&2
+                          exit 1
+                        fi
+                        CERTS=$(aws elbv2 describe-listeners --region "$AWS_REGION" --listener-arns "$LIST443" \
+                          --query 'Listeners[0].Certificates[*].CertificateArn' --output text)
+                        echo "ALB :443 listener certs: $CERTS"
+                        if ! echo "$CERTS" | grep -q "arn:aws:acm:"; then
+                          echo "WARN: expected ACM certificate ARN on HTTPS listener (check controller)." >&2
+                        fi
+
+                        echo "=== D) NLB + target group (bootstrap_phase >= 3 registers ALB into TG) ==="
+                        NLB_ARN=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" --names "$NLB_NAME" \
+                          --query 'LoadBalancers[0].LoadBalancerArn' --output text)
+                        if [ -z "$NLB_ARN" ] || [ "$NLB_ARN" = "None" ]; then
+                          echo "FAIL: NLB '$NLB_NAME' not found." >&2
+                          exit 1
+                        fi
+                        NLB_DNS=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" --load-balancer-arns "$NLB_ARN" \
+                          --query 'LoadBalancers[0].DNSName' --output text)
+                        echo "NLB_DNS=$NLB_DNS"
+
+                        TG_ARN=$(aws elbv2 describe-target-groups --region "$AWS_REGION" --names "$TG_NAME" \
+                          --query 'TargetGroups[0].TargetGroupArn' --output text)
+                        if [ -z "$TG_ARN" ] || [ "$TG_ARN" = "None" ]; then
+                          echo "FAIL: target group '$TG_NAME' not found — ORD1 bootstrap_phase must be >= 2." >&2
+                          exit 1
+                        fi
+                        echo "=== Target health (ALB registered as target on :443) ==="
+                        aws elbv2 describe-target-health --region "$AWS_REGION" --target-group-arn "$TG_ARN" --output table
+
+                        UNHEALTHY=$(aws elbv2 describe-target-health --region "$AWS_REGION" --target-group-arn "$TG_ARN" \
+                          --query 'TargetHealthDescriptions[?TargetHealth.State!=`healthy`]' --output text)
+                        if [ -n "$UNHEALTHY" ]; then
+                          echo "WARN: some targets not healthy yet — printing states above." >&2
+                          # Do not hard-fail: brand-new attachment can take 2–3 minutes
+                          sleep 30
+                          UNHEALTHY2=$(aws elbv2 describe-target-health --region "$AWS_REGION" --target-group-arn "$TG_ARN" \
+                            --query 'TargetHealthDescriptions[?TargetHealth.State!=`healthy`]' --output text)
+                          if [ -n "$UNHEALTHY2" ]; then
+                            echo "FAIL: NLB→ALB target group still has unhealthy targets after wait." >&2
+                            exit 1
+                          fi
+                        fi
+
+                        # === E) Smoke test ===
+                        # Only run if the NLB TG already has a registered target (i.e. ORD1
+                        # phase-3 has previously wired the ALB into the TG). On the FIRST full
+                        # deploy cycle, ORD1 phase-3 runs AFTER ORD4 — so the TG will be empty
+                        # here. Skip gracefully; ORD7 summary will confirm the NLB path once
+                        # ORD1 phase-3 completes.
+                        TARGET_COUNT=$(aws elbv2 describe-target-health --region "$AWS_REGION" \
+                          --target-group-arn "$TG_ARN" \
+                          --query 'length(TargetHealthDescriptions)' --output text 2>/dev/null || echo "0")
+                        if [ "${TARGET_COUNT:-0}" = "0" ] || [ "${TARGET_COUNT:-0}" = "None" ]; then
+                          echo "INFO: NLB TG has no registered targets yet — ORD1 phase-3 will wire the ALB. Skipping smoke test."
+                        else
+                          echo "=== E) Smoke: HTTPS to NLB VIP ($NLB_DNS) $HEALTH_PATH ==="
+                          # Must send Host header: ALB listener rule matches on
+                          # exldecision-ai-dev-aigw-langfuse.exlservice.com — without it the
+                          # default fixed-response fires (404). Accept 200 or 307/302 (Langfuse
+                          # redirects unauthenticated requests to /auth/sign-in).
+                          set +e
+                          curl -sk --connect-timeout 20 --max-time 60 \
+                            -H "Host: exldecision-ai-dev-aigw-langfuse.exlservice.com" \
+                            -o /tmp/langfuse-nlb-smoke.body -w "%{http_code}\n" \
+                            "https://${NLB_DNS}${HEALTH_PATH}" > /tmp/langfuse-curl-out.txt 2>&1
+                          CURL_RC=$?
+                          set -e
+                          CODE=$(tail -1 /tmp/langfuse-curl-out.txt)
+                          echo "HTTP status from NLB→ALB chain: $CODE (curl exit: $CURL_RC)"
+                          if [ "$CODE" = "000" ]; then
+                            echo "FAIL: no response from NLB (connection timeout/refused)" >&2
+                            exit 1
+                          fi
+                          echo "PASS: Langfuse NLB path reachable (HTTP $CODE) on ${HEALTH_PATH}."
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Diagnose Langfuse SSO (logs + Cognito reachability)') {
+            // Read-only diagnostic: prints the AUTH_CUSTOM_* env vars on a running pod,
+            // tails the most recent web pod logs filtered for OAuth / NextAuth, and runs
+            // an in-pod curl against the Cognito discovery + token endpoints used by the
+            // Langfuse OIDC client. Helps root-cause OAuthCallback errors quickly.
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set +e  # diagnostic stage — never fail the build
+                        POD=$(kubectl -n "$NAMESPACE" get pods -l app=web -o jsonpath='{.items[0].metadata.name}')
+                        if [ -z "$POD" ]; then
+                            POD=$(kubectl -n "$NAMESPACE" get pods | awk '/^langfuse-web-/ {print $1; exit}')
+                        fi
+                        echo "=== Pod under inspection: $POD ==="
+
+                        echo "=== AUTH_CUSTOM_* env vars on the pod ==="
+                        kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'env | grep -E "AUTH_CUSTOM_(CLIENT_ID|ISSUER|NAME|CHECKS|ALLOW)|AUTH_TRUST_HOST|AUTH_DISABLE" | sort'
+
+                        echo
+                        echo "=== Last 200 web log lines filtered for OAuth/NextAuth/Cognito ==="
+                        kubectl -n "$NAMESPACE" logs "$POD" --tail=500 2>/dev/null | grep -iE "oauth|nextauth|cognito|callback|discovery|signin|sign-in|auth/error|ERR_OSSL|ECONNRESET|self.signed|cert" | tail -200 || true
+
+                        echo
+                        echo "=== Connectivity from pod → Cognito discovery endpoint ==="
+                        ISSUER=$(kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'echo $AUTH_CUSTOM_ISSUER')
+                        echo "ISSUER=$ISSUER"
+                        kubectl -n "$NAMESPACE" exec "$POD" -- sh -c "curl -sS -o /dev/null -w 'discovery_status=%{http_code} time=%{time_total}s\\n' --max-time 10 $ISSUER/.well-known/openid-configuration" || true
+
+                        echo
+                        echo "=== Connectivity from pod → Cognito token endpoint (hosted UI domain) ==="
+                        DOMAIN_HOST="exldecision-ai.auth.us-east-1.amazoncognito.com"
+                        kubectl -n "$NAMESPACE" exec "$POD" -- sh -c "curl -sS -o /dev/null -w 'token_status=%{http_code} time=%{time_total}s\\n' --max-time 10 https://$DOMAIN_HOST/oauth2/token" || true
+
+                        echo "=== End diagnostic ==="
+                        true
+                    '''
+                }
+            }
+        }
+
+        stage('Helm uninstall Langfuse') {
+            when { expression { params.ACTION == 'uninstall' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        helm uninstall "$RELEASE" --namespace "$NAMESPACE" ${DRY_FLAG:-} || true
+                    '''
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,101 @@
+## Model Training Knowledge Notes
+
+
+
+**Scope**  
+
+Global vs segmented model builds supporting XGBoost, LightGBM, CatBoost, Random Forest, Logistic Regression, Gradient Boosting. Key tunables: `max_depth`, `min_child_weight`, `gamma`, `learning_rate`, `n_estimators`.
+
+
+
+### 1. Framing Global vs Segmented Training
+
+- **Global models** capture overall signal; best when dataset is homogeneous or segmentation adds little lift. Use as a baseline to quantify incremental value of segments.
+
+- **Segment-level models** shine when behavior differs across cohorts (e.g., geography, customer tier). Ensure minimum segment size (≥10× parameter count or ≥1,000 rows) to avoid variance. Use automated gating rules that fall back to the global model when a segment lacks coverage.
+
+
+
+### 2. Data Handling Before Training
+
+- Align feature engineering pipelines between global and segmented runs; inconsistency creates leakage or drift.
+
+- Standardize train/validation splits so each segment inherits the same temporal or stratified strategy.
+
+- Rebalance classes per segment; some cohorts may flip the class distribution.
+
+
+
+### 3. Algorithm-Specific Guidance
+
+- **XGBoost / LightGBM / Gradient Boosting**
+
+  - Control tree complexity with `max_depth` and `min_child_weight` (XGB)/`min_child_samples` (LGBM). For segmented models start shallower (`max_depth=3-5`) to avoid overfitting scarce data.
+
+  - Use learning-rate schedules: start at 0.05-0.1 for global, 0.02-0.05 for segments; pair with higher `n_estimators`.
+
+  - `gamma` (XGB) or `min_split_gain` (LGBM) acts as a pruning threshold-tighten it for noisy segments.
+
+  - For LightGBM categorical handling, prefer `max_cat_to_onehot` tuning per segment to respect cardinality.
+
+- **CatBoost**
+
+  - Useful when segment contains high-cardinality categoricals. Enable ordered boosting to reduce target leakage; set `depth` lower for small segments.
+
+  - Let CatBoost auto-handle class weights but audit per-segment confusion matrices.
+
+- **Random Forest**
+
+  - Provide baselines: robust to noisy features, but less performant when interactions matter. Use higher `max_depth` globally; reduce depth per segment.
+
+  - `n_estimators` ≥ 300 globally, 200 per segment to stabilize variance.
+
+- **Logistic Regression**
+
+  - Great for interpretable baselines; run with elastic-net regularization. For segments, tune `C` separately because feature sparsity shifts.
+
+  - Monitor multicollinearity via VIF as part of upstream step; feed cleaned features only.
+
+- **Gradient Boosting (sklearn)**
+
+  - More sensitive to learning-rate/iteration combos; for segments stick to “slow learning, more estimators” rule (0.03, 400+ trees).
+
+
+
+### 4. Parameter Management
+
+- Maintain a parameter template per algorithm with “global default” and “segment override” columns; log each run’s effective parameters for audit.
+
+- Tie `n_estimators` and `learning_rate`: halving learning rate should roughly double estimators to maintain fit.
+
+- Use Bayesian Optimization or Random Search results as seeds but constrain search bounds per segment to prevent runaway depth or min-child values.
+
+
+
+### 5. Evaluation Workflow
+
+- Always compute metrics at both global and segment level so you can compare uplift. For classification, track AUC-ROC, F1, Recall, Precision, Accuracy, Log Loss. For segments, prefer F1 or Precision/Recall depending on business tolerance.
+
+- Enforce cross-validation per segment (k-fold or grouped) when data permits; otherwise use temporal validation.
+
+- Store feature importance (gain, split count) per segment to feed explainability modules. Compare with global model to detect divergent drivers.
+
+
+
+### 6. Operational Considerations
+
+- Implement automatic fallback: if a segment model underperforms global baseline or lacks data, route inference to the global model.
+
+- Version control every trained artifact with tags like `model_training/global/lightgbm/v3`, `model_training/segment=Retail/xgboost/v7`.
+
+- Log training metadata (data snapshot hash, parameters, metrics) into a registry for reproducibility.
+
+
+
+### 7. Troubleshooting Scenarios
+
+- **Segment Overfitting**: validation AUC collapses while training AUC stays high → reduce `max_depth`, increase `min_child_weight`, enable subsampling (`subsample`, `colsample_bytree`).
+
+- **Underperforming Global Model**: if segments show strong gains, inspect feature distribution shifts; consider hierarchical models (global + segment residuals).
+
+- **Parameter Instability**: if auto-tuning picks extreme values, impose priors: `max_depth` ∈ [2, 8], `gamma` ≤ 5, `learning_rate` ≥ 0.01.

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" role="img" aria-label="EXLdecision Atlas  a guided map of the EXLdecision solution">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0a0a"/>
+      <stop offset="1" stop-color="#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="300" fill="url(#bg)"/>
+  <rect width="1200" height="300" fill="url(#grid)"/>
+
+  <g transform="translate(60,80)">
+    <rect x="0" y="0" width="44" height="44" rx="10" fill="url(#brand)"/>
+    <text x="64" y="14" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="13" letter-spacing="3" fill="#a5b4fc" font-weight="600">EXLDECISION  ·  ATLAS</text>
+    <text x="64" y="60" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="44" font-weight="700" fill="#fafafa">A guided map of the EXLdecision solution.</text>
+    <text x="64" y="100" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="18" fill="#cbd5e1">A standalone, browser-only React SPA. Open it in a tab next to this page.</text>
+  </g>
+
+  <g transform="translate(60,210)" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="13" fill="#e2e8f0">
+    <g>
+      <rect x="0" y="0" width="160" height="36" rx="8" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="23" fill="#a5b4fc" font-weight="600">Vite · React · TS</text>
+    </g>
+    <g transform="translate(176,0)">
+      <rect x="0" y="0" width="160" height="36" rx="8" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="23" fill="#a5b4fc" font-weight="600">Tailwind · shadcn</text>
+    </g>
+    <g transform="translate(352,0)">
+      <rect x="0" y="0" width="180" height="36" rx="8" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="23" fill="#a5b4fc" font-weight="600">Zod · TanStack Query</text>
+    </g>
+    <g transform="translate(548,0)">
+      <rect x="0" y="0" width="180" height="36" rx="8" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="23" fill="#a5b4fc" font-weight="600">Light + Dark themes</text>
+    </g>
+  </g>
+</svg>

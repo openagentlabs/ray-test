@@ -1,0 +1,71 @@
+# Per-Dockerfile dockerignore for the MIDAS control-api zero-JFrog build.
+#
+# Docker 23+ / BuildKit reads `<Dockerfile>.dockerignore` (next to the
+# Dockerfile) in preference to `<context-root>/.dockerignore`. The repo-root
+# `.dockerignore` excludes `deploy/` entirely (it is tuned for GraphRAG, which
+# does not need any deploy assets) and ORD6 Build #1 failed with:
+#
+#   COPY deploy/ai_gateway/vendored-shims/exlerate_logging: not found
+#
+# This file lists ONLY true exclusions — noisy subtrees that bloat context but
+# are not referenced by the Dockerfile. The three paths the Dockerfile COPYs
+# (ai_gateway/src/aigtw_c1_api, deploy/ai_gateway/vendored-shims,
+# deploy/ai_gateway/CI/requirements-c1-api-midas.txt) are left untouched.
+
+# Heavy sibling trees we never ship into the image.
+frontend/
+backend/
+.git/
+.cursor/
+.vscode/
+.idea/
+node_modules/
+
+# Deploy subtrees we DON'T need for the c1-api image (keep only shims + CI reqs).
+deploy/ai_gateway/terraform/
+deploy/ai_gateway/helm/
+deploy/ai_gateway/jenkinsfiles/
+deploy/ai_gateway/image-bootstrap/
+deploy/ai_gateway/scripts/
+deploy/ai_gateway/docs/
+deploy/ai_gateway/jenkins-job-templates/
+deploy/*.tf
+deploy/*.hcl
+deploy/ecs-app/
+
+# ai_gateway sibling trees outside the c1-api source.
+ai_gateway/src/aigtw_c2_proxy/
+ai_gateway/src/aigtw_inference_api/
+ai_gateway/CI/
+ai_gateway/helm/
+ai_gateway/terraform/
+ai_gateway/infra/
+ai_gateway/deploy/
+ai_gateway/config/
+ai_gateway/dev/
+ai_gateway/scripts/
+ai_gateway/docs/
+ai_gateway/tests/
+ai_gateway/.git/
+ai_gateway/.github/
+ai_gateway/.githooks/
+ai_gateway/CI.md
+ai_gateway/Makefile
+ai_gateway/pytest.ini
+ai_gateway/sonar-project.properties
+
+# Python / editor hygiene.
+# Note: *.md is deliberately NOT excluded — c1-api's pyproject.toml references
+# `readme = "README.md"`, so dropping md files breaks hatchling metadata gen
+# (caught as Build #2 root-cause: `OSError: Readme file does not exist`).
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+**/*.egg-info/
+**/.DS_Store

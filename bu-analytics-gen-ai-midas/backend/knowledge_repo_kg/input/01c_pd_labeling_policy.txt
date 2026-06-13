@@ -1,0 +1,32 @@
+kb:
+  pd_labeling_policy:
+    early_default_indicators:
+      ever_30: Ever 30+ DPD in performance window
+      fpd_30: 30+ DPD in first 3 months
+      fpd_60: 60+ DPD in first 6 months
+    label_computation:
+      python_template: "def compute_pd_label(df, as_of_date, perf_window_months, dpd_thresh=90):\n\
+        \    \"\"\"Compute PD label based on multiple default triggers\"\"\"\n   \
+        \ perf_end = as_of_date + pd.DateOffset(months=perf_window_months)\n    \n\
+        \    # Primary: DPD threshold\n    dpd_default = df.groupby('account_id')['dpd'].max()\
+        \ >= dpd_thresh\n    \n    # Secondary: Other events\n    chargeoff_default\
+        \ = df['chargeoff_date'] <= perf_end\n    bankruptcy_default = df['bankruptcy_date']\
+        \ <= perf_end\n    \n    # Combine\n    pd_label = (dpd_default | chargeoff_default\
+        \ | bankruptcy_default).astype(int)\n    \n    return pd_label\n"
+      sql_template: "CASE \n  WHEN MAX(dpd) >= <DPD_THRESH> THEN 1\n  WHEN chargeoff_date\
+        \ <= DATE_ADD(<AS_OF_DATE>, INTERVAL <PERF_WIN> MONTH) THEN 1\n  WHEN bankruptcy_date\
+        \ <= DATE_ADD(<AS_OF_DATE>, INTERVAL <PERF_WIN> MONTH) THEN 1\n  WHEN fraud_flag\
+        \ = 1 AND fraud_date <= DATE_ADD(<AS_OF_DATE>, INTERVAL <PERF_WIN> MONTH)\
+        \ THEN 1\n  ELSE 0\nEND as pd_label\n"
+    rule:
+      exclusions:
+      - Technical defaults (system errors)
+      - Disputed transactions pending resolution
+      - Natural disasters (force majeure)
+      primary_definition: "Account reaches \u2265<DPD_THRESH|90> DPD within performance\
+        \ window"
+      secondary_triggers:
+      - Chargeoff within window
+      - Bankruptcy filing within window
+      - Fraud designation within window
+      - Deceased status within window

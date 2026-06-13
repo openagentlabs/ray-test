@@ -1,0 +1,61 @@
+# router.svc — gRPC control plane + ext_authz. See core/config_env.py for env overrides.
+
+[app]
+service_name = "router-svc"
+log_level = "DEBUG"
+
+[api_service]
+host = "0.0.0.0"
+port = 8804
+
+[ext_authz]
+host = "127.0.0.1"
+port = 9000
+
+[kubernetes]
+enabled = true
+namespace = "routing"
+pod_label_selector = "app=backend-pool-node"
+headless_service_name = "backend-pool-node"
+backend_port = 8080
+use_in_cluster_config = true
+
+[reconciliation]
+enabled = true
+interval_sec = 30.0
+
+[reaper]
+enabled = true
+interval_sec = 60.0
+idle_ttl_sec = 900.0
+
+[auth]
+dev_mode = true
+dev_sub_header = "x-test-sub"
+session_cookie_name = "pod_manager_user"
+
+[login_pod_pool]
+# Host:port for Envoy DFP when user has no backend lease (Docker Compose service name).
+routing_upstream = "login-pod:8080"
+
+[cognito]
+enabled = false
+issuer = ""
+audience = ""
+jwks_uri = ""
+
+[envoy_management]
+enabled = false
+admin_host = "127.0.0.1"
+admin_port = 9901
+
+[postgres]
+# DSN for the shared backend Postgres. Leave empty to use the DATABASE_URL env var.
+dsn = ""
+# Dedicated schema that owns every routing-tier table (isolated from the backend's public schema).
+schema_name = "pod_manager"
+# Prefix applied to every routing-tier table (e.g. pm_backend_pool).
+table_prefix = "pm_"
+pool_min = 1
+pool_max = 10
+command_timeout_sec = 10.0

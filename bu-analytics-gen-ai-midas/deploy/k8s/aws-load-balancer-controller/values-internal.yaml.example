@@ -1,0 +1,17 @@
+# AWS Load Balancer Controller - internal ALB only (copy to values-internal.yaml; do not commit secrets).
+# Replace REPLACE_* placeholders after: cd deploy/ecs-app && terraform output
+
+region: us-east-1
+
+vpcId: REPLACE_VPC_ID
+clusterName: REPLACE_CLUSTER_NAME
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: REPLACE_IRSA_ROLE_ARN
+
+# Keep targets as pod IP (typical for AL2022 / AL2 nodes + Amazon VPC CNI).
+defaultTargetType: ip
+
+# Optional: restrict subnets via annotations on each Ingress instead of relying on tags alone.

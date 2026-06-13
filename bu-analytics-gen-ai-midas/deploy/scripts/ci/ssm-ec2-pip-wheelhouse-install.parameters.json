@@ -1,0 +1,58 @@
+{
+  "commands": [
+    "set -eux",
+    "export AWS_DEFAULT_REGION=us-east-1",
+    "BUNDLE_TAG=MIDAS_EC2_MT_TEST",
+    "S3_BUCKET=keith-bucket-test-001",
+    "S3_WHEELS=s3://${S3_BUCKET}/pip-packages/",
+    "S3_APP=s3://${S3_BUCKET}/midas-ec2-mt-test/app/",
+    "S3_AWSCLI=s3://${S3_BUCKET}/midas-ec2-mt-test/awscli/",
+
+    "echo [${BUNDLE_TAG}] Syncing pip wheelhouse from S3",
+    "sudo rm -rf /tmp/pip-packages",
+    "sudo mkdir -p /tmp/pip-packages",
+    "sudo aws s3 sync ${S3_WHEELS} /tmp/pip-packages/",
+
+    "echo [${BUNDLE_TAG}] Installing python3-venv if not present",
+    "sudo apt-get update -qq",
+    "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv python3-pip",
+
+    "echo [${BUNDLE_TAG}] Recreating /ec2-mt-test/.venv",
+    "sudo rm -rf /ec2-mt-test/.venv",
+    "sudo mkdir -p /ec2-mt-test",
+    "sudo python3 -m venv /ec2-mt-test/.venv",
+
+    "echo [${BUNDLE_TAG}] Upgrading pip tooling from wheelhouse",
+    "sudo /ec2-mt-test/.venv/bin/python -m pip install --no-index --find-links=/tmp/pip-packages -U pip setuptools wheel",
+
+    "echo [${BUNDLE_TAG}] Installing requirements from wheelhouse",
+    "sudo /ec2-mt-test/.venv/bin/pip install --no-index --find-links=/tmp/pip-packages -r /tmp/pip-packages/requirements-ec2.txt",
+
+    "echo [${BUNDLE_TAG}] Syncing app code from S3",
+    "sudo aws s3 sync ${S3_APP} /ec2-mt-test/",
+
+    "echo [${BUNDLE_TAG}] Installing AWS CLI v2 from bundle (offline)",
+    "sudo rm -rf /tmp/awscli-bundle",
+    "sudo mkdir -p /tmp/awscli-bundle",
+    "sudo aws s3 sync ${S3_AWSCLI} /tmp/awscli-bundle/",
+    "if [ -f /tmp/awscli-bundle/awscliv2.zip ]; then sudo unzip -qo /tmp/awscli-bundle/awscliv2.zip -d /tmp/awscli-bundle && sudo /tmp/awscli-bundle/aws/install --update; fi",
+
+    "echo [${BUNDLE_TAG}] Smoke test: top-level library imports",
+    "sudo /ec2-mt-test/.venv/bin/python -c \"import pandas; import numpy; import sklearn; import xgboost; import lightgbm; import catboost; import shap; import statsmodels; import tqdm; print('top_level_imports_ok')\"",
+
+    "echo [${BUNDLE_TAG}] Smoke test: pipeline-specific submodule imports",
+    "sudo /ec2-mt-test/.venv/bin/python -c \"from sklearn.model_selection import train_test_split; from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, r2_score, mean_squared_error; from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor; from sklearn.linear_model import LogisticRegression, LinearRegression; from statsmodels.stats.outliers_influence import variance_inflation_factor; from statsmodels.tools.tools import add_constant; print('submodule_imports_ok')\"",
+
+    "echo [${BUNDLE_TAG}] Smoke test: run_batch.py --help",
+    "cd /ec2-mt-test && sudo /ec2-mt-test/.venv/bin/python run_batch.py --help",
+
+    "echo [${BUNDLE_TAG}] Writing manifest",
+    "INSTALL_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "AWSCLI_VER=$(aws --version 2>&1 | head -1 || echo unknown)",
+    "PY_VER=$(sudo /ec2-mt-test/.venv/bin/python --version 2>&1 || echo unknown)",
+    "sudo tee /ec2-mt-test/.midas-ec2-mt-test-manifest.json > /dev/null << MANIFEST\n{\"bundle_id\": \"MIDAS_EC2_MT_TEST\", \"component_tag\": \"midas:component=ec2-mt-test\", \"installed_at\": \"${INSTALL_TS}\", \"python\": \"${PY_VER}\", \"awscli\": \"${AWSCLI_VER}\", \"s3_wheels\": \"${S3_WHEELS}\", \"s3_app\": \"${S3_APP}\", \"s3_awscli\": \"${S3_AWSCLI}\"}\nMANIFEST",
+
+    "echo [${BUNDLE_TAG}] Install complete",
+    "cat /ec2-mt-test/.midas-ec2-mt-test-manifest.json"
+  ]
+}

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: midas-ec2-mt-test-svc
+description: One-shot ML batch test pod for MIDAS. Copies ec2-mt-test app code into
+  the container at image-build time, runs run_batch.py, uploads the data folder to
+  S3, then exits. Deployed as a Kubernetes Job (not a long-lived Deployment).
+type: application
+version: 0.1.0
+appVersion: "1.0"

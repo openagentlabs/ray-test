@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EXL Decision — Microservice Software Diagram</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#e8eef5;--card:#fff;--border:#cbd5e1;--accent:#2563eb;--accent2:#7c3aed;
+      --text:#1e293b;--muted:#64748b;--font:'Segoe UI','Inter',system-ui,sans-serif;
+      --new:#059669;--ref:#d97706;
+
+      /* zone fills */
+      --z-mesh:#ede9fe; --z-mesh-b:#7c3aed;
+      --z-identity:#fdf0d5; --z-identity-b:#d4a820;
+      --z-biz:#d5ecd8; --z-biz-b:#50a060;
+      --z-agent:#f5d5f5; --z-agent-b:#c060b8;
+      --z-data:#fde8d5; --z-data-b:#d47820;
+      --z-compute:#d5eeee; --z-compute-b:#20a0a0;
+      --z-stores:#ede0f5; --z-stores-b:#9060c0;
+      --z-platform:#e0f0fa; --z-platform-b:#93c5fd;
+      --z-port:#eee8f8; --z-port-b:#9060c0;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+    .page-wrap{display:flex;min-height:100vh}
+    .sidebar{width:230px;min-width:230px;background:#1a1d27;border-right:1px solid #2e3350;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0}
+    .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid #2e3350;margin-bottom:16px}
+    .sidebar-logo h1{font-size:15px;font-weight:800;color:#4f8ef7}
+    .sidebar-logo p{font-size:10px;color:#94a3b8;margin-top:3px}
+    .nav-section{padding:6px 20px 2px;font-size:9px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
+    .nav-item{display:block;padding:6px 20px;color:#94a3b8;text-decoration:none;font-size:12px;border-left:2px solid transparent;transition:all .15s}
+    .nav-item:hover{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.07)}
+    .nav-item.active{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.1);font-weight:700}
+    .main{flex:1;overflow-x:auto;background:var(--bg)}
+    .hero{background:#1e293b;border-bottom:3px solid var(--accent);padding:22px 40px 18px}
+    .hero h1{font-size:22px;font-weight:900;color:#fff;letter-spacing:1px;text-transform:uppercase}
+    .hero p{color:#94a3b8;margin-top:7px;max-width:980px;font-size:12px}
+    .content{padding:22px 28px 70px;min-width:1320px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    a.link{color:#2563eb;text-decoration:none;font-weight:800}
+    a.link:hover{text-decoration:underline}
+
+    .hint-bar{background:#fff8e1;border-bottom:1px solid #fbbf24;padding:7px 40px;font-size:11px;color:#78350f;display:flex;gap:8px;align-items:center}
+    .hint-bar strong{color:#b45309}
+
+    .legend{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);font-size:11px}
+    .leg{display:flex;align-items:center;gap:6px}
+    .leg-b{width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(0,0,0,.12)}
+    .pill{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:900;padding:2px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:#f1f5f9;color:#475569}
+    .pill.new{background:#dcfce7;border-color:#6ee7b7;color:#14532d}
+    .pill.ref{background:#fef9c3;border-color:#fcd34d;color:#713f12}
+
+    /* diagram scaffolding */
+    #diagram{position:relative}
+    #arrow-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:8}
+    .grid{display:grid;grid-template-columns:320px 1fr 320px;gap:14px;align-items:start}
+    .zone{border-radius:14px;border:2px solid;padding:12px 12px 14px;position:relative;background:#fff}
+    .zone-title{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;padding:2px 14px;border-radius:10px}
+    .stack{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    .svc{
+      border-radius:10px;border:1.5px solid rgba(0,0,0,.15);padding:10px 10px;cursor:pointer;user-select:none;
+      transition:filter .14s,transform .12s,box-shadow .15s;text-align:left;background:#fff;
+      box-shadow:0 1px 3px rgba(0,0,0,.07)
+    }
+    .svc:hover{filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 5px 18px rgba(0,0,0,.14)}
+    .svc .top{display:flex;align-items:flex-start;gap:10px}
+    .svc .ico{font-size:18px;line-height:1}
+    .svc .name{font-size:12px;font-weight:900;color:#0f172a}
+    .svc .sub{font-size:10px;color:#475569;margin-top:1px;line-height:1.35}
+    .svc .meta{margin-left:auto;text-align:right}
+    .tag{display:inline-block;font-size:9px;font-weight:900;padding:1px 8px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:#f1f5f9;color:#475569}
+    .tag.new{background:#dcfce7;border-color:#6ee7b7;color:#14532d}
+    .tag.ref{background:#fef9c3;border-color:#fcd34d;color:#713f12}
+    .tag.grpc{background:#ede9fe;border-color:#c4b5fd;color:#5b21b6}
+    .tag.rest{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
+    .lines{margin-top:8px;font-size:10px;color:#334155;line-height:1.6}
+    .lines code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono',monospace;font-size:10px;background:#f1f5f9;border:1px solid #cbd5e1;padding:0 5px;border-radius:5px;color:#334155}
+
+    /* mesh ribbon */
+    .mesh-band{
+      margin:12px 0 14px;
+      border:2px dashed var(--z-mesh-b);
+      background:rgba(237,233,254,.55);
+      border-radius:12px;
+      padding:10px 14px;
+      color:#5b21b6;
+      font-size:11px;
+      display:flex;gap:10px;align-items:center;justify-content:space-between;
+    }
+    .mesh-band strong{font-weight:900}
+
+    /* tooltip */
+    #tt{position:fixed;pointer-events:none;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;font-size:11px;color:#e2e8f0;max-width:420px;box-shadow:0 8px 28px rgba(0,0,0,.4);z-index:9999;display:none;line-height:1.65}
+    #tt .tt-t{font-weight:800;font-size:12px;margin-bottom:4px;color:#fff}
+    #tt .tt-b{display:inline-block;font-size:9px;font-weight:900;padding:1px 7px;border-radius:8px;margin-bottom:6px;margin-right:4px}
+    #tt .tt-r{color:#94a3b8;margin-bottom:2px}
+    #tt .tt-l{margin-top:6px;color:#4f8ef7;font-size:10px}
+
+    /* details panel */
+    #detail-panel{display:none;margin-top:18px;background:#fff;border:2px solid var(--accent);border-radius:14px;padding:18px 22px 22px;box-shadow:0 4px 24px rgba(37,99,235,.13);position:relative}
+    #detail-panel .close{position:absolute;top:12px;right:14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;color:#64748b;display:flex;align-items:center;justify-content:center}
+    #detail-panel h2{font-size:17px;font-weight:900;color:#1e293b;margin-bottom:6px}
+    #detail-panel .badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    #detail-panel .badge{font-size:10px;font-weight:900;padding:2px 10px;border-radius:10px;background:#f1f5f9;border:1px solid #cbd5e1;color:#475569}
+    #detail-panel .badge.new{background:#dcfce7;border-color:#6ee7b7;color:#14532d}
+    #detail-panel .badge.ref{background:#fef9c3;border-color:#fcd34d;color:#713f12}
+    #detail-panel .sec{margin-top:10px}
+    #detail-panel .sec h3{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid #e2e8f0}
+    #detail-panel p,#detail-panel li{font-size:12px;color:#374151;line-height:1.65;margin-bottom:3px}
+    #detail-panel ul{padding-left:16px}
+    #detail-panel code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono',monospace;font-size:11px;background:#f1f5f9;border:1px solid #cbd5e1;padding:1px 6px;border-radius:6px}
+    #detail-panel .jump{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 14px;background:var(--accent);color:#fff;border-radius:8px;font-size:11px;font-weight:900;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <nav class="sidebar">
+  <div class="sidebar-logo">
+        <h1>EXL Decision</h1>
+        <p>Architecture Explorer</p>
+      </div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../../future/developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="../../future/requirements/index.html">📜 Requirements</a>
+      <a class="nav-item" href="../../future/decisions/index.html">⚖️ Architectural decisions</a>
+
+      <div class="nav-section">This diagram</div>
+      <a class="nav-item active" href="index.html">🧩 Final — Microservice Software Diagram</a>
+</nav>
+
+    <main class="main">
+      <div class="hero">
+        <h1>Microservice Software Diagram</h1>
+        <p>
+          Developer-centric microservice view aligned with the <a class="link" href="../developer/index.html">Developer Architecture Diagram</a> and
+          <a class="link" href="../architecture.html">SVG Component Diagram</a> (final tree). East–west traffic uses <strong>REST/JSON over HTTP</strong> in the Istio mesh (ADR-FS-001); purple tags show in-cluster <strong>REST</strong> calls.
+          Colour-coded <span class="pill new">NEW</span> vs <span class="pill ref">REFACTOR</span>. <strong>agent-platform-service</strong> (ADR-FS-005, REQ-FS-044–049). Cross-cutting <strong>Istio mesh</strong> (mTLS).
+        </p>
+      </div>
+      <div class="hint-bar">
+        <strong>🖱️ Hover</strong> for a quick summary &nbsp;·&nbsp;
+        <strong>🖱️ Click</strong> to expand full details below &nbsp;·&nbsp;
+        <strong>🔗</strong> “Open in System Layer Diagram” jumps to canonical context
+      </div>
+
+      <div class="content">
+        <div class="legend">
+          <strong style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px">Legend:</strong>
+          <div class="leg"><span class="pill new">NEW</span> net-new service or component</div>
+          <div class="leg"><span class="pill ref">REFACTOR</span> moved/modified from monolith</div>
+          <span style="width:1px;background:#cbd5e1;height:18px;display:inline-block"></span>
+          <div class="leg"><span class="tag rest">REST</span> external / edge</div>
+          <div class="leg"><span class="tag grpc">REST</span> in-cluster (Istio mesh)</div>
+        </div>
+
+        <div id="diagram">
+          <svg id="arrow-svg">
+            <defs>
+              <marker id="a-rest" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#2563eb"/></marker>
+              <marker id="a-grpc" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#7c3aed"/></marker>
+            </defs>
+          </svg>
+
+          <div class="mesh-band">
+            <div>
+              <strong>🕸️ Istio service mesh (cross-cutting)</strong>
+              <span style="color:#6d28d9">mTLS STRICT · AuthorizationPolicy (service-to-service) · VirtualService/DestinationRule</span>
+            </div>
+            <div style="color:#64748b;font-size:10px">All pods have Envoy sidecars</div>
+          </div>
+
+          <div class="grid">
+            <!-- left column: identity / biz -->
+            <div class="zone" style="border-color:var(--z-identity-b);background:var(--z-identity)">
+              <div class="zone-title" style="background:var(--z-identity-b);color:#6b3000">Identity Auth RBAC</div>
+              <div class="stack">
+                <div class="svc" id="ms-identity"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="identity-service"
+                     data-tt-badge="REFACTOR"
+                     data-tt-summary="AuthN: Cognito PKCE, MIDAS session JWT, JWKS, sessions."
+                     data-detail-title="identity-service"
+                     data-detail-status="ref"
+                     data-detail-desc="Authentication service. Owns Cognito PKCE exchange, MIDAS session JWT issuance, JWKS publishing, session lifecycle, and user provisioning."
+                     data-detail-components="REST: api/login_routes.py · api/session_routes.py · api/jwks_routes.py | gRPC: grpc/identity_servicer.py | Domain: services/cognito_service.py · services/session_service.py · services/user_service.py | Models: models/schemas.py"
+                     data-detail-endpoints="REST: GET /api/v1/identity/login-url, /callback, /me, /jwks; POST /api/v1/identity/refresh, /logout | gRPC: VerifyToken, GetUser"
+                     data-detail-tech="AWS Cognito (PrivateLink) · Redis session:{jti} TTL=3600s · DynamoDB midas-users · Secrets Manager /midas/identity/*"
+                     data-detail-notes="Does NOT decide permissions; downstream services call authz-service. Istio validates JWTs using JWKS from this service.">
+                  <div class="top">
+                    <div class="ico">🪪</div>
+                    <div>
+                      <div class="name">identity-service</div>
+                      <div class="sub">Cognito PKCE · Sessions · JWKS</div>
+                    </div>
+                    <div class="meta">
+                      <span class="tag ref">REFACTOR</span><br/>
+                      <span class="tag rest">REST</span> <span class="tag grpc">REST</span>
+                    </div>
+                  </div>
+                  <div class="lines">
+                    <div><code>api/</code> login_routes · session_routes · jwks_routes</div>
+                    <div><code>grpc/</code> identity_servicer</div>
+                    <div><code>services/</code> cognito_service · session_service</div>
+                  </div>
+                </div>
+
+                <div class="svc" id="ms-authz"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="authz-service (NEW)"
+                     data-tt-badge="NEW"
+                     data-tt-summary="RBAC engine. Hot path is gRPC CheckPermission."
+                     data-detail-title="authz-service"
+                     data-detail-status="new"
+                     data-detail-desc="Authorisation service. Single source of truth for RBAC roles, permissions, and user-role assignments. All services call CheckPermission before protected actions."
+                     data-detail-components="REST (admin): api/roles_routes.py | gRPC: grpc/authz_servicer.py | Domain: services/rbac_service.py · services/cache_service.py | Models: models/schemas.py"
+                     data-detail-endpoints="gRPC: CheckPermission(user_id, action, resource_type, resource_id) → {allowed,reason}; GetUserPermissions(user_id) | REST (admin): /api/v1/authz/roles and role assignments"
+                     data-detail-tech="DynamoDB midas-roles/midas-permissions/midas-user-roles · Redis authz:{uid}:{resource_type} TTL=300s"
+                     data-detail-notes="No service implements local permission logic. Istio AuthorizationPolicy is complementary (service-to-service), while authz-service is user-to-resource RBAC.">
+                  <div class="top">
+                    <div class="ico">🛂</div>
+                    <div>
+                      <div class="name">authz-service</div>
+                      <div class="sub">RBAC · CheckPermission</div>
+                    </div>
+                    <div class="meta">
+                      <span class="tag new">NEW</span><br/>
+                      <span class="tag grpc">REST</span>
+                    </div>
+                  </div>
+                  <div class="lines">
+                    <div><code>grpc/</code> authz_servicer</div>
+                    <div><code>services/</code> rbac_service · cache_service</div>
+                    <div><code>DDB</code> roles/permissions/user-roles</div>
+                  </div>
+                </div>
+
+                <div class="svc" id="ms-project"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="project-service"
+                     data-tt-badge="REFACTOR"
+                     data-tt-summary="Project CRUD. Anchor entity for datasets and training runs."
+                     data-detail-title="project-service"
+                     data-detail-status="ref"
+                     data-detail-desc="Project lifecycle service. Owns project records and provides project lookup APIs."
+                     data-detail-components="REST: api/project_routes.py | gRPC: grpc/project_servicer.py | Domain: services/project_service.py | Models: models/schemas.py"
+                     data-detail-endpoints="REST: /api/v1/projects (GET/POST), /api/v1/projects/{id} (GET/PUT/DELETE) | gRPC: GetProject, ListProjectsForUser"
+                     data-detail-tech="DynamoDB midas-projects (GSI user_id)"
+                     data-detail-notes="Other services never read project tables directly; they call this service.">
+                  <div class="top">
+                    <div class="ico">📁</div>
+                    <div>
+                      <div class="name">project-service</div>
+                      <div class="sub">Project CRUD</div>
+                    </div>
+                    <div class="meta">
+                      <span class="tag ref">REFACTOR</span><br/>
+                      <span class="tag rest">REST</span> <span class="tag grpc">REST</span>
+                    </div>
+                  </div>
+                  <div class="lines">
+                    <div><code>api/</code> project_routes</div>
+                    <div><code>grpc/</code> project_servicer</div>
+                    <div><code>DDB</code> midas-projects</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- center column: fabrics + portability -->
+            <div>
+              <div class="zone" style="border-color:var(--z-data-b);background:var(--z-data);margin-bottom:14px">
+                <div class="zone-title" style="background:var(--z-data-b);color:#7c2d00">Data Fabric (central)</div>
+                <div class="stack">
+                  <div class="svc" id="ms-datafabric"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="data-fabric-service (NEW)"
+                       data-tt-badge="NEW"
+                       data-tt-summary="Single owner of ALL data. Only service allowed to read/write S3 and S3 Files."
+                       data-detail-title="data-fabric-service"
+                       data-detail-status="new"
+                       data-detail-desc="Data-centric service owning dataset upload, conversion to parquet, versioning, preview, splits, artefact registration, and lineage."
+                       data-detail-components="REST: api/data_routes.py | gRPC: grpc/data_fabric_servicer.py | Domain: services/upload_service.py · services/split_service.py · services/catalogue_service.py | Models: models/schemas.py"
+                       data-detail-endpoints="REST: /api/v1/data/upload, /api/v1/data/datasets, /api/v1/data/datasets/{id}/split, /preview, /versions | gRPC: GetDataset, GetDataframe, RegisterArtefact, GetRawFile"
+                       data-detail-tech="S3 (raw uploads) + AWS S3 Files (parquet/splits/artefacts) · DynamoDB midas-data-catalogue · Redis df:{dataset_id}:{scope} TTL=1800s (LZ4 parquet bytes)"
+                       data-detail-notes="Hard rule: other services never access S3/S3 Files directly; they call this service over gRPC. Enables consistent lineage and caching."
+                  >
+                    <div class="top">
+                      <div class="ico">🗂️</div>
+                      <div>
+                        <div class="name">data-fabric-service</div>
+                        <div class="sub">Upload · Catalogue · Splits · Artefacts</div>
+                      </div>
+                      <div class="meta">
+                        <span class="tag new">NEW</span><br/>
+                        <span class="tag rest">REST</span> <span class="tag grpc">REST</span>
+                      </div>
+                    </div>
+                    <div class="lines">
+                      <div><code>api/</code> data_routes</div>
+                      <div><code>grpc/</code> data_fabric_servicer</div>
+                      <div><code>services/</code> upload_service · catalogue_service</div>
+                    </div>
+                  </div>
+                  <div class="svc" id="ms-dataupload"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="data-upload-service (NEW)"
+                       data-tt-badge="NEW"
+                       data-tt-summary="High-performance upload ingress with RBAC, quotas, audit; commits via data-fabric-service."
+                       data-detail-title="data-upload-service"
+                       data-detail-status="new"
+                       data-detail-desc="Bulk/resumable upload path; coordinates with data-fabric-service for StoragePort (REQ-FS-050)."
+                       data-detail-components="REST: api/upload_ingress_routes.py | resumable_session_service · data_fabric client"
+                       data-detail-endpoints="REST: /api/v1/data-upload/*"
+                       data-detail-tech="authz-service · data-fabric-service"
+                       data-detail-notes="No direct S3 from clients."
+                  >
+                    <div class="top">
+                      <div class="ico">⬆️</div>
+                      <div>
+                        <div class="name">data-upload-service</div>
+                        <div class="sub">Fast upload</div>
+                      </div>
+                      <div class="meta">
+                        <span class="tag new">NEW</span><br/>
+                        <span class="tag rest">REST</span>
+                      </div>
+                    </div>
+                    <div class="lines">
+                      <div><code>api/</code> upload_ingress_routes</div>
+                      <div><code>→</code> data-fabric-service</div>
+                    </div>
+                  </div>
+                  <div class="svc" id="ms-datadownload"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="data-download-service (NEW)"
+                       data-tt-badge="NEW"
+                       data-tt-summary="High-performance download egress; streaming and policy via data-fabric-service."
+                       data-detail-title="data-download-service"
+                       data-detail-status="new"
+                       data-detail-desc="Throughput-oriented exports and downloads; authoritative reads through data-fabric-service (REQ-FS-050)."
+                       data-detail-components="REST: api/download_egress_routes.py | transfer_policy_service"
+                       data-detail-endpoints="REST: /api/v1/data-download/*"
+                       data-detail-tech="data-fabric-service"
+                       data-detail-notes="Audit and signed access patterns."
+                  >
+                    <div class="top">
+                      <div class="ico">⬇️</div>
+                      <div>
+                        <div class="name">data-download-service</div>
+                        <div class="sub">Fast download</div>
+                      </div>
+                      <div class="meta">
+                        <span class="tag new">NEW</span><br/>
+                        <span class="tag rest">REST</span>
+                      </div>
+                    </div>
+                    <div class="lines">
+                      <div><code>api/</code> download_egress_routes</div>
+                      <div><code>→</code> data-fabric-service</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="zone" style="border-color:var(--z-compute-b);background:var(--z-compute);margin-bottom:14px">
+                <div class="zone-title" style="background:var(--z-compute-b);color:#0e4a4a">Compute Fabric</div>
+                <div class="stack">
+                  <div class="svc" id="ms-computation"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="computation-service (NEW)"
+                       data-tt-badge="NEW"
+                       data-tt-summary="Kubeflow facade. Pipeline/component catalogue + run submission + SSE streaming."
+                       data-detail-title="computation-service"
+                       data-detail-status="new"
+                       data-detail-desc="Facade over Kubeflow Pipelines on EKS. Owns pipeline authoring, component catalogue, run submission, run status, and SSE streaming of progress."
+                       data-detail-components="REST: api/pipeline_routes.py · api/component_routes.py · api/run_routes.py | gRPC: grpc/computation_servicer.py | Domain: services/kubeflow_service.py · services/pipeline_service.py · services/run_service.py | Pipeline step pods: pipeline-components/* (feature-engineer, gbm-trainer, rfe-selector, auto-trainer, meea-evaluator)"
+                       data-detail-endpoints="REST: /api/v1/computation/pipelines (CRUD), /components (CRUD), /pipelines/{id}/runs (submit), /runs/{id}, /runs/{id}/stream (SSE) | gRPC: SubmitRun, GetRunStatus"
+                       data-detail-tech="Kubeflow Pipelines + Argo Workflows · DynamoDB midas-pipeline-catalogue/midas-pipeline-runs · Redis train:progress:{run_id} pub/sub"
+                       data-detail-notes="Replaces BackgroundJobManager threads, training_jobs_state.json, SQS worker pattern, and ThreadPoolExecutor. Pipeline pods fetch data via data-fabric gRPC and register artefacts back."
+                  >
+                    <div class="top">
+                      <div class="ico">⚡</div>
+                      <div>
+                        <div class="name">computation-service</div>
+                        <div class="sub">Pipelines · Components · Runs</div>
+                      </div>
+                      <div class="meta">
+                        <span class="tag new">NEW</span><br/>
+                        <span class="tag rest">REST</span> <span class="tag grpc">REST</span>
+                      </div>
+                    </div>
+                    <div class="lines">
+                      <div><code>api/</code> pipeline_routes · component_routes · run_routes</div>
+                      <div><code>services/</code> kubeflow_service · run_service</div>
+                      <div><code>pods</code> feature-engineer · gbm-trainer · meea-evaluator</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="zone" style="border-color:var(--z-port-b);background:var(--z-port)">
+                <div class="zone-title" style="background:var(--z-port-b);color:#4c1d95">Portability layer (shared)</div>
+                <div class="svc" id="ms-common"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="midas-common (shared)"
+                     data-tt-badge="REFACTOR"
+                     data-tt-summary="Ports + AWS adapters + gRPC stubs + middleware. All services import this package."
+                     data-detail-title="midas-common"
+                     data-detail-status="ref"
+                     data-detail-desc="Shared package providing cloud-portable ports, AWS adapters, generated gRPC stubs, and cross-cutting middleware (rate limiting, request IDs, JWT extraction)."
+                     data-detail-components="ports/: StoragePort, CachePort, NoSQLPort, SecretsPort, QueuePort, AgentRuntimePort | adapters/aws/: S3Adapter, S3FilesAdapter, DynamoDBAdapter, RedisAdapter, SecretsManagerAdapter, AgentCoreAdapter | proto/: .proto files + generated stubs | clients/: gRPC clients | middleware/: request_id, rate_limit, jwt extraction"
+                     data-detail-endpoints="N/A (library). Used by every service."
+                     data-detail-tech="Python package published/installed internally. No direct boto3 imports in domain code; only adapters touch AWS SDK."
+                     data-detail-notes="This is the key portability contract to move between AWS/Azure/GCP by swapping adapter implementations only.">
+                  <div class="top">
+                    <div class="ico">🔌</div>
+                    <div>
+                      <div class="name">midas-common</div>
+                      <div class="sub">Ports · AWS adapters · gRPC stubs · Middleware</div>
+                    </div>
+                    <div class="meta">
+                      <span class="tag ref">REFACTOR</span><br/>
+                      <span class="tag grpc">REST</span>
+                    </div>
+                  </div>
+                  <div class="lines">
+                    <div><code>ports/</code> StoragePort · CachePort · NoSQLPort · SecretsPort · AgentRuntimePort</div>
+                    <div><code>adapters/aws/</code> DynamoDB · Redis · S3 · Secrets Manager · AgentCore</div>
+                    <div><code>proto/</code> + <code>clients/</code> generated gRPC stubs</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- right column: business + agent + stores -->
+            <div>
+              <div class="zone" style="border-color:var(--z-biz-b);background:var(--z-biz);margin-bottom:14px">
+                <div class="zone-title" style="background:var(--z-biz-b);color:#14532d">Business services</div>
+                <div class="row2">
+                  <div class="svc" id="ms-analytics"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="analytics-service"
+                       data-tt-badge="REFACTOR"
+                       data-tt-summary="QC/DQS/statistics. Calls data-fabric gRPC GetDataframe."
+                       data-detail-title="analytics-service"
+                       data-detail-status="ref"
+                       data-detail-desc="Stateless analytics compute. Fetches DataFrames from data-fabric-service and stores results in DynamoDB."
+                       data-detail-components="REST: api/analytics_routes.py | gRPC: grpc/analytics_servicer.py | Domain: services/dqs_service.py · services/data_quality_detector.py · services/variable_review_service.py | Models: models/schemas.py"
+                       data-detail-endpoints="REST: /api/v1/analytics/qc, /dqs, /correlations, /vif, /bivariate | gRPC: RunQC, GetResult"
+                       data-detail-tech="Calls data-fabric GetDataframe (gRPC) · DynamoDB midas-analytics-results"
+                       data-detail-notes="All protected calls must check authz-service.">
+                    <div class="top"><div class="ico">📊</div><div><div class="name">analytics-service</div><div class="sub">QC · DQS · Stats</div></div><div class="meta"><span class="tag ref">REFACTOR</span><br/><span class="tag rest">REST</span> <span class="tag grpc">REST</span></div></div>
+                    <div class="lines"><div><code>services/</code> dqs_service · variable_review_service</div></div>
+                  </div>
+
+                  <div class="svc" id="ms-llm"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="llm-service"
+                       data-tt-badge="REFACTOR"
+                       data-tt-summary="Chat + LLM routing. Uses AI Gateway. Persists messages in DynamoDB."
+                       data-detail-title="llm-service"
+                       data-detail-status="ref"
+                       data-detail-desc="Chat, model routing/registry, execute-code. Thin proxy to AI Gateway. Persists conversation history in DynamoDB."
+                       data-detail-components="REST: api/chat_routes.py | gRPC: grpc/llm_servicer.py | Domain: services/llm_service.py · core/llm_routing.py · core/llm_registry.py · core/llm_selection.py (refactor in-memory dict → Redis) | Models: models/schemas.py"
+                       data-detail-endpoints="REST: /api/v1/chat/completions, /chat/execute-code, /chat/agent, /chat/models | gRPC: Chat(stream)"
+                       data-detail-tech="AI Gateway (LiteLLM via PrivateLink) · DynamoDB midas-messages · Redis llm-sel:{session_id}"
+                       data-detail-notes="Direct chat and routing; multi-step agent runs via agent-platform-service (REQ-FS-022, ADR-FS-005).">
+                    <div class="top"><div class="ico">🤖</div><div><div class="name">llm-service</div><div class="sub">Chat · Routing · History</div></div><div class="meta"><span class="tag ref">REFACTOR</span><br/><span class="tag rest">REST</span> <span class="tag grpc">REST</span></div></div>
+                    <div class="lines"><div><code>core/</code> llm_selection → Redis</div></div>
+                  </div>
+
+                  <div class="svc" id="ms-docs"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="documentation-service"
+                       data-tt-badge="REFACTOR"
+                       data-tt-summary="LLM-driven docs. Async jobs. Outputs stored to S3."
+                       data-detail-title="documentation-service"
+                       data-detail-status="ref"
+                       data-detail-desc="Generates docx/xlsx outputs using LLM completions. Uses async pattern for long-running work."
+                       data-detail-components="REST: api/documentation_routes.py | Domain: doc generation helpers | Models: models/schemas.py"
+                       data-detail-endpoints="REST: POST /api/v1/documentation/generate; GET /{job_id}/status; GET /{job_id}/download"
+                       data-detail-tech="Calls llm-service gRPC Chat · DynamoDB midas-doc-jobs · S3/S3 Files outputs"
+                       data-detail-notes="Long-running docs should never block request threads.">
+                    <div class="top"><div class="ico">📄</div><div><div class="name">documentation-service</div><div class="sub">Doc generation</div></div><div class="meta"><span class="tag ref">REFACTOR</span><br/><span class="tag rest">REST</span></div></div>
+                    <div class="lines"><div><code>DDB</code> midas-doc-jobs</div></div>
+                  </div>
+
+                  <div class="svc" id="ms-eval"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="evaluation-service"
+                       data-tt-badge="REFACTOR"
+                       data-tt-summary="Stores MEEA payloads. Called by pipeline pods."
+                       data-detail-title="evaluation-service"
+                       data-detail-status="ref"
+                       data-detail-desc="Stores evaluation payloads for trained models; writes metadata to DynamoDB and larger artefacts to storage."
+                       data-detail-components="REST: api/evaluation_routes.py | gRPC: grpc/evaluation_servicer.py | Domain: services/model_evaluation_service.py | Models: models/schemas.py"
+                       data-detail-endpoints="REST: /api/v1/evaluation; /api/v1/evaluation/{model_id}; /compare | gRPC: StoreEvaluation"
+                       data-detail-tech="DynamoDB midas-evaluations · S3 Files artefacts"
+                       data-detail-notes="Consumed by meea-evaluator pipeline step pod.">
+                    <div class="top"><div class="ico">📈</div><div><div class="name">evaluation-service</div><div class="sub">MEEA</div></div><div class="meta"><span class="tag ref">REFACTOR</span><br/><span class="tag rest">REST</span> <span class="tag grpc">REST</span></div></div>
+                    <div class="lines"><div><code>services/</code> model_evaluation_service</div></div>
+                  </div>
+                </div>
+
+                <div class="stack" style="margin-top:10px">
+                  <div class="svc" id="ms-graphrag"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="graphrag-service"
+                       data-tt-badge="REFACTOR"
+                       data-tt-summary="GraphRAG + vector search. FAISS → OpenSearch Serverless."
+                       data-detail-title="graphrag-service"
+                       data-detail-status="ref"
+                       data-detail-desc="Knowledge graph + vector search service for RAG context. Owns the vector store (future: OpenSearch Serverless)."
+                       data-detail-components="REST: api/graphrag_routes.py | gRPC: grpc/graphrag_servicer.py | Domain: services/graphrag_service.py · services/graphrag_client.py | Vector store: vector_store.py (refactor FAISS → OpenSearch) | Process manager: DELETED"
+                       data-detail-endpoints="REST: /api/v1/graphrag/build, /query, /vector/search, /vector/index | gRPC: Query, VectorSearch"
+                       data-detail-tech="OpenSearch Serverless (PrivateLink) · S3 Files midas-knowledge-graphs/ · DynamoDB midas-graphrag-meta"
+                       data-detail-notes="Removes FAISS on local disk and subprocess duality. Only graphrag-service owns the vector index."
+                  >
+                    <div class="top"><div class="ico">🕸️</div><div><div class="name">graphrag-service</div><div class="sub">KG · Vector search</div></div><div class="meta"><span class="tag ref">REFACTOR</span><br/><span class="tag rest">REST</span> <span class="tag grpc">REST</span></div></div>
+                    <div class="lines"><div><code>vector_store.py</code> FAISS → OpenSearch</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="zone" style="border-color:var(--z-agent-b);background:var(--z-agent);margin-bottom:14px">
+                <div class="zone-title" style="background:var(--z-agent-b);color:#701a75">AI Agent Fabric</div>
+                <div class="stack">
+                  <div class="svc" id="ms-agent"
+                       data-target="../index.html#agent-platform"
+                       data-tt-title="agent-platform-service (NEW)"
+                       data-tt-badge="NEW"
+                       data-tt-summary="Runs agents via AgentCore. Exposes platform capabilities as MCP tools (RBAC enforced)."
+                       data-detail-title="agent-platform-service"
+                       data-detail-status="new"
+                       data-detail-desc="AI Agent Fabric. Runs agents in AgentCore microVM sessions, manages memory and session lifecycle, and exposes all MIDAS capabilities as tools."
+                       data-detail-components="REST: api/agent_routes.py · api/tool_routes.py · api/memory_routes.py | gRPC: grpc/agent_servicer.py | Domain: services/agentcore_service.py · services/tool_registry.py · services/memory_service.py · services/session_service.py · services/agent_catalogue_service.py | Tools: tools/*.py (data_fabric_tool, analytics_tool, computation_tool, llm_tool, graphrag_tool, evaluation_tool, project_tool, authz_tool)"
+                       data-detail-endpoints="REST: /api/v1/agents (CRUD), /api/v1/agents/{id}/runs, /api/v1/agents/runs/{id}/stream | gRPC: InvokeAgent/StreamAgent"
+                       data-detail-tech="AWS Bedrock AgentCore (PrivateLink) · MCP tool protocol · DynamoDB midas-agent-catalogue/midas-agent-runs · Redis agent keys"
+                       data-detail-notes="Agents use the same REST surface as human flows. RBAC: CheckPermission per tool (REQ-FS-046). REQ-FS-049: keep this view aligned with Developer + SVG architecture diagrams."
+                  >
+                    <div class="top"><div class="ico">🧠</div><div><div class="name">agent-platform-service</div><div class="sub">Runtime · Tools · Memory</div></div><div class="meta"><span class="tag new">NEW</span><br/><span class="tag rest">REST</span> <span class="tag grpc">REST</span></div></div>
+                    <div class="lines"><div><code>tools/</code> MCP adapters for MIDAS services</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="zone" style="border-color:var(--z-stores-b);background:var(--z-stores)">
+                <div class="zone-title" style="background:var(--z-stores-b);color:#4a1060">Managed state (stores)</div>
+                <div class="row2">
+                  <div class="svc" id="ms-dynamo"
+                       data-target="../index.html#storage"
+                       data-tt-title="DynamoDB"
+                       data-tt-badge="MANAGED"
+                       data-tt-summary="Primary durable state for all services (16 tables)."
+                       data-detail-title="DynamoDB"
+                       data-detail-status="ref"
+                       data-detail-desc="Primary durable database for all microservices (replaces SQLite/Postgres)."
+                       data-detail-components="NoSQLPort + DynamoDBAdapter"
+                       data-detail-endpoints="16 tables (users, roles, projects, data catalogue, messages, pipelines, evaluations, graphrag meta, agents)"
+                       data-detail-tech="AWS DynamoDB · PrivateLink · IRSA"
+                       data-detail-notes="Each data store has one owning service; other services access via APIs."
+                  >
+                    <div class="top"><div class="ico">🗃️</div><div><div class="name">DynamoDB</div><div class="sub">16 tables</div></div><div class="meta"><span class="tag grpc">internal</span></div></div>
+                    <div class="lines"><div><code>NoSQLPort</code> abstraction</div></div>
+                  </div>
+                  <div class="svc" id="ms-redis"
+                       data-target="../index.html#storage"
+                       data-tt-title="ElastiCache Redis"
+                       data-tt-badge="MANAGED"
+                       data-tt-summary="Sessions, RBAC cache, DataFrame cache, progress pub/sub."
+                       data-detail-title="ElastiCache Redis"
+                       data-detail-status="ref"
+                       data-detail-desc="Caching and ephemeral state for correctness and performance (sessions, caches, pub/sub)."
+                       data-detail-components="CachePort + RedisAdapter"
+                       data-detail-endpoints="session:{jti}, authz:{uid}:{res}, df:{dataset_id}:{scope}, train:progress:{run_id}"
+                       data-detail-tech="AWS ElastiCache Redis · PrivateLink"
+                       data-detail-notes="Replaces in-process dict caches and singletons."
+                  >
+                    <div class="top"><div class="ico">⚡</div><div><div class="name">ElastiCache Redis</div><div class="sub">Cache · Pub/Sub</div></div><div class="meta"><span class="tag grpc">internal</span></div></div>
+                    <div class="lines"><div><code>CachePort</code> abstraction</div></div>
+                  </div>
+                </div>
+                <div class="stack" style="margin-top:10px">
+                  <div class="svc" id="ms-s3"
+                       data-target="../index.html#storage"
+                       data-tt-title="S3 + S3 Files"
+                       data-tt-badge="MANAGED"
+                       data-tt-summary="Raw uploads in S3; parquet/splits/artefacts in S3 Files (owned by data-fabric)."
+                       data-detail-title="S3 + S3 Files"
+                       data-detail-status="ref"
+                       data-detail-desc="Object and file storage used for raw data, processed datasets, ML artefacts, docs, logs."
+                       data-detail-components="StoragePort + S3Adapter + S3FilesAdapter"
+                       data-detail-endpoints="S3: midas-raw/ · midas-waf-logs/ | S3 Files: midas-datasets/, midas-artefacts/, midas-knowledge-graphs/, midas-documentation/"
+                       data-detail-tech="AWS S3 · AWS S3 Files · PrivateLink"
+                       data-detail-notes="Only data-fabric-service reads/writes storage directly; other services use gRPC APIs."
+                  >
+                    <div class="top"><div class="ico">🪣</div><div><div class="name">S3 + S3 Files</div><div class="sub">Raw · Parquet · Artefacts</div></div><div class="meta"><span class="tag grpc">internal</span></div></div>
+                    <div class="lines"><div><code>StoragePort</code> abstraction</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- details panel -->
+          <div id="detail-panel" aria-live="polite">
+            <div class="close" title="Close">✕</div>
+            <h2 id="dp-title">Component details</h2>
+            <div class="badges" id="dp-badges"></div>
+            <div class="sec">
+              <h3>What it is</h3>
+              <p id="dp-desc"></p>
+            </div>
+            <div class="sec">
+              <h3>Software components</h3>
+              <p id="dp-components"></p>
+            </div>
+            <div class="sec">
+              <h3>Endpoints / APIs</h3>
+              <p id="dp-endpoints"></p>
+            </div>
+            <div class="sec">
+              <h3>Technology</h3>
+              <p id="dp-tech"></p>
+            </div>
+            <div class="sec">
+              <h3>Notes</h3>
+              <p id="dp-notes"></p>
+            </div>
+            <a class="jump" id="dp-jump" href="../index.html#layer-diagram">Open in System Layer Diagram</a>
+          </div>
+        </div>
+
+        <div id="tt"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ── Keep in sync with ../developer + ../architecture (REQ-FS-049) ──
+    // This is displayed in the tooltip/details content, not as code comments.
+
+    // Tooltip
+    const tt = document.getElementById('tt');
+    function showTt(e, el){
+      const t = el.dataset.ttTitle || 'Component';
+      const b = el.dataset.ttBadge || '';
+      const s = el.dataset.ttSummary || '';
+      let h = `<div class="tt-t">${t}</div>`;
+      if (b){
+        const cls = b.toUpperCase().includes('NEW') ? 'new' : (b.toUpperCase().includes('REFACTOR') ? 'ref' : '');
+        h += `<div class="tt-b ${cls==='new'?'tag-new':(cls==='ref'?'tag-refactor':'tag-aws')}">${b}</div>`;
+      }
+      if (s) h += `<div class="tt-r">${s}</div>`;
+      h += `<div class="tt-l">🖱️ Click → Expand full details below</div>`;
+      tt.innerHTML = h;
+      tt.style.display = 'block';
+      moveTt(e);
+    }
+    function hideTt(){ tt.style.display='none'; }
+    function moveTt(e){
+      const x=e.clientX+14,y=e.clientY+14,tw=tt.offsetWidth,th=tt.offsetHeight;
+      tt.style.left=(x+tw>window.innerWidth?e.clientX-tw-14:x)+'px';
+      tt.style.top =(y+th>window.innerHeight?e.clientY-th-14:y)+'px';
+    }
+
+    // Details panel
+    const dp = document.getElementById('detail-panel');
+    const dpTitle = document.getElementById('dp-title');
+    const dpBadges = document.getElementById('dp-badges');
+    const dpDesc = document.getElementById('dp-desc');
+    const dpComponents = document.getElementById('dp-components');
+    const dpEndpoints = document.getElementById('dp-endpoints');
+    const dpTech = document.getElementById('dp-tech');
+    const dpNotes = document.getElementById('dp-notes');
+    const dpJump = document.getElementById('dp-jump');
+
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+    function fmt(s){ return escapeHtml(s||'').replace(/\n/g,'<br/>'); }
+    function statusBadge(st){
+      const s=(st||'').toLowerCase();
+      if(!s) return '';
+      const cls = s==='new' ? 'new' : (s==='ref' ? 'ref' : '');
+      return `<span class="badge ${cls}">${s==='new'?'NEW':'REFACTOR'}</span>`;
+    }
+
+    function openDetail(el){
+      dpTitle.textContent = el.dataset.detailTitle || el.dataset.ttTitle || 'Component';
+      dpBadges.innerHTML = statusBadge(el.dataset.detailStatus || '') + `<span class="badge">REST edge</span><span class="badge">REST mesh</span>`;
+      dpDesc.innerHTML = fmt(el.dataset.detailDesc || '');
+      dpComponents.innerHTML = fmt(el.dataset.detailComponents || '');
+      dpEndpoints.innerHTML = fmt(el.dataset.detailEndpoints || '');
+      dpTech.innerHTML = fmt(el.dataset.detailTech || '');
+      dpNotes.innerHTML = fmt(el.dataset.detailNotes || '');
+      dpJump.setAttribute('href', el.dataset.target || '../index.html#layer-diagram');
+      dp.style.display='block';
+      dp.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    dp.querySelector('.close').addEventListener('click',()=>dp.style.display='none');
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') dp.style.display='none'; });
+
+    // attach interactions
+    document.querySelectorAll('.svc').forEach(el=>{
+      el.addEventListener('mouseenter',e=>showTt(e,el));
+      el.addEventListener('mousemove',moveTt);
+      el.addEventListener('mouseleave',hideTt);
+      el.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); openDetail(el); });
+    });
+
+    // arrows (key flows only, to reduce clutter)
+    window.addEventListener('load', drawArrows);
+    window.addEventListener('resize', drawArrows);
+    function drawArrows(){
+      const svg = document.getElementById('arrow-svg');
+      [...svg.children].forEach(c=>{ if(c.tagName!=='defs') c.remove(); });
+      const diag = document.getElementById('diagram'); if(!diag) return;
+      const dr = diag.getBoundingClientRect();
+      const mid = (id)=>{
+        const el = document.getElementById(id);
+        if(!el) return null;
+        const r = el.getBoundingClientRect();
+        return {cx:r.left-dr.left+r.width/2, cy:r.top-dr.top+r.height/2, l:r.left-dr.left, r:r.right-dr.left};
+      };
+      const arrows = [
+        {f:'ms-analytics', t:'ms-datafabric', type:'grpc', label:'GetDataframe'},
+        {f:'ms-computation', t:'ms-datafabric', type:'grpc', label:'RegisterArtefact'},
+        {f:'ms-agent', t:'ms-authz', type:'grpc', label:'CheckPermission'},
+        {f:'ms-llm', t:'ms-graphrag', type:'grpc', label:'VectorSearch'},
+        {f:'ms-docs', t:'ms-llm', type:'grpc', label:'Chat()'},
+      ];
+      const colors = {rest:'#2563eb', grpc:'#7c3aed'};
+      const markers = {rest:'a-rest', grpc:'a-grpc'};
+      arrows.forEach(a=>{
+        const f=mid(a.f), t=mid(a.t);
+        if(!f||!t) return;
+        const x1 = f.cx < t.cx ? f.r : f.l;
+        const y1 = f.cy;
+        const x2 = f.cx < t.cx ? t.l : t.r;
+        const y2 = t.cy;
+        const mx = (x1+x2)/2;
+        const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+        p.setAttribute('d',`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+        p.setAttribute('fill','none');
+        p.setAttribute('stroke',colors[a.type]);
+        p.setAttribute('stroke-width','1.6');
+        p.setAttribute('stroke-opacity','0.62');
+        p.setAttribute('marker-end',`url(#${markers[a.type]})`);
+        svg.appendChild(p);
+        if(a.label){
+          const tx = document.createElementNS('http://www.w3.org/2000/svg','text');
+          tx.setAttribute('x', mx);
+          tx.setAttribute('y', (y1+y2)/2 - 4);
+          tx.setAttribute('text-anchor','middle');
+          tx.setAttribute('fill', colors[a.type]);
+          tx.setAttribute('font-size', '8');
+          tx.setAttribute('opacity','0.85');
+          tx.textContent = a.label;
+          svg.appendChild(tx);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,14 @@
+# MIDAS team override — bmad-create-story (testable AC required)
+
+[workflow]
+
+persistent_facts = [
+  "Feature slug: story files live under implementation-artifacts/<slug>/ — slug must match specs/spec-<slug>/ and planning-artifacts/epics/<slug>/ from intake.",
+  "file:{project-root}/_bmad-output/testing/scenario-test-gate.md",
+  "file:{project-root}/_bmad-output/scenarios/01-requirements-traceability.md",
+  "Every implementation story MUST include a section '## Test acceptance criteria' with: (1) backend test file path(s), (2) frontend test file path(s) if UI touched, (3) exact commands to run, (4) expected pass criteria.",
+  "For new protected API routes, AC must require a 401 test without Authorization header.",
+  "For bug-fix stories (scenario 3), AC must require a regression test named for the ticket id.",
+  "Scenario 1: one story file per ST-* under implementation-artifacts/<slug>/story-ST-NNN.md. Include ## Subtasks table (SUB-*) copied from backlog, ## Traceability (REQ/CAP IDs), and ## PRD adherence notes. Do not combine multiple ST-* in one file.",
+  "If story touches formulas, ML training, or evaluation metrics: add ## SME verification required (yes/no) and list which REQ formulas the SME must validate. Reference sme-verification-gate.md.",
+]

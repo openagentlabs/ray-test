@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EXLDecision — Component Architecture Diagram</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #e8eef5;
+  --surface: #f0f4f8;
+  --card:    #ffffff;
+  --border:  #cbd5e1;
+  --accent:  #2563eb;
+  --accent2: #7c3aed;
+  --green:   #059669;
+  --yellow:  #d97706;
+  --red:     #dc2626;
+  --teal:    #0891b2;
+  --orange:  #ea580c;
+  --pink:    #c026d3;
+  --text:    #1e293b;
+  --muted:   #64748b;
+  --font:    'Segoe UI', 'Inter', system-ui, sans-serif;
+  --mono:    'JetBrains Mono', 'Fira Code', monospace;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; }
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.page-wrap { display: flex; min-height: 100vh; }
+
+/* sidebar — keep dark for contrast */
+.sidebar {
+  width: 230px; min-width: 230px;
+  background: #1a1d27;
+  border-right: 1px solid #2e3350;
+  padding: 24px 0;
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto; flex-shrink: 0;
+}
+.sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid #2e3350; margin-bottom: 16px; }
+.sidebar-logo h1 { font-size: 15px; font-weight: 700; color: #4f8ef7; letter-spacing: .3px; }
+.sidebar-logo p  { font-size: 10px; color: #94a3b8; margin-top: 3px; }
+.nav-section { padding: 6px 20px 2px; font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+.nav-item {
+  display: block; padding: 6px 20px;
+  color: #94a3b8; text-decoration: none;
+  font-size: 12px; border-left: 2px solid transparent;
+  transition: all .15s;
+}
+.nav-item:hover { color: #e2e8f0; border-left-color: #4f8ef7; background: rgba(79,142,247,.07); }
+.nav-item.active { color: #e2e8f0; border-left-color: #4f8ef7; background: rgba(79,142,247,.1); font-weight: 600; }
+
+/* main */
+.main { flex: 1; overflow-x: auto; background: var(--bg); }
+
+/* hero → light header style */
+.hero {
+  background: #1e293b;
+  border-bottom: 3px solid var(--accent);
+  padding: 24px 40px 20px;
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.hero h1 { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
+.hero p  { color: #94a3b8; font-size: 12px; margin-top: 5px; max-width: 600px; }
+.hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #2e3350; border: 1px solid #3a4060;
+  padding: 3px 9px; border-radius: 12px; font-size: 10px; color: #94a3b8;
+}
+
+/* hint bar */
+.hint-bar {
+  background: #fff8e1; border-bottom: 1px solid #fbbf24;
+  padding: 8px 40px; font-size: 11px; color: #78350f;
+  display: flex; align-items: center; gap: 8px;
+}
+.hint-bar span { color: #b45309; font-weight: 700; }
+
+/* legend */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  padding: 10px 32px; border-bottom: 2px solid var(--border);
+  background: #fff; font-size: 11px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.leg-item { display: flex; align-items: center; gap: 5px; color: var(--text); }
+.leg-box  { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 1.5px solid rgba(0,0,0,.12); }
+.leg-line { width: 24px; height: 2px; flex-shrink: 0; border-radius: 1px; }
+.leg-dash { width: 24px; height: 0; border-top: 2px dashed; flex-shrink: 0; }
+
+/* canvas area */
+.canvas-wrap { padding: 24px 32px 48px; min-width: 1100px; background: var(--bg); }
+
+/* ── SVG diagram ────────────────────────────────────────────── */
+#arch-svg { display: block; width: 100%; }
+
+/* SVG component styles */
+.comp {
+  cursor: pointer;
+  transition: filter .15s;
+}
+.comp:hover { filter: brightness(1.1) drop-shadow(0 0 8px rgba(37,99,235,.35)); }
+.comp rect, .comp polygon { transition: fill .15s; }
+
+/* tooltip */
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: #e2e8f0;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  z-index: 9999;
+  display: none;
+  line-height: 1.6;
+}
+#tooltip .tt-title { font-weight: 700; font-size: 12px; margin-bottom: 4px; color: #fff; }
+#tooltip .tt-row { color: #94a3b8; }
+#tooltip .tt-row span { color: #e2e8f0; }
+#tooltip .tt-link { margin-top: 6px; color: #4f8ef7; font-size: 10px; }
+
+.highlight-pulse { animation: pulse 1.6s ease-out 2; }
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(37,99,235,.7); }
+  70%  { box-shadow: 0 0 0 14px rgba(37,99,235,0); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>EXL Decision</h1>
+    <p>Architecture Explorer</p>
+  </div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="requirements/index.html">📜 Requirements</a>
+      <a class="nav-item" href="decisions/index.html">⚖️ Architectural decisions</a>
+
+      <div class="nav-section">This diagram</div>
+      <a class="nav-item active" href="architecture.html">🗺️ Future — SVG Component Diagram</a>
+</nav>
+
+<!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
+<main class="main">
+  <div class="hero">
+    <div>
+      <h1>EXLDecision — Component Architecture Diagram</h1>
+      <p>Traditional software architecture view showing all 14 microservices, infrastructure layers, data stores, and the connections between them. Click any component to jump to its detail in the System Layer Diagram.</p>
+      <div class="hero-badges">
+        <span class="badge">14 Microservices</span>
+        <span class="badge">AWS EKS us-east-1</span>
+        <span class="badge">Istio Service Mesh</span>
+        <span class="badge">AWS Bedrock AgentCore</span>
+      </div>
+    </div>
+  </div>
+  <div class="hint-bar">
+    <span>💡 Click</span> any component box to jump to its detail in the System Layer Diagram &nbsp;·&nbsp;
+    <span>Hover</span> to see endpoint and technology details
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <strong style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px">Legend:</strong>
+    <div class="leg-item"><div class="leg-box" style="background:#dbeafe;border:1.5px solid #2563eb"></div><span>REST HTTP/JSON</span></div>
+    <div class="leg-item"><div class="leg-box" style="background:#ede9fe;border:1.5px solid #7c3aed"></div><span>gRPC (Protobuf)</span></div>
+    <div class="leg-item"><div class="leg-box" style="background:#d1fae5;border:1.5px solid #059669"></div><span>MCP Tool (Agent)</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:#93c5fd"></div><span>REST call</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:#a78bfa"></div><span>gRPC call</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:#34d399"></div><span>MCP tool call</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:#fbbf24"></div><span>DynamoDB R/W</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:#2dd4bf"></div><span>Redis cache/pub-sub</span></div>
+    <div class="leg-item"><div class="leg-line" style="background:#fb923c"></div><span>S3 / S3 Files R/W</span></div>
+    <div class="leg-item"><div class="leg-dash" style="border-color:#4f8ef7;opacity:.5"></div><span>imports (midas-common)</span></div>
+    <div class="leg-item"><div class="leg-box" style="background:#f472b614;border:1.5px solid #f472b6"></div><span style="color:var(--pink)">NEW service</span></div>
+  </div>
+
+  <div class="canvas-wrap">
+    <!-- SVG diagram — 1600×1640 viewBox, fully scalable -->
+    <svg id="arch-svg" viewBox="0 0 1600 1680" xmlns="http://www.w3.org/2000/svg"
+         style="font-family:'Inter','Segoe UI',sans-serif;">
+      <defs>
+        <!-- arrow markers -->
+        <marker id="arr-rest"  markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#93c5fd" opacity=".9"/></marker>
+        <marker id="arr-grpc"  markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#a78bfa" opacity=".9"/></marker>
+        <marker id="arr-mcp"   markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#14532d" opacity=".9"/></marker>
+        <marker id="arr-db"    markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#7c3f00" opacity=".9"/></marker>
+        <marker id="arr-cache" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#0e6050" opacity=".9"/></marker>
+        <marker id="arr-s3"    markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><polygon points="0 0,7 3.5,0 7" fill="#7c2d00" opacity=".9"/></marker>
+        <!-- layer background gradients -->
+        <linearGradient id="grad-ingress" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#d5f0ea" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#ccede6" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="grad-identity" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#fdf0d5" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#fce8c0" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="grad-biz" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#d5ecd8" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#cce8d0" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="grad-agent" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#f5d5f5" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#f0caf0" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="grad-data" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#fde8d5" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#fce0c8" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="grad-compute" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#d5eeee" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#cce8e8" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="grad-stores" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ede0f5" stop-opacity=".95"/>
+          <stop offset="100%" stop-color="#e8d8f0" stop-opacity=".95"/>
+        </linearGradient>
+        <!-- drop shadow filter -->
+        <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".4"/>
+        </filter>
+        <filter id="shadow-lg" x="-15%" y="-15%" width="130%" height="130%">
+          <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity=".5"/>
+        </filter>
+      </defs>
+
+      <!-- ══ BACKGROUND LABEL ══════════════════════════════════════════ -->
+      <text x="800" y="30" text-anchor="middle" fill="#94a3b8" font-size="14" font-weight="700" letter-spacing="4">EXLDecision FUTURE STATE — COMPONENT ARCHITECTURE</text>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 1: CLIENT
+      ══════════════════════════════════════════════════════════════ -->
+      <!-- Browser -->
+      <g class="comp" id="c-browser" data-target="index.html#layer-diagram" data-layer="Client Layer"
+         data-tip-title="Web Browser (React SPA)" data-tip-rest="HTTPS :443 → WAF" data-tip-note="JWT Bearer on every request">
+        <rect x="340" y="50" width="160" height="52" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="420" y="74" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700">🌐 Web Browser</text>
+        <text x="420" y="91" text-anchor="middle" fill="#1e3a6e" font-size="9">React SPA · HTTPS :443</text>
+      </g>
+      <!-- Dev CLI -->
+      <g class="comp" id="c-cli" data-target="index.html#layer-diagram" data-layer="Client Layer"
+         data-tip-title="Developer / CLI" data-tip-rest="HTTPS :443 → WAF" data-tip-note="Bearer JWT · curl / SDK">
+        <rect x="540" y="50" width="160" height="52" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="620" y="74" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700">💻 Developer / CLI</text>
+        <text x="620" y="91" text-anchor="middle" fill="#1e3a6e" font-size="9">curl / SDK · Bearer JWT</text>
+      </g>
+      <!-- AI Agent (via agent-platform) -->
+      <g class="comp" id="c-agent-user" data-target="index.html#agent-platform" data-layer="AI Agent Fabric"
+         data-tip-title="AI Agent (via agent-platform-service)" data-tip-mcp="MCP tools → EXLDecision services" data-tip-note="AgentCore microVM session · RBAC enforced">
+        <rect x="740" y="50" width="180" height="52" rx="8" fill="#3a1a4a" stroke="#f472b6" stroke-width="1.5"/>
+        <text x="830" y="74" text-anchor="middle" fill="#f472b6" font-size="11" font-weight="700">🧠 AI Agent</text>
+        <text x="830" y="91" text-anchor="middle" fill="#c080a8" font-size="9">AgentCore microVM session</text>
+      </g>
+
+      <!-- client → WAF arrows -->
+      <line x1="420" y1="102" x2="420" y2="155" stroke="#93c5fd" stroke-width="1.5" stroke-opacity=".7" marker-end="url(#arr-rest)"/>
+      <line x1="620" y1="102" x2="530" y2="155" stroke="#93c5fd" stroke-width="1.5" stroke-opacity=".7" marker-end="url(#arr-rest)"/>
+      <line x1="830" y1="102" x2="640" y2="155" stroke="#f472b6" stroke-width="1.5" stroke-opacity=".7" marker-end="url(#arr-rest)"/>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 2: INGRESS
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="140" width="1540" height="130" rx="10" fill="url(#grad-ingress)" stroke="#4db8a8" stroke-width="1.5" stroke-opacity=".6"/>
+      <text x="44" y="160" fill="#0e6050" font-size="9" font-weight="700" letter-spacing="1" opacity=".7">INGRESS LAYER — AWS VPC (no public IPs)</text>
+
+      <!-- WAF -->
+      <g class="comp" id="c-waf" data-target="index.html#layer-diagram" data-layer="Ingress Layer"
+         data-tip-title="AWS WAF" data-tip-rest="OWASP rules · rate-limit · geo-block" data-tip-note="Logs → S3 midas-waf-logs/">
+        <rect x="50" y="168" width="140" height="82" rx="8" fill="#ccf0ea" stroke="#20a0a0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="120" y="192" text-anchor="middle" fill="#0e6050" font-size="11" font-weight="700">🔒 AWS WAF</text>
+        <text x="120" y="209" text-anchor="middle" fill="#0e4040" font-size="9">OWASP rules</text>
+        <text x="120" y="222" text-anchor="middle" fill="#0e4040" font-size="9">Rate-limit · Geo-block</text>
+        <text x="120" y="235" text-anchor="middle" fill="#0e4040" font-size="9">Header inspect</text>
+      </g>
+      <!-- WAF → ALB -->
+      <line x1="190" y1="209" x2="250" y2="209" stroke="#2dd4bf" stroke-width="1.5" stroke-opacity=".8" marker-end="url(#arr-cache)"/>
+
+      <!-- ALB -->
+      <g class="comp" id="c-alb" data-target="index.html#layer-diagram" data-layer="Ingress Layer"
+         data-tip-title="AWS ALB" data-tip-rest=":443 → :80 TLS termination" data-tip-note="ACM cert · sticky sessions · health /health">
+        <rect x="250" y="168" width="150" height="82" rx="8" fill="#ccf0ea" stroke="#20a0a0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="325" y="192" text-anchor="middle" fill="#0e6050" font-size="11" font-weight="700">⚖️ AWS ALB</text>
+        <text x="325" y="209" text-anchor="middle" fill="#0e4040" font-size="9">TLS termination (ACM)</text>
+        <text x="325" y="222" text-anchor="middle" fill="#0e4040" font-size="9">:443 → :80</text>
+        <text x="325" y="235" text-anchor="middle" fill="#0e4040" font-size="9">Sticky sessions</text>
+      </g>
+      <!-- ALB → Istio GW -->
+      <line x1="400" y1="209" x2="460" y2="209" stroke="#2dd4bf" stroke-width="1.5" stroke-opacity=".8" marker-end="url(#arr-cache)"/>
+
+      <!-- Istio Gateway -->
+      <g class="comp" id="c-igw" data-target="index.html#layer-diagram" data-layer="Ingress Layer"
+         data-tip-title="Istio Ingress Gateway" data-tip-rest="JWT validate · VirtualService routing" data-tip-note="HTTP/1.1 → cluster gRPC upgrade">
+        <rect x="460" y="168" width="200" height="82" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="560" y="192" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700">🕸️ Istio Ingress Gateway</text>
+        <text x="560" y="209" text-anchor="middle" fill="#4c1d95" font-size="9">JWT validation (JWKS)</text>
+        <text x="560" y="222" text-anchor="middle" fill="#4c1d95" font-size="9">VirtualService routing</text>
+        <text x="560" y="235" text-anchor="middle" fill="#4c1d95" font-size="9">HTTP/1.1 → gRPC upgrade</text>
+      </g>
+
+      <!-- Istio Mesh band label -->
+      <rect x="680" y="168" width="860" height="82" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1" stroke-opacity=".3" stroke-dasharray="4,3"/>
+      <text x="1110" y="196" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700" opacity=".7">🕸️ ISTIO SERVICE MESH (applies to all pods below)</text>
+      <text x="1110" y="212" text-anchor="middle" fill="#7060b0" font-size="9" opacity=".8">mTLS STRICT between all pods  ·  PeerAuthentication  ·  Retry + Circuit-breaker  ·  AuthorizationPolicy allow-list</text>
+      <text x="1110" y="226" text-anchor="middle" fill="#7060b0" font-size="9" opacity=".8">VirtualService per service  ·  DestinationRule  ·  Envoy sidecar auto-injected  ·  Distributed tracing (Jaeger)</text>
+      <text x="1110" y="240" text-anchor="middle" fill="#7060b0" font-size="9" opacity=".8">midas-common middleware: jwt_extractor · request_id · rate_limit — shared by all services</text>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 3: IDENTITY & AUTHZ  (y=310)
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="295" width="1540" height="130" rx="10" fill="url(#grad-identity)" stroke="#d4a820" stroke-width="1.5" stroke-opacity=".6"/>
+      <text x="44" y="314" fill="#7c3f00" font-size="9" font-weight="700" letter-spacing="1" opacity=".7">IDENTITY &amp; AUTHORISATION — namespace: midas-services</text>
+
+      <!-- identity-service -->
+      <g class="comp" id="c-identity" data-target="index.html#layer-diagram" data-layer="Identity &amp; Authorisation Services"
+         data-tip-title="identity-service" data-tip-rest="GET /identity/login-url · /callback · /me · /jwks&#10;POST /identity/refresh · /logout" data-tip-grpc="VerifyToken(token) → UserContext&#10;GetUser(user_id) → UserRecord" data-tip-note="Redis session:{jti} · DynamoDB midas-users · Cognito PKCE">
+        <rect x="50" y="318" width="195" height="97" rx="8" fill="#fef3c7" stroke="#d4a820" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="147" y="340" text-anchor="middle" fill="#7c3f00" font-size="11" font-weight="700">🪪 identity-service</text>
+        <text x="147" y="356" text-anchor="middle" fill="#7c5010" font-size="8">:8080 REST  ·  :50051 gRPC</text>
+        <line x1="60" y1="362" x2="235" y2="362" stroke="#fbbf24" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="60" y="374" fill="#6b4a00" font-size="8">▸ login_routes · session_routes · jwks_routes</text>
+        <text x="60" y="386" fill="#6b4a00" font-size="8">▸ grpc: VerifyToken · GetUser</text>
+        <text x="60" y="398" fill="#6b4a00" font-size="8">▸ cognito_service · session_service · user_service</text>
+      </g>
+
+      <!-- authz-service -->
+      <g class="comp" id="c-authz" data-target="index.html#layer-diagram" data-layer="Identity &amp; Authorisation Services"
+         data-tip-title="authz-service (NEW)" data-tip-grpc="CheckPermission(user_id,action,resource) → {allowed}&#10;GetUserPermissions(user_id) → PermissionList" data-tip-rest="GET/POST /authz/roles&#10;PUT /authz/users/{id}/roles" data-tip-note="Redis authz:{uid}:{res} TTL=300s · DynamoDB midas-roles/permissions/user-roles">
+        <rect x="260" y="318" width="195" height="97" rx="8" fill="#fef3c7" stroke="#d4a820" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="357" y="340" text-anchor="middle" fill="#7c3f00" font-size="11" font-weight="700">🛂 authz-service</text>
+        <text x="357" y="356" text-anchor="middle" fill="#7c5010" font-size="8">:8080 REST  ·  :50051 gRPC  ·  NEW</text>
+        <line x1="270" y1="362" x2="445" y2="362" stroke="#fbbf24" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="270" y="374" fill="#6b4a00" font-size="8">▸ roles_routes (admin only)</text>
+        <text x="270" y="386" fill="#6b4a00" font-size="8">▸ grpc: CheckPermission · GetUserPermissions</text>
+        <text x="270" y="398" fill="#6b4a00" font-size="8">▸ rbac_service · cache_service</text>
+      </g>
+
+      <!-- project-service -->
+      <g class="comp" id="c-project" data-target="index.html#layer-diagram" data-layer="Identity &amp; Authorisation Services"
+         data-tip-title="project-service" data-tip-rest="GET/POST /projects&#10;GET/PUT/DELETE /projects/{id}" data-tip-grpc="GetProject(project_id) → ProjectRecord&#10;ListProjectsForUser(user_id) → ProjectList" data-tip-note="DynamoDB midas-projects · GSI on user_id">
+        <rect x="470" y="318" width="175" height="97" rx="8" fill="#fef3c7" stroke="#d4a820" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="557" y="340" text-anchor="middle" fill="#7c3f00" font-size="11" font-weight="700">📁 project-service</text>
+        <text x="557" y="356" text-anchor="middle" fill="#7c5010" font-size="8">:8080 REST  ·  :50051 gRPC</text>
+        <line x1="480" y1="362" x2="635" y2="362" stroke="#fbbf24" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="480" y="374" fill="#6b4a00" font-size="8">▸ project_routes</text>
+        <text x="480" y="386" fill="#6b4a00" font-size="8">▸ grpc: GetProject · ListProjectsForUser</text>
+        <text x="480" y="398" fill="#6b4a00" font-size="8">▸ project_service.py</text>
+      </g>
+
+      <!-- midas-common shared -->
+      <g class="comp" id="c-common" data-target="index.html#layer-diagram" data-layer="midas-common — Cloud Portability Abstraction"
+         data-tip-title="midas-common (shared pip package)" data-tip-note="StoragePort · CachePort · NoSQLPort · SecretsPort · AgentRuntimePort&#10;adapters/aws/ · clients/ (gRPC) · proto/ · middleware/" data-tip-rest="Imported by all 14 services">
+        <rect x="670" y="318" width="870" height="97" rx="8" fill="#f5f0fe" stroke="#9060c0" stroke-width="1.5" stroke-dasharray="5,3" filter="url(#shadow)"/>
+        <text x="1105" y="340" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="700">🔌 midas-common — Cloud Portability Abstraction Layer (pip package — imported by ALL services)</text>
+        <text x="680" y="358" fill="#4c1d95" font-size="8">ports/ StoragePort · CachePort · NoSQLPort · SecretsPort · QueuePort · AgentRuntimePort</text>
+        <text x="680" y="372" fill="#4c1d95" font-size="8">adapters/aws/ S3StorageAdapter · S3FilesAdapter · DynamoDBAdapter · RedisAdapter · SecretsManagerAdapter · AgentCoreAdapter</text>
+        <text x="680" y="386" fill="#4c1d95" font-size="8">clients/ AuthzClient · DataFabricClient · ComputationClient · EvaluationClient · IdentityClient  (all gRPC stubs)</text>
+        <text x="680" y="400" fill="#4c1d95" font-size="8">proto/ authz.proto · data_fabric.proto · computation.proto · evaluation.proto · identity.proto · agent.proto  +  _pb2.py generated stubs</text>
+      </g>
+
+      <!-- Istio GW → services (arrows going down) -->
+      <line x1="560" y1="250" x2="147" y2="318" stroke="#93c5fd" stroke-width="1.2" stroke-opacity=".5" marker-end="url(#arr-rest)"/>
+      <line x1="560" y1="250" x2="357" y2="318" stroke="#93c5fd" stroke-width="1.2" stroke-opacity=".35" marker-end="url(#arr-rest)"/>
+      <line x1="560" y1="250" x2="557" y2="318" stroke="#93c5fd" stroke-width="1.2" stroke-opacity=".35" marker-end="url(#arr-rest)"/>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 4: BUSINESS SERVICES  (y=460)
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="445" width="1540" height="130" rx="10" fill="url(#grad-biz)" stroke="#50a060" stroke-width="1.5" stroke-opacity=".6"/>
+      <text x="44" y="464" fill="#14532d" font-size="9" font-weight="700" letter-spacing="1" opacity=".7">BUSINESS SERVICES — namespace: midas-services  ·  all call authz-service CheckPermission on every protected operation</text>
+
+      <!-- analytics-service -->
+      <g class="comp" id="c-analytics" data-target="index.html#layer-diagram" data-layer="Business Services"
+         data-tip-title="analytics-service" data-tip-rest="POST /analytics/qc · /dqs · /correlations · /vif · /bivariate" data-tip-grpc="RunQC(dataset_id,config) → job_id&#10;GetResult(job_id) → AnalyticsResult" data-tip-note="Calls data-fabric gRPC GetDataframe · DynamoDB midas-analytics-results">
+        <rect x="50" y="468" width="170" height="97" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="135" y="490" text-anchor="middle" fill="#14532d" font-size="11" font-weight="700">📊 analytics-service</text>
+        <text x="135" y="506" text-anchor="middle" fill="#065f30" font-size="8">:8080  ·  :50051 gRPC</text>
+        <line x1="60" y1="512" x2="210" y2="512" stroke="#34d399" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="60" y="524" fill="#065f30" font-size="8">▸ analytics_routes</text>
+        <text x="60" y="536" fill="#065f30" font-size="8">▸ qc/dqs/correlations/vif/bivariate</text>
+        <text x="60" y="548" fill="#065f30" font-size="8">▸ grpc: RunQC · GetResult</text>
+      </g>
+
+      <!-- llm-service -->
+      <g class="comp" id="c-llm" data-target="index.html#layer-diagram" data-layer="Business Services"
+         data-tip-title="llm-service" data-tip-rest="POST /chat/completions · /agent · /execute-code&#10;GET /chat/models" data-tip-grpc="Chat(session_id,messages) → stream ChatChunk" data-tip-note="→ AI Gateway LiteLLM (PrivateLink) · Redis llm-sel:{sid} · DynamoDB midas-messages">
+        <rect x="235" y="468" width="170" height="97" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="320" y="490" text-anchor="middle" fill="#14532d" font-size="11" font-weight="700">🤖 llm-service</text>
+        <text x="320" y="506" text-anchor="middle" fill="#065f30" font-size="8">:8080  ·  :50051 gRPC</text>
+        <line x1="245" y1="512" x2="395" y2="512" stroke="#34d399" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="245" y="524" fill="#065f30" font-size="8">▸ chat_routes</text>
+        <text x="245" y="536" fill="#065f30" font-size="8">▸ llm_routing · llm_registry</text>
+        <text x="245" y="548" fill="#065f30" font-size="8">▸ grpc: Chat(stream ChatChunk)</text>
+      </g>
+
+      <!-- documentation-service -->
+      <g class="comp" id="c-docs" data-target="index.html#layer-diagram" data-layer="Business Services"
+         data-tip-title="documentation-service" data-tip-rest="POST /documentation/generate → 202 {job_id}&#10;GET /documentation/{id}/status · /download" data-tip-note="→ llm-service gRPC Chat · S3 Files midas-documentation/ · DynamoDB midas-doc-jobs">
+        <rect x="420" y="468" width="175" height="97" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="507" y="490" text-anchor="middle" fill="#14532d" font-size="11" font-weight="700">📄 documentation-svc</text>
+        <text x="507" y="506" text-anchor="middle" fill="#065f30" font-size="8">:8080 REST only</text>
+        <line x1="430" y1="512" x2="585" y2="512" stroke="#34d399" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="430" y="524" fill="#065f30" font-size="8">▸ documentation_routes</text>
+        <text x="430" y="536" fill="#065f30" font-size="8">▸ doc_generator.py</text>
+        <text x="430" y="548" fill="#065f30" font-size="8">▸ → gRPC Chat(llm-service)</text>
+      </g>
+
+      <!-- evaluation-service -->
+      <g class="comp" id="c-eval" data-target="index.html#layer-diagram" data-layer="Business Services"
+         data-tip-title="evaluation-service" data-tip-rest="POST /evaluation · GET /evaluation/{id} · /compare" data-tip-grpc="StoreEvaluation(model_id,metrics) → EvalRef&#10;← called by meea-evaluator pipeline pod" data-tip-note="DynamoDB midas-evaluations · S3 Files meea.json.gz">
+        <rect x="610" y="468" width="175" height="97" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="697" y="490" text-anchor="middle" fill="#14532d" font-size="11" font-weight="700">📈 evaluation-service</text>
+        <text x="697" y="506" text-anchor="middle" fill="#065f30" font-size="8">:8080  ·  :50051 gRPC</text>
+        <line x1="620" y1="512" x2="775" y2="512" stroke="#34d399" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="620" y="524" fill="#065f30" font-size="8">▸ evaluation_routes</text>
+        <text x="620" y="536" fill="#065f30" font-size="8">▸ meea_service</text>
+        <text x="620" y="548" fill="#065f30" font-size="8">▸ grpc: StoreEvaluation</text>
+      </g>
+
+      <!-- graphrag-service -->
+      <g class="comp" id="c-graphrag" data-target="index.html#layer-diagram" data-layer="Business Services"
+         data-tip-title="graphrag-service" data-tip-rest="POST /graphrag/build · /query · /vector/search · /vector/index" data-tip-grpc="Query(dataset_id,text) → KGQueryResult&#10;VectorSearch(embedding,top_k) → SearchResults" data-tip-note="OpenSearch Serverless (replaces FAISS) · S3 Files midas-knowledge-graphs/ · DynamoDB midas-graphrag-meta">
+        <rect x="800" y="468" width="175" height="97" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="887" y="490" text-anchor="middle" fill="#14532d" font-size="11" font-weight="700">🕸️ graphrag-service</text>
+        <text x="887" y="506" text-anchor="middle" fill="#065f30" font-size="8">:8080  ·  :50051 gRPC</text>
+        <line x1="810" y1="512" x2="965" y2="512" stroke="#34d399" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="810" y="524" fill="#065f30" font-size="8">▸ graphrag_routes</text>
+        <text x="810" y="536" fill="#065f30" font-size="8">▸ grpc: Query · VectorSearch</text>
+        <text x="810" y="548" fill="#065f30" font-size="8">▸ → OpenSearch Serverless</text>
+      </g>
+
+      <!-- Istio → biz services arrows -->
+      <line x1="560" y1="250" x2="135" y2="468" stroke="#93c5fd" stroke-width="1.1" stroke-opacity=".3" marker-end="url(#arr-rest)"/>
+      <line x1="560" y1="250" x2="320" y2="468" stroke="#93c5fd" stroke-width="1.1" stroke-opacity=".3" marker-end="url(#arr-rest)"/>
+      <line x1="560" y1="250" x2="507" y2="468" stroke="#93c5fd" stroke-width="1.1" stroke-opacity=".3" marker-end="url(#arr-rest)"/>
+      <line x1="560" y1="250" x2="697" y2="468" stroke="#93c5fd" stroke-width="1.1" stroke-opacity=".3" marker-end="url(#arr-rest)"/>
+      <line x1="560" y1="250" x2="887" y2="468" stroke="#93c5fd" stroke-width="1.1" stroke-opacity=".3" marker-end="url(#arr-rest)"/>
+
+      <!-- business inter-service gRPC arrows -->
+      <!-- docs → llm gRPC -->
+      <path d="M507 565 Q507 590 320 565" fill="none" stroke="#a78bfa" stroke-width="1.2" stroke-opacity=".7" marker-end="url(#arr-grpc)"/>
+      <text x="410" y="590" text-anchor="middle" fill="#a78bfa" font-size="7.5" opacity=".8">gRPC Chat(stream)</text>
+      <!-- llm → graphrag gRPC -->
+      <path d="M405 516 Q600 540 800 516" fill="none" stroke="#a78bfa" stroke-width="1.2" stroke-opacity=".6" marker-end="url(#arr-grpc)"/>
+      <text x="600" y="548" text-anchor="middle" fill="#a78bfa" font-size="7.5" opacity=".8">gRPC VectorSearch(RAG)</text>
+      <!-- all → authz gRPC -->
+      <line x1="135" y1="468" x2="357" y2="415" stroke="#a78bfa" stroke-width="1" stroke-opacity=".4" marker-end="url(#arr-grpc)" stroke-dasharray="3,2"/>
+      <line x1="320" y1="468" x2="357" y2="415" stroke="#a78bfa" stroke-width="1" stroke-opacity=".4" marker-end="url(#arr-grpc)" stroke-dasharray="3,2"/>
+      <text x="230" y="446" text-anchor="middle" fill="#a78bfa" font-size="7" opacity=".6">gRPC CheckPermission</text>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 5: AGENT PLATFORM  (y=610)
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="595" width="1540" height="155" rx="10" fill="url(#grad-agent)" stroke="#c060b8" stroke-width="2" stroke-opacity=".7"/>
+      <text x="44" y="614" fill="#f472b6" font-size="9" font-weight="700" letter-spacing="1" opacity=".8">AI AGENT PLATFORM — AWS BEDROCK AGENTCORE  ·  NEW  ·  namespace: midas-services + midas-agents</text>
+
+      <!-- agent-platform-service -->
+      <g class="comp" id="c-agent" data-target="index.html#agent-platform" data-layer="AI Agent Fabric"
+         data-tip-title="agent-platform-service (NEW)" data-tip-rest="GET/POST /agents · POST /agents/{id}/runs&#10;GET /agents/runs/{id}/stream (SSE/WS) · GET /agents/tools" data-tip-grpc="InvokeAgent(agent_id,session_id,input) → stream AgentChunk&#10;GetAgentStatus(run_id) · ListAgentTools()" data-tip-note="agentcore_service · tool_registry · memory_service · session_service&#10;24 MCP tools · DynamoDB midas-agent-catalogue/runs · S3 Files midas-agent-runs/">
+        <rect x="50" y="618" width="310" height="122" rx="8" fill="#fae8ff" stroke="#c026d3" stroke-width="2" filter="url(#shadow-lg)"/>
+        <text x="205" y="640" text-anchor="middle" fill="#f472b6" font-size="12" font-weight="700">🧠 agent-platform-service</text>
+        <text x="205" y="656" text-anchor="middle" fill="#86198f" font-size="8">:8080 REST  ·  :50051 gRPC  ·  NEW SERVICE</text>
+        <line x1="60" y1="662" x2="350" y2="662" stroke="#f472b6" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="60" y="674" fill="#701a75" font-size="8">▸ agent_routes · tool_routes · memory_routes</text>
+        <text x="60" y="686" fill="#701a75" font-size="8">▸ grpc: InvokeAgent · GetAgentStatus · ListAgentTools</text>
+        <text x="60" y="698" fill="#701a75" font-size="8">▸ agentcore_service · tool_registry · memory_service</text>
+        <text x="60" y="710" fill="#701a75" font-size="8">▸ tools/ data_fabric · analytics · computation · llm</text>
+        <text x="60" y="722" fill="#701a75" font-size="8">▸ tools/ graphrag · evaluation · project · authz</text>
+      </g>
+
+      <!-- AgentCore box -->
+      <g class="comp" id="c-agentcore" data-target="index.html#agent-platform" data-layer="AI Agent Fabric"
+         data-tip-title="AWS Bedrock AgentCore (PrivateLink)" data-tip-note="Runtime API: CreateRuntime · InvokeAgentRuntime&#10;Memory API: store/retrieve long-term facts&#10;microVM per session: isolated CPU/mem/fs&#10;Session max: 8h · Idle timeout: 15min">
+        <rect x="380" y="618" width="220" height="122" rx="8" fill="#fdf4ff" stroke="#c026d3" stroke-width="1.5" stroke-dasharray="5,3" filter="url(#shadow)"/>
+        <text x="490" y="640" text-anchor="middle" fill="#f472b6" font-size="10" font-weight="700">☁️ AWS AgentCore</text>
+        <text x="490" y="655" text-anchor="middle" fill="#86198f" font-size="8">(PrivateLink · VPC endpoint)</text>
+        <line x1="390" y1="661" x2="590" y2="661" stroke="#f472b6" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="390" y="673" fill="#86198f" font-size="8">▸ Runtime API (CreateRuntime)</text>
+        <text x="390" y="685" fill="#86198f" font-size="8">▸ InvokeAgentRuntime (stream)</text>
+        <text x="390" y="697" fill="#86198f" font-size="8">▸ Memory API (long-term facts)</text>
+        <text x="390" y="709" fill="#86198f" font-size="8">▸ microVM sessions (8h max)</text>
+        <text x="390" y="721" fill="#86198f" font-size="8">▸ mTLS · Outbound Auth (OAuth)</text>
+      </g>
+
+      <!-- OOB agents -->
+      <g class="comp" id="c-ootb" data-target="index.html#agent-platform" data-layer="AI Agent Fabric"
+         data-tip-title="Out-of-the-Box Agents" data-tip-note="data-qa-agent: QC · DQS · correlations · VIF&#10;train-agent: upload → QC → pipeline → evaluate&#10;insight-agent: LLM + GraphRAG + analytics Q&amp;A&#10;doc-agent: generate model documentation&#10;pipeline-builder-agent: compose Kubeflow pipelines">
+        <rect x="620" y="618" width="200" height="122" rx="8" fill="#fce8ff" stroke="#c026d3" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="720" y="640" text-anchor="middle" fill="#f472b6" font-size="10" font-weight="700">📦 OOB Agents</text>
+        <text x="720" y="655" text-anchor="middle" fill="#86198f" font-size="8">Seeded in midas-agent-catalogue</text>
+        <line x1="630" y1="661" x2="810" y2="661" stroke="#f472b6" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="630" y="673" fill="#86198f" font-size="8">▸ data-qa-agent</text>
+        <text x="630" y="685" fill="#86198f" font-size="8">▸ train-agent</text>
+        <text x="630" y="697" fill="#86198f" font-size="8">▸ insight-agent</text>
+        <text x="630" y="709" fill="#86198f" font-size="8">▸ doc-agent</text>
+        <text x="630" y="721" fill="#86198f" font-size="8">▸ pipeline-builder-agent</text>
+      </g>
+
+      <!-- agent → AgentCore -->
+      <line x1="360" y1="679" x2="380" y2="679" stroke="#f472b6" stroke-width="1.5" stroke-opacity=".9" marker-end="url(#arr-mcp)"/>
+      <!-- agent → OOB -->
+      <line x1="360" y1="700" x2="620" y2="700" stroke="#f472b6" stroke-width="1.2" stroke-opacity=".6" stroke-dasharray="4,3"/>
+      <!-- Istio → agent-platform -->
+      <line x1="560" y1="250" x2="205" y2="618" stroke="#93c5fd" stroke-width="1.2" stroke-opacity=".35" marker-end="url(#arr-rest)"/>
+      <!-- agent MCP tool calls to business services -->
+      <path d="M360 650 Q840 600 135 565" fill="none" stroke="#34d399" stroke-width="1.2" stroke-opacity=".6" marker-end="url(#arr-mcp)"/>
+      <path d="M360 660 Q600 610 320 565" fill="none" stroke="#34d399" stroke-width="1.2" stroke-opacity=".5" marker-end="url(#arr-mcp)"/>
+      <path d="M360 670 Q700 620 887 565" fill="none" stroke="#34d399" stroke-width="1.2" stroke-opacity=".5" marker-end="url(#arr-mcp)"/>
+      <text x="700" y="605" text-anchor="middle" fill="#14532d" font-size="8" opacity=".7">MCP tool calls → REST/gRPC to owning service</text>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 6: DATA FABRIC  (y=790)
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="775" width="1540" height="140" rx="10" fill="url(#grad-data)" stroke="#d47820" stroke-width="2" stroke-opacity=".7"/>
+      <text x="44" y="794" fill="#7c2d00" font-size="9" font-weight="700" letter-spacing="1" opacity=".8">DATA FABRIC — SINGLE OWNER OF ALL DATA  ·  namespace: midas-services  ·  no service writes S3/S3-Files directly</text>
+
+      <!-- data-fabric-service -->
+      <g class="comp" id="c-datafabric" data-target="index.html#layer-diagram" data-layer="Data Fabric — Single Owner of ALL Data"
+         data-tip-title="data-fabric-service (NEW)" data-tip-rest="POST /data/upload · GET /data/datasets · /datasets/{id}&#10;POST /data/datasets/{id}/split · GET /{id}/preview" data-tip-grpc="GetDataset · GetDataframe(scope) → ParquetBytes LZ4&#10;ListDatasets · GetRawFile · RegisterArtefact · GetArtefact" data-tip-note="S3 midas-raw/ · S3 Files midas-datasets/ + midas-artefacts/&#10;DynamoDB midas-data-catalogue · Redis df:{id}:{scope} TTL=1800s">
+        <rect x="50" y="800" width="1000" height="105" rx="8" fill="#fff7ed" stroke="#d47820" stroke-width="2" filter="url(#shadow-lg)"/>
+        <text x="550" y="824" text-anchor="middle" fill="#7c2d00" font-size="13" font-weight="700">🗂️ data-fabric-service</text>
+        <text x="550" y="840" text-anchor="middle" fill="#7c4000" font-size="8">:8080 REST  ·  :50051 gRPC  ·  The single owner of all data — no other service writes S3/S3-Files</text>
+        <line x1="60" y1="846" x2="1040" y2="846" stroke="#fb923c" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="70" y="858" fill="#6b3800" font-size="8">REST: POST /data/upload  GET /data/datasets  GET /data/datasets/{id}  POST /data/datasets/{id}/split  GET /data/datasets/{id}/preview  DELETE /data/datasets/{id}</text>
+        <text x="70" y="872" fill="#6b3800" font-size="8">gRPC: GetDataset(dataset_id)→DatasetMeta  GetDataframe(dataset_id,scope)→ParquetBytes  ListDatasets(project_id)→DatasetList  GetRawFile→FileBytes</text>
+        <text x="70" y="886" fill="#6b3800" font-size="8">gRPC: RegisterArtefact(job_id,key,type)→ArtefactRef  GetArtefact(ref)→FileBytes  ·  services: upload_service · split_service · catalogue_service</text>
+      </g>
+
+      <!-- services → data-fabric gRPC arrows -->
+      <line x1="135" y1="565" x2="200" y2="800" stroke="#a78bfa" stroke-width="1.3" stroke-opacity=".6" marker-end="url(#arr-grpc)"/>
+      <line x1="320" y1="565" x2="350" y2="800" stroke="#a78bfa" stroke-width="1.3" stroke-opacity=".5" marker-end="url(#arr-grpc)"/>
+      <line x1="507" y1="565" x2="500" y2="800" stroke="#a78bfa" stroke-width="1.3" stroke-opacity=".4" marker-end="url(#arr-grpc)"/>
+      <line x1="697" y1="565" x2="650" y2="800" stroke="#a78bfa" stroke-width="1.3" stroke-opacity=".4" marker-end="url(#arr-grpc)"/>
+      <text x="390" y="700" fill="#a78bfa" font-size="8" opacity=".6" transform="rotate(-75,390,700)">gRPC GetDataframe</text>
+      <!-- agent → data-fabric -->
+      <line x1="205" y1="740" x2="400" y2="800" stroke="#34d399" stroke-width="1.2" stroke-opacity=".6" marker-end="url(#arr-mcp)"/>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 7: COMPUTATION  (y=960)
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="945" width="1540" height="185" rx="10" fill="url(#grad-compute)" stroke="#20a0a0" stroke-width="1.5" stroke-opacity=".6"/>
+      <text x="44" y="964" fill="#0a5050" font-size="9" font-weight="700" letter-spacing="1" opacity=".7">COMPUTATION PLATFORM — KUBEFLOW PIPELINES ON EKS  ·  namespaces: midas-services + kubeflow + midas-pipelines</text>
+
+      <!-- computation-service -->
+      <g class="comp" id="c-compute" data-target="index.html#layer-diagram" data-layer="Computation Platform — Kubeflow Pipelines on EKS"
+         data-tip-title="computation-service (NEW)" data-tip-rest="GET/POST/PUT/DELETE /computation/pipelines/{id}&#10;POST /computation/pipelines/{id}/runs → 202 {run_id}&#10;GET /computation/runs/{id} · /runs/{id}/stream (SSE)" data-tip-grpc="SubmitRun(pipeline_id,params) → RunRef&#10;GetRunStatus(run_id) → RunStatus" data-tip-note="kubeflow_service (kfp.Client SDK) · pipeline_service · run_service (SSE+Redis)&#10;DynamoDB midas-pipeline-catalogue/runs · Redis train:progress:{id} pub/sub">
+        <rect x="50" y="968" width="380" height="152" rx="8" fill="#e0f8f8" stroke="#20a0a0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="240" y="990" text-anchor="middle" fill="#0a5050" font-size="11" font-weight="700">⚡ computation-service</text>
+        <text x="240" y="1006" text-anchor="middle" fill="#075060" font-size="8">:8080 REST  ·  :50051 gRPC  ·  Kubeflow facade</text>
+        <line x1="60" y1="1012" x2="420" y2="1012" stroke="#67e8f9" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="60" y="1024" fill="#0c5a6a" font-size="8">▸ pipeline_routes (CRUD pipeline catalogue)</text>
+        <text x="60" y="1036" fill="#0c5a6a" font-size="8">▸ component_routes (CRUD components)</text>
+        <text x="60" y="1048" fill="#0c5a6a" font-size="8">▸ run_routes: POST runs → 202 · GET status · SSE stream</text>
+        <text x="60" y="1060" fill="#0c5a6a" font-size="8">▸ grpc: SubmitRun · GetRunStatus</text>
+        <text x="60" y="1072" fill="#0c5a6a" font-size="8">▸ kubeflow_service.py → kfp.Client.create_run()</text>
+        <text x="60" y="1084" fill="#0c5a6a" font-size="8">▸ run_service.py → Redis pub/sub → SSE bridge</text>
+        <text x="60" y="1096" fill="#0c5a6a" font-size="8">▸ Replaces BackgroundJobManager + training_jobs_state.json</text>
+        <text x="60" y="1110" fill="#0c5a6a" font-size="8">▸ Replaces SQS midas-training-queue + KEDA worker</text>
+      </g>
+
+      <!-- Kubeflow/Argo -->
+      <g class="comp" id="c-kubeflow" data-target="index.html#layer-diagram" data-layer="Computation Platform — Kubeflow Pipelines on EKS"
+         data-tip-title="Kubeflow Pipelines + Argo Workflows" data-tip-note="KFP API Server · Argo Workflows Controller&#10;Pipelines compiled to YAML · DAG scheduling&#10;Step-level retry and logs · namespace: kubeflow">
+        <rect x="450" y="968" width="175" height="152" rx="8" fill="#e0f8f8" stroke="#20a0a0" stroke-width="1.5" stroke-dasharray="5,3" filter="url(#shadow)"/>
+        <text x="537" y="990" text-anchor="middle" fill="#0a5050" font-size="10" font-weight="700">☸️ Kubeflow + Argo</text>
+        <text x="537" y="1005" text-anchor="middle" fill="#075060" font-size="8">namespace: kubeflow</text>
+        <line x1="460" y1="1011" x2="615" y2="1011" stroke="#67e8f9" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="460" y="1023" fill="#0c5a6a" font-size="8">▸ KFP API Server</text>
+        <text x="460" y="1035" fill="#0c5a6a" font-size="8">▸ Argo Workflows Controller</text>
+        <text x="460" y="1047" fill="#0c5a6a" font-size="8">▸ Pipeline YAML DAG</text>
+        <text x="460" y="1059" fill="#0c5a6a" font-size="8">▸ Step-level retry + logs</text>
+      </g>
+
+      <!-- Pipeline step pods -->
+      <g class="comp" id="c-pods" data-target="index.html#layer-diagram" data-layer="Computation Platform — Kubeflow Pipelines on EKS"
+         data-tip-title="Pipeline Step Pods (midas-pipelines namespace)" data-tip-note="feature-engineer: encode · impute · log-transform&#10;gbm-trainer: LightGBM / CatBoost / XGBoost&#10;rfe-selector: Recursive Feature Elimination&#10;auto-trainer: FLAML / TPOT auto-ML&#10;meea-evaluator: AUC-ROC · F1 · confusion matrix&#10;Each pod: own ECR image · calls data-fabric gRPC">
+        <rect x="645" y="968" width="300" height="152" rx="8" fill="#e0f8f8" stroke="#20a0a0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="795" y="990" text-anchor="middle" fill="#0a5050" font-size="10" font-weight="700">🔬 Pipeline Step Pods</text>
+        <text x="795" y="1005" text-anchor="middle" fill="#075060" font-size="8">namespace: midas-pipelines  ·  @kfp.component</text>
+        <line x1="655" y1="1011" x2="935" y2="1011" stroke="#67e8f9" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="655" y="1023" fill="#0c5a6a" font-size="8">▸ feature_engineer/component.py (encode·impute·transforms)</text>
+        <text x="655" y="1035" fill="#0c5a6a" font-size="8">▸ gbm_trainer/component.py (LightGBM / CatBoost / XGBoost)</text>
+        <text x="655" y="1047" fill="#0c5a6a" font-size="8">▸ rfe_selector/component.py (Recursive Feature Elimination)</text>
+        <text x="655" y="1059" fill="#0c5a6a" font-size="8">▸ auto_trainer/component.py (FLAML / TPOT auto-ML)</text>
+        <text x="655" y="1071" fill="#0c5a6a" font-size="8">▸ meea_evaluator/component.py (AUC-ROC · F1 · confusion)</text>
+        <text x="655" y="1083" fill="#0c5a6a" font-size="8">▸ each: own ECR image + Dockerfile</text>
+        <text x="655" y="1095" fill="#0c5a6a" font-size="8">▸ all call data-fabric gRPC GetDataframe / RegisterArtefact</text>
+        <text x="655" y="1107" fill="#0c5a6a" font-size="8">▸ meea: calls evaluation-service gRPC StoreEvaluation</text>
+      </g>
+
+      <!-- compute → kubeflow SDK -->
+      <line x1="430" y1="1050" x2="450" y2="1050" stroke="#67e8f9" stroke-width="1.5" stroke-opacity=".8" marker-end="url(#arr-cache)"/>
+      <!-- kubeflow → step pods -->
+      <line x1="625" y1="1050" x2="645" y2="1050" stroke="#67e8f9" stroke-width="1.5" stroke-opacity=".8" marker-end="url(#arr-cache)"/>
+      <!-- step pods → data-fabric gRPC -->
+      <line x1="795" y1="968" x2="700" y2="905" stroke="#a78bfa" stroke-width="1.3" stroke-opacity=".6" marker-end="url(#arr-grpc)"/>
+      <text x="760" y="940" fill="#a78bfa" font-size="8" opacity=".7">gRPC GetDataframe</text>
+      <!-- step pods → evaluation gRPC -->
+      <line x1="795" y1="968" x2="697" y2="565" stroke="#a78bfa" stroke-width="1" stroke-opacity=".35" stroke-dasharray="3,2" marker-end="url(#arr-grpc)"/>
+      <!-- Istio → compute REST -->
+      <line x1="560" y1="250" x2="240" y2="968" stroke="#93c5fd" stroke-width="1.1" stroke-opacity=".25" marker-end="url(#arr-rest)"/>
+      <!-- agent → compute MCP tool -->
+      <line x1="205" y1="740" x2="240" y2="968" stroke="#34d399" stroke-width="1.2" stroke-opacity=".5" marker-end="url(#arr-mcp)"/>
+      <!-- analytics → computation gRPC RunQC gate -->
+      <path d="M135 565 Q100 770 240 968" fill="none" stroke="#a78bfa" stroke-width="1" stroke-opacity=".35" stroke-dasharray="3,2" marker-end="url(#arr-grpc)"/>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           ROW 8: MANAGED DATA STORES  (y=1175)
+      ══════════════════════════════════════════════════════════════ -->
+      <rect x="30" y="1170" width="1540" height="490" rx="10" fill="url(#grad-stores)" stroke="#9060c0" stroke-width="1.5" stroke-opacity=".5"/>
+      <text x="44" y="1190" fill="#4a1070" font-size="9" font-weight="700" letter-spacing="1" opacity=".7">MANAGED DATA STORES — AWS (all via PrivateLink VPC endpoints · no public endpoints · vpc-0c4d673f3e95a93eb us-east-1)</text>
+
+      <!-- DynamoDB -->
+      <g class="comp" id="c-dynamo" data-target="index.html#storage" data-layer="Managed Data Stores"
+         data-tip-title="DynamoDB (16 tables)" data-tip-note="midas-users · midas-sessions · midas-roles · midas-permissions&#10;midas-user-roles · midas-projects · midas-data-catalogue&#10;midas-analytics-results · midas-messages · midas-doc-jobs&#10;midas-pipeline-catalogue · midas-pipeline-runs&#10;midas-evaluations · midas-graphrag-meta&#10;midas-agent-catalogue · midas-agent-runs  (NEW)">
+        <rect x="50" y="1202" width="220" height="170" rx="8" fill="#f5f0fe" stroke="#9060c0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="160" y="1224" text-anchor="middle" fill="#4a1070" font-size="11" font-weight="700">🗃️ DynamoDB</text>
+        <text x="160" y="1240" text-anchor="middle" fill="#5b21b6" font-size="8">16 tables  ·  NoSQLPort abstraction</text>
+        <line x1="60" y1="1246" x2="260" y2="1246" stroke="#e9d5ff" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="60" y="1258" fill="#4c1070" font-size="7.5">midas-users · midas-sessions</text>
+        <text x="60" y="1270" fill="#4c1070" font-size="7.5">midas-roles · midas-permissions · midas-user-roles</text>
+        <text x="60" y="1282" fill="#4c1070" font-size="7.5">midas-projects</text>
+        <text x="60" y="1294" fill="#4c1070" font-size="7.5">midas-data-catalogue</text>
+        <text x="60" y="1306" fill="#4c1070" font-size="7.5">midas-analytics-results</text>
+        <text x="60" y="1318" fill="#4c1070" font-size="7.5">midas-messages · midas-doc-jobs</text>
+        <text x="60" y="1330" fill="#4c1070" font-size="7.5">midas-pipeline-catalogue · midas-pipeline-runs</text>
+        <text x="60" y="1342" fill="#4c1070" font-size="7.5">midas-evaluations · midas-graphrag-meta</text>
+        <text x="60" y="1354" fill="#f472b6" font-size="7.5" font-weight="700">midas-agent-catalogue · midas-agent-runs ★</text>
+      </g>
+
+      <!-- Redis -->
+      <g class="comp" id="c-redis" data-target="index.html#storage" data-layer="Managed Data Stores"
+         data-tip-title="ElastiCache Redis" data-tip-note="session:{jti} TTL=3600s&#10;authz:{uid}:{resource} TTL=300s&#10;df:{dataset_id}:{scope} LZ4 TTL=1800s&#10;llm-sel:{session_id}&#10;train:progress:{run_id} pub/sub&#10;agent:active:{sid} · agent:progress:{run_id}  (NEW)">
+        <rect x="290" y="1202" width="220" height="170" rx="8" fill="#e0f8f5" stroke="#20a0a0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="400" y="1224" text-anchor="middle" fill="#0e6050" font-size="11" font-weight="700">⚡ ElastiCache Redis</text>
+        <text x="400" y="1240" text-anchor="middle" fill="#208070" font-size="8">CachePort abstraction  ·  allkeys-lru</text>
+        <line x1="300" y1="1246" x2="500" y2="1246" stroke="#2dd4bf" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="300" y="1258" fill="#0c5050" font-size="7.5">session:{jti} — auth sessions TTL=3600s</text>
+        <text x="300" y="1270" fill="#0c5050" font-size="7.5">authz:{uid}:{res} — perm cache TTL=300s</text>
+        <text x="300" y="1282" fill="#0c5050" font-size="7.5">df:{dataset_id}:{scope} — DataFrame LZ4</text>
+        <text x="300" y="1294" fill="#0c5050" font-size="7.5">llm-sel:{session_id} — model override</text>
+        <text x="300" y="1306" fill="#0c5050" font-size="7.5">train:progress:{run_id} — pub/sub SSE</text>
+        <text x="300" y="1318" fill="#0c5050" font-size="7.5">qc:{dataset_id}:{hash} — QC result cache</text>
+        <text x="300" y="1330" fill="#f472b6" font-size="7.5" font-weight="700">agent:active:{sid} ★</text>
+        <text x="300" y="1342" fill="#f472b6" font-size="7.5" font-weight="700">agent:progress:{run_id} ★</text>
+      </g>
+
+      <!-- S3 / S3 Files -->
+      <g class="comp" id="c-s3" data-target="index.html#storage" data-layer="Managed Data Stores"
+         data-tip-title="AWS S3 + S3 Files" data-tip-note="S3: midas-raw/ (CSV/Excel uploads) · midas-waf-logs/&#10;S3 Files: midas-datasets/parquet/ · midas-datasets/splits/&#10;midas-artefacts/{run_id}/model/ · /eval/&#10;midas-knowledge-graphs/ · midas-documentation/&#10;midas-agent-runs/  (NEW)&#10;Access ONLY via data-fabric-service gRPC">
+        <rect x="530" y="1202" width="220" height="170" rx="8" fill="#fff7ed" stroke="#d47820" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="640" y="1224" text-anchor="middle" fill="#7c2d00" font-size="11" font-weight="700">🪣 S3 + S3 Files</text>
+        <text x="640" y="1240" text-anchor="middle" fill="#905018" font-size="8">StoragePort abstraction</text>
+        <line x1="540" y1="1246" x2="740" y2="1246" stroke="#fb923c" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="540" y="1258" fill="#7c2800" font-size="7.5">S3: midas-raw/ (CSV/Excel)</text>
+        <text x="540" y="1270" fill="#7c2800" font-size="7.5">S3: midas-waf-logs/</text>
+        <text x="540" y="1282" fill="#7c2800" font-size="7.5">S3 Files: midas-datasets/parquet/</text>
+        <text x="540" y="1294" fill="#7c2800" font-size="7.5">S3 Files: midas-datasets/splits/</text>
+        <text x="540" y="1306" fill="#7c2800" font-size="7.5">S3 Files: midas-artefacts/{run_id}/</text>
+        <text x="540" y="1318" fill="#7c2800" font-size="7.5">S3 Files: midas-knowledge-graphs/</text>
+        <text x="540" y="1330" fill="#7c2800" font-size="7.5">S3 Files: midas-documentation/</text>
+        <text x="540" y="1342" fill="#f472b6" font-size="7.5" font-weight="700">S3 Files: midas-agent-runs/ ★</text>
+      </g>
+
+      <!-- Secrets Manager -->
+      <g class="comp" id="c-secrets" data-target="index.html#storage" data-layer="Managed Data Stores"
+         data-tip-title="AWS Secrets Manager" data-tip-note="/midas/identity/cognito-client-id · /cognito-client-secret&#10;/midas/identity/jwt-signing-key&#10;/midas/llm/ai-gateway-key&#10;/midas/db/*&#10;/midas/agent-platform/agentcore-*  (NEW)&#10;SecretsPort abstraction — never env vars">
+        <rect x="770" y="1202" width="200" height="170" rx="8" fill="#fefce8" stroke="#d4a820" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="870" y="1224" text-anchor="middle" fill="#7c3f00" font-size="11" font-weight="700">🔑 Secrets Manager</text>
+        <text x="870" y="1240" text-anchor="middle" fill="#906018" font-size="8">SecretsPort abstraction</text>
+        <line x1="780" y1="1246" x2="960" y2="1246" stroke="#fbbf24" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="780" y="1258" fill="#6b4000" font-size="7.5">/midas/identity/cognito-*</text>
+        <text x="780" y="1270" fill="#6b4000" font-size="7.5">/midas/identity/jwt-signing-key</text>
+        <text x="780" y="1282" fill="#6b4000" font-size="7.5">/midas/llm/ai-gateway-key</text>
+        <text x="780" y="1294" fill="#6b4000" font-size="7.5">/midas/db/*</text>
+        <text x="780" y="1306" fill="#f472b6" font-size="7.5" font-weight="700">/midas/agent-platform/agentcore-* ★</text>
+      </g>
+
+      <!-- OpenSearch -->
+      <g class="comp" id="c-opensearch" data-target="index.html#layer-diagram" data-layer="Business Services"
+         data-tip-title="Amazon OpenSearch Serverless" data-tip-note="Vector index (replaces FAISS on local disk)&#10;k-NN search · Document embeddings&#10;Owned exclusively by graphrag-service">
+        <rect x="990" y="1202" width="185" height="130" rx="8" fill="#e0f8f8" stroke="#20a0a0" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="1082" y="1224" text-anchor="middle" fill="#0a5050" font-size="10" font-weight="700">🔍 OpenSearch</text>
+        <text x="1082" y="1238" text-anchor="middle" fill="#207080" font-size="8">Serverless  ·  vector index</text>
+        <line x1="1000" y1="1244" x2="1165" y2="1244" stroke="#67e8f9" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="1000" y="1256" fill="#0a5060" font-size="7.5">replaces FAISS on local disk</text>
+        <text x="1000" y="1268" fill="#0a5060" font-size="7.5">k-NN vector search</text>
+        <text x="1000" y="1280" fill="#0a5060" font-size="7.5">document embeddings</text>
+        <text x="1000" y="1292" fill="#0a5060" font-size="7.5">owned by graphrag-service</text>
+      </g>
+
+      <!-- Cognito -->
+      <g class="comp" id="c-cognito" data-target="index.html#layer-diagram" data-layer="Identity &amp; Authorisation Services"
+         data-tip-title="AWS Cognito User Pool" data-tip-note="PKCE OAuth2 auth code flow&#10;PrivateLink VPC endpoint&#10;Owned by identity-service only">
+        <rect x="1195" y="1202" width="175" height="100" rx="8" fill="#fefce8" stroke="#d4a820" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="1282" y="1224" text-anchor="middle" fill="#7c3f00" font-size="10" font-weight="700">🪪 Cognito</text>
+        <text x="1282" y="1238" text-anchor="middle" fill="#906018" font-size="8">User Pool  ·  PrivateLink</text>
+        <line x1="1205" y1="1244" x2="1360" y2="1244" stroke="#fbbf24" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="1205" y="1256" fill="#6b4000" font-size="7.5">PKCE OAuth2 flow</text>
+        <text x="1205" y="1268" fill="#6b4000" font-size="7.5">owned by identity-service</text>
+      </g>
+
+      <!-- AI Gateway -->
+      <g class="comp" id="c-aigateway" data-target="index.html#layer-diagram" data-layer="Managed Data Stores"
+         data-tip-title="AI Gateway (LiteLLM)" data-tip-note="OpenAI-compatible REST API&#10;VPC PrivateLink endpoint&#10;External submodule (ai_gateway/)&#10;Owned by Unified-Cloud-DevOps team">
+        <rect x="1390" y="1202" width="165" height="100" rx="8" fill="#d1fae5" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="1472" y="1224" text-anchor="middle" fill="#14532d" font-size="10" font-weight="700">🤖 AI Gateway</text>
+        <text x="1472" y="1238" text-anchor="middle" fill="#065f30" font-size="8">LiteLLM  ·  PrivateLink</text>
+        <line x1="1400" y1="1244" x2="1545" y2="1244" stroke="#34d399" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="1400" y="1256" fill="#065f30" font-size="7.5">OpenAI-compatible REST</text>
+        <text x="1400" y="1268" fill="#065f30" font-size="7.5">external submodule</text>
+      </g>
+
+      <!-- AgentCore managed -->
+      <g class="comp" id="c-agentcore-store" data-target="index.html#agent-platform" data-layer="AI Agent Fabric"
+         data-tip-title="AgentCore Runtime + Memory (NEW)" data-tip-note="Runtime API: CreateAgentRuntime · InvokeAgentRuntime&#10;Memory API: CreateMemoryRecord · RetrieveMemories&#10;Both via PrivateLink VPC endpoint (us-east-1)&#10;microVM sessions: isolated CPU/mem/fs  ·  8h max">
+        <rect x="50" y="1400" width="460" height="100" rx="8" fill="#fce8ff" stroke="#c026d3" stroke-width="2" filter="url(#shadow)"/>
+        <text x="280" y="1422" text-anchor="middle" fill="#f472b6" font-size="11" font-weight="700">🧠 AWS Bedrock AgentCore (PrivateLink) ★ NEW</text>
+        <text x="280" y="1438" text-anchor="middle" fill="#86198f" font-size="8">VPC endpoint · us-east-1 · AgentRuntimePort abstraction</text>
+        <line x1="60" y1="1444" x2="500" y2="1444" stroke="#f472b6" stroke-width=".5" stroke-opacity=".3"/>
+        <text x="60" y="1456" fill="#701a75" font-size="7.5">Runtime API: CreateAgentRuntime · InvokeAgentRuntime (stream) · CreateSession · TerminateSession</text>
+        <text x="60" y="1468" fill="#701a75" font-size="7.5">Memory API: CreateMemoryRecord · RetrieveMemories · DeleteMemoryRecord  ·  long-term user memory</text>
+        <text x="60" y="1480" fill="#701a75" font-size="7.5">microVM isolation per session  ·  8h max  ·  memory sanitised on terminate  ·  Outbound Auth (OAuth/API key)</text>
+      </g>
+
+      <!-- store arrows from services -->
+      <!-- identity → Redis sessions -->
+      <line x1="147" y1="415" x2="350" y2="1202" stroke="#4db8a8" stroke-width="1.5" stroke-opacity=".6" marker-end="url(#arr-cache)"/>
+      <!-- identity → DynamoDB -->
+      <line x1="147" y1="415" x2="140" y2="1202" stroke="#fbbf24" stroke-width="1" stroke-opacity=".4" marker-end="url(#arr-db)"/>
+      <!-- identity → Cognito -->
+      <line x1="147" y1="415" x2="1282" y2="1202" stroke="#fbbf24" stroke-width="1" stroke-opacity=".25" stroke-dasharray="4,3" marker-end="url(#arr-db)"/>
+      <!-- authz → Redis + DynamoDB -->
+      <line x1="357" y1="415" x2="380" y2="1202" stroke="#4db8a8" stroke-width="1.5" stroke-opacity=".6" marker-end="url(#arr-cache)"/>
+      <line x1="357" y1="415" x2="200" y2="1202" stroke="#fbbf24" stroke-width="1" stroke-opacity=".3" marker-end="url(#arr-db)"/>
+      <!-- data-fabric → DynamoDB, Redis, S3 -->
+      <line x1="400" y1="905" x2="200" y2="1202" stroke="#fbbf24" stroke-width="1.3" stroke-opacity=".6" marker-end="url(#arr-db)"/>
+      <line x1="500" y1="905" x2="400" y2="1202" stroke="#2dd4bf" stroke-width="1.3" stroke-opacity=".6" marker-end="url(#arr-cache)"/>
+      <line x1="600" y1="905" x2="600" y2="1202" stroke="#fb923c" stroke-width="1.3" stroke-opacity=".6" marker-end="url(#arr-s3)"/>
+      <!-- compute → DynamoDB, Redis -->
+      <line x1="200" y1="1120" x2="140" y2="1202" stroke="#fbbf24" stroke-width="1" stroke-opacity=".5" marker-end="url(#arr-db)"/>
+      <line x1="250" y1="1120" x2="360" y2="1202" stroke="#2dd4bf" stroke-width="1" stroke-opacity=".5" marker-end="url(#arr-cache)"/>
+      <!-- eval → DynamoDB, S3 -->
+      <line x1="697" y1="565" x2="160" y2="1202" stroke="#fbbf24" stroke-width="1" stroke-opacity=".3" marker-end="url(#arr-db)"/>
+      <!-- graphrag → OpenSearch -->
+      <line x1="887" y1="565" x2="1082" y2="1202" stroke="#67e8f9" stroke-width="1.2" stroke-opacity=".5" marker-end="url(#arr-cache)"/>
+      <!-- llm → AI Gateway -->
+      <line x1="320" y1="565" x2="1472" y2="1202" stroke="#34d399" stroke-width="1" stroke-opacity=".3" marker-end="url(#arr-mcp)"/>
+      <!-- agent → AgentCore store -->
+      <line x1="250" y1="740" x2="280" y2="1400" stroke="#f472b6" stroke-width="1.5" stroke-opacity=".7" marker-end="url(#arr-mcp)"/>
+      <!-- agent → DynamoDB (agent tables) -->
+      <line x1="160" y1="740" x2="150" y2="1202" stroke="#fbbf24" stroke-width="1" stroke-opacity=".4" marker-end="url(#arr-db)"/>
+      <!-- agent → Redis (agent keys) -->
+      <line x1="200" y1="740" x2="390" y2="1202" stroke="#4db8a8" stroke-width="1.5" stroke-opacity=".6" marker-end="url(#arr-cache)"/>
+
+      <!-- ══ Data flow labels (key ones) ════════════════════════════════ -->
+      <text x="80" y="812" fill="#a78bfa" font-size="7.5" opacity=".8">gRPC GetDataframe</text>
+      <text x="450" y="785" fill="#7c2d00" font-size="7.5" opacity=".8">StoragePort S3 Files</text>
+      <text x="600" y="1155" fill="#7c3f00" font-size="7.5" opacity=".7">NoSQLPort DynamoDB</text>
+
+    </svg>
+  </div>
+</main>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<script>
+// ─── Tooltip ──────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+const comps = document.querySelectorAll('.comp');
+
+comps.forEach(el => {
+  el.addEventListener('mouseenter', (e) => {
+    const title   = el.dataset.tipTitle   || el.id;
+    const rest    = el.dataset.tipRest    || '';
+    const grpc    = el.dataset.tipGrpc    || '';
+    const mcp     = el.dataset.tipMcp     || '';
+    const note    = el.dataset.tipNote    || '';
+    const target  = el.dataset.target     || '';
+
+    let html = `<div class="tt-title">${title}</div>`;
+    if (rest)  html += `<div class="tt-row"><span style="color:#93c5fd">REST:</span> ${rest.replace(/\n/g,'<br/>')}</div>`;
+    if (grpc)  html += `<div class="tt-row"><span style="color:#a78bfa">gRPC:</span> ${grpc.replace(/\n/g,'<br/>')}</div>`;
+    if (mcp)   html += `<div class="tt-row"><span style="color:#34d399">MCP:</span> ${mcp.replace(/\n/g,'<br/>')}</div>`;
+    if (note)  html += `<div class="tt-row">${note.replace(/\n/g,'<br/>')}</div>`;
+    if (target) html += `<div class="tt-link">🔗 Click to view in System Layer Diagram</div>`;
+
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+    moveTooltip(e);
+  });
+
+  el.addEventListener('mousemove', moveTooltip);
+
+  el.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+
+  // Click → navigate to target section in index.html
+  el.addEventListener('click', () => {
+    const target = el.dataset.target;
+    if (!target) return;
+
+    // Build URL: target is like "index.html#layer-diagram"
+    // We pass the layer name as a hash param so index.html can highlight it
+    const layer = el.dataset.layer || '';
+    const url = target + (layer ? '&layer=' + encodeURIComponent(layer) : '');
+    window.location.href = target;
+
+    // If same page (shouldn't happen here but safe)
+  });
+});
+
+function moveTooltip(e) {
+  const x = e.clientX + 14;
+  const y = e.clientY + 14;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  tooltip.style.left = (x + tw > window.innerWidth ? e.clientX - tw - 14 : x) + 'px';
+  tooltip.style.top  = (y + th > window.innerHeight ? e.clientY - th - 14 : y) + 'px';
+}
+
+// ─── Highlight support: index.html can flash a layer when arriving from here
+// Pass ?highlight=layer-id in the URL to trigger a pulse
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('highlight');
+  if (id) {
+    const el = document.getElementById(id);
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-pulse');
+      }, 400);
+    }
+  }
+})();
+</script>
+</body>
+</html>

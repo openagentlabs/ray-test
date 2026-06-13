@@ -1,0 +1,100 @@
+Global explainability summarizes how model predictions behave across the full dataset, helping you validate business logic, debug bias, and craft trustworthy narratives.
+
+
+
+### 1. Feature Importance (Global Sensitivity)
+
+- **Permutation importance**: Randomly shuffle one feature column, recompute performance (AUC/F1/etc.), and measure the drop. Works for any model; repeat multiple times for stability. Use validation data only to avoid leakage.
+
+- **Gain- or split-based importance**: Native to tree ensembles (XGBoost/LightGBM/CatBoost). Fast but can favor high-cardinality features and ignores correlated-variable swapping.
+
+- **Grouped importance**: When features are correlated or bucketized, shuffle groups together (e.g., all demographic fields) to see package-level impact.
+
+- **Scenario**: Credit-risk model showing high importance for “Recent Inquiries” and “Debt-to-Income” indicates lending policies depend on borrower behavior rather than protected classes. Use permutation-based scores to prove compliance.
+
+
+
+### 2. Permutation Importance (Implementation & Hardening)
+
+1. Choose a metric (`Δmetric = baseline - metric_after_shuffle`).
+
+2. Shuffle one feature at a time; compute average drop over K repeats (commonly 5-10).
+
+3. Normalize or rank the drops.
+
+4. Add confidence intervals via bootstrapping to highlight statistically uncertain features.
+
+5. Cache feature distributions; run an on-demand job whenever model retrains so governance reports track drift in importance.
+
+
+
+**Pitfalls**
+
+- High correlation can make individual drops look small; use grouped permutations or SHAP’s interaction values.
+
+- Imbalanced data: ensure stratified shuffling to preserve class ratios.
+
+- Time-series: shuffle within temporal blocks to respect leakage boundaries.
+
+
+
+### 3. Partial Dependence Plots (PDPs)
+
+- Show expected prediction as a function of one or two features, holding others at their marginal distribution.
+
+- **Workflow**
+
+  1. Select feature(s) with high importance or regulatory interest.
+
+  2. Sample evenly spaced grid points (e.g., 20 quantiles).
+
+  3. For each point, replace feature values with the grid value and average model output.
+
+  4. Plot curve; add confidence bands via Monte Carlo sampling.
+
+- **Use cases**: Understand diminishing returns of marketing spend, detect non-monotonic segments in risk scoring, communicate model behavior to business stakeholders.
+
+- **Variants**
+
+  - ICE (Individual Conditional Expectation): multiple thin lines for each sample; overlays PDP to show heterogeneity.
+
+  - Centered PDP: subtract baseline prediction to emphasize relative effect.
+
+  - Two-way PDP: surface plots for interaction-heavy pairs (e.g., `loan_amount` vs `interest_rate`).
+
+
+
+### 4. Combining Global Techniques
+
+- **Audit workflow**
+
+  1. Rank features by permutation importance.
+
+  2. Generate PDP/ICE for top features.
+
+  3. Document explanations in `Global Explanations` node: include threshold effects (“Churn probability spikes once tenure < 3 months”).
+
+- **Automation**: Build a notebook or pipeline stage that, after every retrain, exports JSON summaries:
+
+  - `feature_name`
+
+  - `importance_score`
+
+  - `pdp_key_points` (value, prediction, slope)
+
+  - `regulatory_notes`
+
+- **Model Monitoring**: Track shifts in importance rankings or PDP slopes between releases; alerts trigger when a protected attribute rises in importance beyond a business-defined cap.
+
+
+
+### 5. Governance & Communication
+
+- Store plots and metrics in your knowledge repository (`upload/Global_Explanations.txt`), referencing dataset version, model version, and date.
+
+- Provide narrative templates:
+
+  - “Feature Importance shows `Transaction Velocity` dominates fraud scoring (permutation drop: 0.12 AUC). PDP indicates a nonlinear jump when velocity > 40/day, suggesting a rule for manual review.”
+
+- Align with explainability standards (e.g., EU AI Act): log methodology, parameter settings (number of permutations, grid resolution), and limitations (correlated features, extrapolation).
+

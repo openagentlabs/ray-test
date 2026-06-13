@@ -1,0 +1,18 @@
+# At most one pod when scaled up (0 allowed to idle the chart); see deployment strategy + values.schema.json.
+replicaCount: 1
+image:
+  repository: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8001
+containerPort: 8001
+appSecret:
+  # create: false means the secret must exist before helm deploy (created by populate-secrets.sh + kubectl)
+  create: false
+  secretName: midas-app-secret
+  data: {}
+rollout:
+  suffix: ""
+resources: {}

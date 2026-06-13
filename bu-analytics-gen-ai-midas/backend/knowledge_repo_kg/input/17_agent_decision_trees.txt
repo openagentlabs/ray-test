@@ -1,0 +1,61 @@
+kb:
+  agent_decision_trees:
+    feature_engineering_priority:
+      compute_budget_limited:
+      - domain_expert_features
+      - simple_ratios
+      - univariate_transforms
+      - bivariate_interactions
+      - complex_aggregations
+      - deep_feature_synthesis
+    missing_data_handling:
+      if_missing_rate:
+      - action: drop_column
+        condition: '>0.5'
+        reason: too_sparse
+      - action: advanced_imputation
+        condition: '>0.25'
+        methods:
+        - mice
+        - missforest
+      - action: simple_imputation
+        condition: '>0.05'
+        methods:
+        - median
+        - mode
+      - action: missing_indicator_only
+        condition: <=0.05
+    model_selection:
+      if_data_size:
+      - action: logistic_regression
+        condition: <1000
+        reason: small_sample
+      - action: random_forest
+        condition: <10000
+        reason: medium_sample
+      - action: xgboost
+        condition: <100000
+        reason: large_sample
+      - action: lightgbm
+        condition: '>=100000'
+        reason: very_large_sample
+    outlier_handling:
+      if_z_score:
+      - action: investigate_and_cap
+        condition: '>10'
+      - action: winsorize
+        condition: '>5'
+      - action: transform_or_bin
+        condition: '>3'
+      - action: keep_as_is
+        condition: <=3
+    segment_selection:
+      if_segment_count:
+      - action: group_rare_categories
+        condition: '>100'
+      - action: select_top_by_size
+        condition: '>10'
+      - action: evaluate_all
+        condition: '>2'
+      - action: use_as_is
+        condition: <=2

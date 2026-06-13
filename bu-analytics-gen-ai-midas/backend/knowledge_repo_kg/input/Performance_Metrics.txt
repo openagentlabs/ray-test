@@ -1,0 +1,29 @@
+## Performance & Metrics Knowledge Snippets
+
+- **Metric Taxonomy & Selection**
+  - Split metrics into effectiveness (AUC-ROC, PR-AUC, accuracy, balanced accuracy), efficiency (latency, throughput), robustness (worst-case percentile error, abstention rate), and fairness (demographic parity, equalized odds, counterfactual fairness).  
+  - Scenario cue cards help: in imbalanced fraud detection, emphasize recall@k, false positive cost curves, cumulative gain; in credit scoring, focus on KS, PSI, and stability of score distribution.
+
+- **Validation Design**
+  - Use nested cross-validation with stratified folds for small tabular sets; for temporal data, apply rolling-origin evaluation with embargo windows to prevent leakage.  
+  - Hold back a policy test set that mirrors deployment drift (different geography, season, instrument) and publish its performance alongside validation to highlight generalization gaps.
+
+- **Benchmarking & Comparability**
+  - Maintain a benchmark manifest capturing dataset version, feature config, preprocessing pipeline hash, and baseline model. Whenever new models run, log deltas versus the official benchmark with statistical significance via paired bootstrap or McNemar tests.
+  - Provide leaderboard-style tables: each row is a candidate model, columns for metric mean±std, inference cost, explanation fidelity, and SLA alignment.
+
+- **Error Analysis & Diagnostics**
+  - Slice metrics across demographic/behavioral cohorts, engineered bins (score deciles), and operational contexts (weekday vs weekend). Automate drill-down dashboards that surface the top five cohorts with worst lift-over-benchmark.  
+  - Pair quantitative metrics with qualitative artifacts: confusion matrices, calibration curves, residual plots, SHAP summary vs loss scatter to explain why performance differs.
+
+- **Validation Results Packaging**
+  - Create a “model performance dossier” template: executive summary, dataset provenance, training regimen, primary/secondary metrics, significance tests, stress-test results (noise injection, adversarial perturbations), and monitoring hooks.  
+  - For regulated domains, include reproducibility appendix: random seeds, library versions, hardware, and exact command line.
+
+- **Benchmark Comparison Playbook**
+  - When comparing to industry or internal standards, normalize metrics to a common operating point (e.g., fix recall and compare precision, or align on false positive cost).  
+  - Document assumptions (class priors, thresholding schemes) and ensure any uplift claims specify confidence intervals and practical impact (e.g., “+0.03 AUC translates to 1,200 extra correctly flagged claims per quarter”).
+
+- **Operational Monitoring Tie-in**
+  - Define live KPIs mirroring offline metrics (e.g., online precision with delayed labels, proxy metrics like rule override rate).  
+  - Set control chart limits based on validation variance; integrate alerts when drift pushes metrics outside historical tolerance, triggering revalidation.

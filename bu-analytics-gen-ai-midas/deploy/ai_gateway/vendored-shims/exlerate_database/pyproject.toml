@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+# Drop-in replacement for the corporate JFrog package `exlerate-database`.
+#
+# Implements exactly the surface the c1-api source tree uses:
+#   * `DbVersionExecutor(trackers=[...])` + `.run_all()`
+#   * `DbVersionTracker` abstract base, with `category`, `version_table_schema`,
+#     `init_stmt`, `_get_db_config()`, `get_tracking_manager()`,
+#     `get_execution_order()`, `get_db_tracker_description()`, and any number
+#     of `v_NNNN(self) -> Version` methods.
+#   * `Version(version, version_file)` dataclass.
+#   * `db_elements.db_configs.{BaseDbConnectionConfig, DbCredentials, MigratorDbConnectionConfig}`
+#   * `migrating.tracking_table_manager.TrackingTableManager`
+#
+# Everything is backed by psycopg (sync) over libpq. Matches the Flyway-style
+# `schema_version_<category>` tracking table shape the corporate package uses.
+name = "exlerate-database"
+version = "0.0.0+midas.shim"
+description = "MIDAS shim for exlerate_database (psycopg-backed version runner)"
+requires-python = ">=3.10"
+dependencies = [
+    "psycopg[binary]>=3.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["exlerate_database"]

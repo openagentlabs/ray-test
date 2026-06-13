@@ -1,0 +1,55 @@
+---
+description: MIDAS architecture rules. Private-by-default VPC, us-east-1 only, layered design, AI-first. Always applied.
+alwaysApply: true
+---
+
+# MIDAS architecture (`architecture.mdc`)
+
+Authoritative design rules for MIDAS. Apply to every technical decision.
+
+Canonical diagram: [Miro board](https://miro.com/app/board/uXjVGnrWh1o=/). If your change contradicts the diagram, flag the discrepancy to the user.
+
+## Non-negotiable principles
+
+1. **Private-by-default.** All workloads run in VPC `vpc-0c4d673f3e95a93eb` (CIDR `10.72.134.0/23`). No public endpoints, public IPs, Internet Gateways, or NAT Gateways. All AWS API calls use VPC interface endpoints (PrivateLink) with Private DNS. Egress uses Transit Gateway `tgw-0ec391fa73943d562`.
+2. **Single region `us-east-1`.** No multi-region, no cross-region replication, no fallback regions.
+3. **AI / Gen-AI first.** Prefer managed AWS AI/ML services (Bedrock, SageMaker) accessed via PrivateLink. All AI traffic stays inside the VPC.
+4. **Stateless compute, managed state.** EKS pods and ECS tasks must be stateless. Persist to RDS/Aurora, ElastiCache, S3, or OpenSearch. Never write durable state to container disk.
+5. **Event-driven by default.** Use SQS, SNS, or EventBridge for async or long-running work. Use synchronous request/response only when latency requires it.
+
+## Layered architecture
+
+| Layer | Typical components |
+|---|---|
+| Presentation / API | Internal ALB, REST/GraphQL APIs, EKS-hosted services |
+| Orchestration | LangChain / LangGraph agents, Step Functions, EKS workloads |
+| AI / ML | Bedrock, vector stores, SageMaker endpoints |
+| Data | S3, RDS/Aurora, ElastiCache, OpenSearch |
+| Platform / Infra | EKS, ECS, VPC, KMS, Secrets Manager, CloudWatch |
+| CI/CD | Jenkins, ECR, Terraform, Helm |
+
+Every change must identify which layer(s) it affects and preserve cross-layer contracts (APIs, schemas, events).
+
+## Component design rules
+
+- **APIs.** Define a contract (OpenAPI, Protobuf, or documented schema) before implementing. Version from day one (`/v1/`, `/v2/`). Intra-cluster calls use Kubernetes service DNS; never hardcode IPs.
+- **Data ownership.** Each data store has one owning service. Other services go through the owner's API. Document any shared-read exception.
+- **Security boundaries.** Each layer has its own security group. Ingress is minimal and only from the layer above. Use IRSA or Secrets Manager; never embed credentials in code or images.
+
+## Stop and ask the user before
+
+- Adding a new AWS service type not already in the architecture.
+- Creating any public endpoint.
+- Adding a new data store or changing a data store's owning service.
+- Changing the AI/ML model provider or inference pattern (for example moving off Bedrock).
+- Introducing cross-region resources or traffic.
+- Any change that contradicts the Miro diagram.
+
+For each of the above, recommend an ADR at `docs/adr/NNNN-<short-title>.md` (format: Title, Status, Context, Decision, Consequences).
+
+## Related rules
+
+- `.cursor/rules/solution_const.mdc` - authoritative VPC, region, jumpbox IDs.
+- `.cursor/rules/jenkins.mdc` - pipeline-first release path.
+- `.cursor/rules/solution_policy.mdc` - deployer-role IAM structure.
+- `.cursor/rules/debug.mdc` - private-VPC debugging via the jumpbox.

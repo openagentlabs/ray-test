@@ -1,0 +1,58 @@
+### Feature Engineering Playbook for Segmented Pipelines
+
+**Purpose**  
+Transform raw features per segment so downstream models capture segment-specific signal without leaking bias or instability.
+
+**Segmentation Context**  
+- Typical segments: demographic bands, channel cohorts, risk tiers, temporal windows.
+- Maintain a segment metadata table capturing definitions, population share, and drift indicators; transformations must be reproducible per segment (`segment_id`, `version`, `timestamp`).
+
+---
+
+#### 1. Weight of Evidence (WoE) Transformations
+- **When**: Binary classification with monotonic relationships (credit risk, churn). Works best when event rates vary by bucket but maintain order.
+- **Steps**  
+  1. Bin feature per segment (auto via isotonic binning or supervised bins; ensure min 5% rows per bin).  
+  2. Compute WoE = ln(%good/%bad) with Laplace smoothing (add 0.5 counts) to avoid infinite values.  
+  3. Store Information Value per segment to rank predictive power.
+- **Scenarios**  
+  - Credit approvals: income bands show different default propensities across regions.  
+  - Fraud detection: transaction velocity bins differ by market.
+- **Controls**  
+  - Freeze bins post training; monitor PSI per segment.  
+  - Backstop with raw value feature if segment population shrinks (<1k rows).
+
+#### 2. Log Transformations (Numerical Variables)
+- **When**: Highly skewed positive metrics (income, transaction counts, latency).  
+- **Technique**  
+  - Use `log1p` to handle zeros; optionally standardize post-transform separately per segment.  
+  - Combine with bucketed percentiles to produce hybrid features (e.g., log value + decile index).
+- **Scenarios**  
+  - Marketing spend vs. conversion: log transform dampens heavy spenders.  
+  - Claims amount for insurance severity modeling.
+- **Controls**  
+  - Inspect distribution shift across segments; recalibrate epsilon for near-zero values (e.g., add `1e-3` for currency data).  
+  - Document whether transformation applied before or after outlier capping.
+
+#### 3. One-Hot Encoding (Categorical Variables)
+- **When**: Low- to medium-cardinality categoricals (<50 categories/segment).  
+- **Technique**  
+  - Build vocabulary per segment but keep a shared superset to avoid mismatched columns.  
+  - Collapse rare categories (<2% segment share) into `segment_other`.  
+  - For hierarchical categoricals, encode both level-specific and rolled-up categories.
+- **Scenarios**  
+  - Product hierarchy differs by segment (region-specific SKUs).  
+  - Service channels vary by customer tier.
+- **Controls**  
+  - Track dummy-variable trap by dropping one baseline per segment.  
+  - If cardinality spikes, switch to target encoding with leakage-safe cross-fold scheme.
+
+---
+
+### Cross-Cutting Best Practices
+
+- **Treatment Audit Table**: Log every transformation with columns `segment_id`, `feature_name`, `transform_type`, `params`, `fitted_on_version`, `data_range`.
+- **Pipeline Packaging**: Version transformations via scikit-learn `ColumnTransformer` or feature store definitions; ensure inference path uses identical segment-specific objects.
+- **Drift Monitoring**: For each transformed feature, capture population stability index and KS statistics per segment; trigger retraining if thresholds (PSI > 0.2, KS > 0.25) exceeded.
+- **Explainability Hooks**: Store inverse-transform helpers so SHAP/LIME outputs map back to raw units (e.g., WoE bin label, original numeric scale).
+- **Testing**: Unit tests validating determinism per segment, null-handling, and that transformations preserve monotonic direction expected by the business rules.

@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "tenant_env": "dev",
+    "tenant_id": "midas-dev-001",
+    "aws_account_id": "811391286931",
+    "terraform_state_bucket": "midas-dev-us-east-1-terraform-811391286931"
+  },
+  "uat": {
+    "tenant_env": "uat",
+    "tenant_id": "midas-uat-001",
+    "aws_account_id": "811391286931",
+    "terraform_state_bucket": "midas-uat-us-east-1-terraform-811391286931"
+  },
+  "prod": {
+    "tenant_env": "prod",
+    "tenant_id": "midas-prod-001",
+    "aws_account_id": "811391286931",
+    "terraform_state_bucket": "midas-prod-us-east-1-terraform-811391286931"
+  }
+}

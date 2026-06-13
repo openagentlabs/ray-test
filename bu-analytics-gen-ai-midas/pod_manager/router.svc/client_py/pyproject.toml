@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "router-client"
+version = "0.1.0"
+description = "Async gRPC client for pod_manager.v1.PodManagerService"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "grpcio>=1.66",
+  "protobuf>=5.29",
+]
+
+[project.optional-dependencies]
+dev = [
+  "grpcio-tools>=1.66",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

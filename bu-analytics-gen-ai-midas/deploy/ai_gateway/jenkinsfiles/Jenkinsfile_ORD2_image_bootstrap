@@ -1,0 +1,385 @@
+// midas-ai-gateway-image-bootstrap-ORD2
+//
+// Pipeline: mirror the AI Gateway's public-registry dependencies into MIDAS ECR
+//           (account 811391286931, region us-east-1). Reads the inventory at
+//           `deploy/ai_gateway/image-bootstrap/images.yaml`.
+//
+// Goal:     ZERO JFrog at runtime (Q15.2). Every image the EKS cluster pulls must
+//           live in a MIDAS-owned ECR repository. This pipeline ensures that.
+//
+// Scope:
+//   - `type: public_registry`  entries are mirrored: docker pull → docker tag → docker push.
+//   - `type: from_source`      entries are SKIPPED here — they are built by the
+//                              component's own ORD pipeline (e.g. ORD6 builds
+//                              `control-api` end-to-end; ORD2 does not shadow that).
+//   - ECR repos are auto-created with encryption=AES256 + image-scan-on-push if missing.
+//   - The optional verify stage re-queries ECR and fails if any target tag is absent.
+//
+// Model (mirrors ORD3/4/5/6 patterns):
+//   - withAWS(role: 'EXLJenkinsCrossAccountRole-BU')  — swap to the dedicated
+//     `EXLJenkinsAIGatewayCrossAccountRole-BU` once M-14 (dedicated deployer role) lands.
+//   - No Netskope proxy credentials — the Jenkins CI/CD agent already has egress
+//     via the infra-managed proxy transparent to Docker.
+//   - No external python scripts — inventory is parsed inline with PyYAML
+//     (same pattern proven in ORD5 `Jenkinsfile_ORD5_litellm`; ships on the
+//     agent image).
+//   - set -e (NOT set -eu) and ${VAR:-} guards — reuses the lessons from
+//     ORD3/4/5 shell-script robustness fixes.
+
+pipeline {
+    agent { label 'cicd' }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev'],
+            description: 'Target environment. Only dev today — prod/uat would use a separate inventory file.'
+        )
+        choice(
+            name: 'ACTION',
+            choices: ['mirror', 'mirror_and_verify', 'verify_only'],
+            description: 'What the pipeline should do. "mirror_and_verify" is the default safe option.'
+        )
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: false,
+            description: 'If true: print every planned docker pull/tag/push and aws ecr call, but do not execute mutating steps.'
+        )
+        string(
+            name: 'IMAGE_FILTER',
+            defaultValue: '*',
+            description: 'fnmatch pattern against the image `name` field in images.yaml (e.g. "langfuse*"). "*" = all.'
+        )
+    }
+
+    environment {
+        AWS_REGION       = 'us-east-1'
+        AWS_ACCOUNT_ID   = '811391286931'
+        AWS_ROLE_ARN     = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/EXLJenkinsCrossAccountRole-BU"
+        ECR_REGISTRY     = '811391286931.dkr.ecr.us-east-1.amazonaws.com'
+        IMAGE_INVENTORY  = 'deploy/ai_gateway/image-bootstrap/images.yaml'
+    }
+
+    stages {
+
+        stage('Checkout (with in-tree fork submodule)') {
+            steps {
+                checkout scm
+                sh 'git submodule update --init --recursive'
+            }
+        }
+
+        stage('Parse inventory') {
+            steps {
+                script {
+                    sh '''
+                        set -e
+                        python3 - <<'PYEOF'
+import fnmatch, json, os, sys, yaml
+inv = yaml.safe_load(open(os.environ["IMAGE_INVENTORY"]))
+pattern = os.environ.get("IMAGE_FILTER", "*") or "*"
+rows = []
+for img in inv.get("images", []):
+    name = img["name"]
+    if not fnmatch.fnmatch(name, pattern):
+        continue
+    src = img["source"]
+    rows.append({
+        "name": name,
+        "type": src["type"],
+        "source_ref": f'{src.get("registry","")}/{src.get("repository","")}:{src.get("tag","")}' if src["type"] == "public_registry" else "(built by component pipeline)",
+        "target_repo": img["target_ecr_repo"],
+        "target_tag": img["target_tag"],
+    })
+with open("/tmp/image-plan.json", "w") as f:
+    json.dump(rows, f, indent=2)
+# Render a human-friendly plan summary for the console.
+print(f"Parsed {len(rows)} image(s) matching filter {pattern!r}:")
+print(f'{"NAME":<34} {"TYPE":<16} {"SOURCE":<60} {"TARGET"}')
+for r in rows:
+    tgt = f'{r["target_repo"]}:{r["target_tag"]}'
+    print(f'{r["name"]:<34} {r["type"]:<16} {r["source_ref"]:<60} {tgt}')
+if not rows:
+    print("ERROR: no images matched filter. Nothing to do.", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+                        # Surface the plan file into the workspace so archiveArtifacts (post{})
+                        # and any later stages can reach it without crossing out of $WORKSPACE.
+                        cp /tmp/image-plan.json "${WORKSPACE}/image-plan.json"
+                    '''
+                }
+            }
+        }
+
+        stage('Mirror public_registry images to MIDAS ECR') {
+            when {
+                expression { params.ACTION in ['mirror', 'mirror_and_verify'] }
+            }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+
+                        # ECR login once up front; the token lasts 12h.
+                        aws ecr get-login-password --region ${AWS_REGION} \
+                            | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+                        # Drive the mirror loop straight from Python — no intermediate
+                        # bash script. Avoids the Groovy/heredoc escaping hazards that
+                        # bit build #1 (literal \\n in the generated shell). Each step
+                        # is shelled out via subprocess.run(..., check=True) so any
+                        # failure aborts the whole pipeline with a real traceback.
+                        #
+                        # Dual-tag strategy (audit trail, chosen 2026-04-20):
+                        #   1. <target_tag>                    — canonical upstream tag; never changes.
+                        #   2. <target_tag>-ORD2-<BUILD_NUMBER> — audit tag. Proves THIS pipeline
+                        #                                         run actually pushed. imagePushedAt
+                        #                                         on a brand-new tag is always fresh
+                        #                                         (no idempotent short-circuit).
+                        DRY_RUN="${DRY_RUN:-false}" BUILD_NUMBER="${BUILD_NUMBER}" python3 - <<'PYEOF'
+import json, os, subprocess, sys
+
+DRY = os.environ.get("DRY_RUN", "false").lower() == "true"
+registry = os.environ["ECR_REGISTRY"]
+region   = os.environ["AWS_REGION"]
+build    = os.environ.get("BUILD_NUMBER", "0")
+suffix   = f"-ORD2-{build}"
+
+with open("/tmp/image-plan.json") as f:
+    rows = json.load(f)
+
+def run(cmd, check=True):
+    printable = " ".join(cmd)
+    if DRY:
+        print(f"[DRY] {printable}", flush=True)
+        return
+    print(f"+ {printable}", flush=True)
+    subprocess.run(cmd, check=check)
+
+# Lifecycle policy applied to every mirror ECR repo.
+#
+#   rule 1  keep the LAST 10 -ORD2-<N> audit tags per repo (anything older is pruned
+#           automatically — otherwise a daily bootstrap would grow the repo without
+#           bound; audit provenance lives in Jenkins build history once it ages out).
+#   rule 2  expire untagged images after 7 days (standard ECR hygiene — catches
+#           tags that were overwritten or deleted).
+#
+# Canonical upstream tags (e.g. `v1.83.3-stable`, `26.3-alpine`) are NOT pruned
+# by any rule below — they are overwritten in place by subsequent mirror runs.
+LIFECYCLE_POLICY = {
+    "rules": [
+        {
+            "rulePriority": 1,
+            "description": "Keep last 10 ORD2 audit tags (pattern *-ORD2-*)",
+            "selection": {
+                "tagStatus": "tagged",
+                "tagPatternList": ["*-ORD2-*"],
+                "countType": "imageCountMoreThan",
+                "countNumber": 10,
+            },
+            "action": {"type": "expire"},
+        },
+        {
+            "rulePriority": 2,
+            "description": "Expire untagged images after 7 days",
+            "selection": {
+                "tagStatus": "untagged",
+                "countType": "sinceImagePushed",
+                "countUnit": "days",
+                "countNumber": 7,
+            },
+            "action": {"type": "expire"},
+        },
+    ]
+}
+
+def apply_lifecycle(repo):
+    # Idempotent: put-lifecycle-policy overwrites the existing policy each run.
+    if DRY:
+        print(f"[DRY] aws ecr put-lifecycle-policy --repository-name {repo}", flush=True)
+        return
+    subprocess.run(
+        ["aws","ecr","put-lifecycle-policy","--region",region,
+         "--repository-name",repo,
+         "--lifecycle-policy-text", json.dumps(LIFECYCLE_POLICY)],
+        check=True, stdout=subprocess.DEVNULL,
+    )
+
+def ensure_repo(repo):
+    r = subprocess.run(
+        ["aws","ecr","describe-repositories","--region",region,"--repository-names",repo],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        run([
+            "aws","ecr","create-repository","--region",region,
+            "--repository-name",repo,
+            "--image-scanning-configuration","scanOnPush=true",
+            "--encryption-configuration","encryptionType=AES256",
+        ])
+    # Always (re-)apply the lifecycle policy — keeps historical repos in sync when
+    # the policy evolves without requiring a one-off backfill script.
+    apply_lifecycle(repo)
+
+# Apply the lifecycle policy to EVERY target repo in the plan — even the
+# `from_source` ones (control-api, etc.).  Those repos are created by their
+# component pipelines (ORD6), but the policy is still owned here so we have
+# one place to audit retention rules.  ensure_repo() is idempotent.
+print("\\n=== Applying ECR lifecycle policy to every repo in the plan ===", flush=True)
+for r in rows:
+    ensure_repo(r["target_repo"])
+
+mirrored = 0
+audit_tags = []
+for r in rows:
+    if r["type"] != "public_registry":
+        continue
+    name  = r["name"]
+    src   = r["source_ref"]
+    repo  = r["target_repo"]
+    ctag  = r["target_tag"]                 # canonical (upstream) tag
+    atag  = f"{ctag}{suffix}"               # audit tag, e.g. 3.163-ORD2-7
+    ctgt  = f'{registry}/{repo}:{ctag}'
+    atgt  = f'{registry}/{repo}:{atag}'
+    print(f"\\n=== {name}: {src} -> {repo}:{ctag} (+ audit tag :{atag}) ===", flush=True)
+    ensure_repo(repo)
+    run(["docker","pull",src])
+    run(["docker","tag",src,ctgt])
+    run(["docker","push",ctgt])
+    # Re-tag the SAME local image with the audit suffix and push.  Because the
+    # digest is identical, ECR skips layer upload but creates a brand-new tag
+    # reference whose imagePushedAt timestamp reflects this pipeline run —
+    # that is the externally visible proof that ORD2 executed the mirror.
+    run(["docker","tag",src,atgt])
+    run(["docker","push",atgt])
+    audit_tags.append((repo, atag))
+    # Best-effort local cleanup so the agent disk stays healthy; don't fail on miss.
+    subprocess.run(["docker","image","rm",src,ctgt,atgt],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    mirrored += 1
+
+print(f"\\nSUMMARY: mirrored {mirrored} public_registry image(s) with audit suffix {suffix!r}.", flush=True)
+print("Audit tags pushed this run:", flush=True)
+for repo, atag in audit_tags:
+    print(f"  - {repo}:{atag}", flush=True)
+
+# Persist the audit-tag list so the verify stage can confirm them
+# (and so archived artifacts show what this run produced).
+with open("/tmp/audit-tags.json", "w") as f:
+    json.dump([{"repo": r, "tag": t} for r, t in audit_tags], f, indent=2)
+PYEOF
+                    '''
+                }
+            }
+        }
+
+        stage('Note: from_source images are built by component pipelines') {
+            when {
+                expression { params.ACTION in ['mirror', 'mirror_and_verify'] }
+            }
+            steps {
+                // from_source images (today: control-api) are deliberately NOT built
+                // here — their component pipeline owns the Dockerfile and push so the
+                // build context stays close to the code.  ORD6 (midas-ai-gateway-control-api-ORD6)
+                // builds `midas-aigtw-dev-control-api` with a tag `1.0.0-midas-<BUILD_NUMBER>`
+                // and pushes on every deploy.  ORD2 therefore only MIRRORS and VERIFIES.
+                //
+                // TODO: when aigtw_c2_proxy / aigtw_inference_api are un-deferred,
+                //       create ORD8 / ORD9 pipelines following the ORD6 pattern and
+                //       keep this separation.
+                script {
+                    def fromSource = sh(
+                        returnStdout: true,
+                        script: '''python3 -c "import json; print(','.join(r['name']+'->'+r['target_repo'] for r in json.load(open('/tmp/image-plan.json')) if r['type']=='from_source') or 'none')"'''
+                    ).trim()
+                    echo "from_source images (handled by component pipelines): ${fromSource}"
+                }
+            }
+        }
+
+        stage('Verify all target ECR tags exist') {
+            when {
+                expression { params.ACTION in ['mirror_and_verify', 'verify_only'] }
+            }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        python3 - <<'PYEOF'
+import json, os, subprocess, sys
+from datetime import datetime, timezone
+
+rows = json.load(open("/tmp/image-plan.json"))
+region = os.environ["AWS_REGION"]
+
+# Audit tags are only present when this run actually pushed (ACTION=mirror*).
+# In verify_only mode the audit-tags file won't exist — that's fine.
+audit_tags = []
+if os.path.exists("/tmp/audit-tags.json"):
+    audit_tags = json.load(open("/tmp/audit-tags.json"))
+
+def describe(repo, tag):
+    p = subprocess.run(
+        ["aws","ecr","describe-images","--region",region,
+         "--repository-name",repo,"--image-ids",f"imageTag={tag}",
+         "--query","imageDetails[0].imagePushedAt","--output","text"],
+        capture_output=True, text=True,
+    )
+    if p.returncode != 0:
+        return None, (p.stderr.strip().splitlines()[-1] if p.stderr else "describe failed")
+    return p.stdout.strip(), None
+
+# 1. Canonical tags (must exist for every public_registry row).
+missing = []
+print("\\nCanonical tag verification:")
+for r in rows:
+    repo, tag = r["target_repo"], r["target_tag"]
+    ts, err = describe(repo, tag)
+    if ts is None:
+        missing.append((r["name"], f"{repo}:{tag}", err, r["type"]))
+        print(f"  MISSING  {r['name']:<30} {repo}:{tag}")
+    else:
+        print(f"  OK       {r['name']:<30} {repo}:{tag:<22} pushed={ts}")
+
+# 2. Audit tags from THIS run (proves the pipeline actually pushed).
+if audit_tags:
+    print("\\nAudit tag verification (this run's proof):")
+    for at in audit_tags:
+        repo, tag = at["repo"], at["tag"]
+        ts, err = describe(repo, tag)
+        if ts is None:
+            missing.append((tag, f"{repo}:{tag}", err, "audit"))
+            print(f"  MISSING  (audit){tag:<40} {repo}:{tag}")
+        else:
+            print(f"  OK       (audit){tag:<40} pushed={ts}")
+
+hard = [m for m in missing if m[3] in ("public_registry", "audit")]
+if hard:
+    print(f"\\nERROR: {len(hard)} required target(s) missing from ECR.", file=sys.stderr)
+    for m in hard:
+        print(f"  - {m[0]}: {m[1]} ({m[2]})", file=sys.stderr)
+    sys.exit(1)
+
+soft = [m for m in missing if m[3] == "from_source"]
+if soft:
+    print(f"\\nNOTE: {len(soft)} from_source target(s) not in ECR yet — expected before the component pipeline has run.")
+PYEOF
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                sh '''
+                    cp /tmp/image-plan.json  "${WORKSPACE}/image-plan.json"  2>/dev/null || true
+                    cp /tmp/audit-tags.json  "${WORKSPACE}/audit-tags.json"  2>/dev/null || true
+                '''
+            }
+            archiveArtifacts artifacts: 'image-plan.json,audit-tags.json',
+                             allowEmptyArchive: true, onlyIfSuccessful: false
+        }
+    }
+}

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Engineering Transformations Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .transformation-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        
+        .transformation-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button.secondary {
+            background-color: #6c757d;
+        }
+        
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .debug-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .transformation-display {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Feature Engineering Transformations</h1>
+        
+        <div class="transformation-section">
+            <h3>Scaling Transformations</h3>
+            <div class="form-group">
+                <label for="scaleFactor">Scale Factor:</label>
+                <input type="number" id="scaleFactor" min="0" max="10" step="0.1" value="1.0">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="enableScaling">
+                <label for="enableScaling">Enable Scaling</label>
+            </div>
+        </div>
+        
+        <div class="transformation-section">
+            <h3>Normalization</h3>
+            <div class="checkbox-group">
+                <input type="checkbox" id="normalize">
+                <label for="normalize">Normalize Data</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="standardize">
+                <label for="standardize">Standardize (Z-score)</label>
+            </div>
+        </div>
+        
+        <div class="transformation-section">
+            <h3>Encoding</h3>
+            <div class="form-group">
+                <label for="encodingType">Encoding Type:</label>
+                <select id="encodingType">
+                    <option value="none">No Encoding</option>
+                    <option value="one-hot">One-Hot Encoding</option>
+                    <option value="label">Label Encoding</option>
+                    <option value="target">Target Encoding</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="transformation-section">
+            <h3>Feature Selection</h3>
+            <div class="checkbox-group">
+                <input type="checkbox" id="removeOutliers">
+                <label for="removeOutliers">Remove Outliers</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="featureSelection">
+                <label for="featureSelection">Apply Feature Selection</label>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button id="applyTransformations">Apply Transformations</button>
+            <button id="clearTransformations" class="secondary">Clear All</button>
+            <button id="showCurrentState">Show Current State</button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div id="transformationDisplay" class="transformation-display" style="display: none;">
+            <h4>Current Transformations:</h4>
+            <pre id="transformationJson"></pre>
+        </div>
+        
+        <div id="debugInfo" class="debug-info" style="display: none;">
+            <h4>Debug Information:</h4>
+            <pre id="debugContent"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Feature Engineering Transformations Manager
+        class FeatureEngineeringManager {
+            constructor() {
+                this.storageKey = 'featureEngineeringTransformations';
+                this.sessionKey = 'featureEngineeringSession';
+                this.transformations = {
+                    scale: 1.0,
+                    enableScaling: false,
+                    normalize: false,
+                    standardize: false,
+                    encoding: 'none',
+                    removeOutliers: false,
+                    featureSelection: false
+                };
+                
+                this.initializeSession();
+                this.bindEvents();
+                this.restoreTransformations();
+            }
+            
+            // Initialize session tracking
+            initializeSession() {
+                const currentTime = Date.now();
+                const lastSessionTime = sessionStorage.getItem(this.sessionKey);
+                
+                // If more than 30 seconds since last session, it's a fresh start
+                if (!lastSessionTime || (currentTime - parseInt(lastSessionTime)) > 30000) {
+                    console.log('🆕 Fresh session detected - clearing all data');
+                    this.clearAllData();
+                }
+                
+                // Update session time
+                sessionStorage.setItem(this.sessionKey, currentTime.toString());
+            }
+            
+            // Bind event listeners to form elements
+            bindEvents() {
+                // Scale factor input
+                document.getElementById('scaleFactor').addEventListener('input', (e) => {
+                    this.transformations.scale = parseFloat(e.target.value);
+                    this.saveTransformations();
+                });
+                
+                // Checkboxes
+                const checkboxes = [
+                    'enableScaling', 'normalize', 'standardize', 
+                    'removeOutliers', 'featureSelection'
+                ];
+                
+                checkboxes.forEach(id => {
+                    document.getElementById(id).addEventListener('change', (e) => {
+                        this.transformations[id] = e.target.checked;
+                        this.saveTransformations();
+                    });
+                });
+                
+                // Encoding select
+                document.getElementById('encodingType').addEventListener('change', (e) => {
+                    this.transformations.encoding = e.target.value;
+                    this.saveTransformations();
+                });
+                
+                // Buttons
+                document.getElementById('applyTransformations').addEventListener('click', () => {
+                    this.applyTransformations();
+                });
+                
+                document.getElementById('clearTransformations').addEventListener('click', () => {
+                    this.clearTransformations();
+                });
+                
+                document.getElementById('showCurrentState').addEventListener('click', () => {
+                    this.showCurrentState();
+                });
+            }
+            
+            // Save transformations to sessionStorage
+            saveTransformations() {
+                try {
+                    sessionStorage.setItem(this.storageKey, JSON.stringify(this.transformations));
+                    this.showStatus('Transformations saved successfully!', 'success');
+                    console.log('💾 Transformations saved:', this.transformations);
+                } catch (error) {
+                    console.error('❌ Error saving transformations:', error);
+                    this.showStatus('Error saving transformations!', 'error');
+                }
+            }
+            
+            // Restore transformations from sessionStorage
+            restoreTransformations() {
+                try {
+                    const saved = sessionStorage.getItem(this.storageKey);
+                    if (saved) {
+                        this.transformations = JSON.parse(saved);
+                        this.updateUI();
+                        this.showStatus('Transformations restored from previous session!', 'info');
+                        console.log('🔄 Transformations restored:', this.transformations);
+                    } else {
+                        console.log('📝 No saved transformations found');
+                    }
+                } catch (error) {
+                    console.error('❌ Error restoring transformations:', error);
+                    this.showStatus('Error restoring transformations!', 'error');
+                }
+            }
+            
+            // Update UI elements with current transformation values
+            updateUI() {
+                // Update scale factor
+                document.getElementById('scaleFactor').value = this.transformations.scale;
+                
+                // Update checkboxes
+                const checkboxes = [
+                    'enableScaling', 'normalize', 'standardize', 
+                    'removeOutliers', 'featureSelection'
+                ];
+                
+                checkboxes.forEach(id => {
+                    document.getElementById(id).checked = this.transformations[id];
+                });
+                
+                // Update encoding select
+                document.getElementById('encodingType').value = this.transformations.encoding;
+            }
+            
+            // Apply transformations (simulate processing)
+            applyTransformations() {
+                console.log('🚀 Applying transformations:', this.transformations);
+                
+                // Simulate processing time
+                this.showStatus('Applying transformations...', 'info');
+                
+                setTimeout(() => {
+                    // Simulate transformation logic
+                    let appliedCount = 0;
+                    
+                    if (this.transformations.enableScaling) {
+                        console.log(`📏 Scaling data by factor: ${this.transformations.scale}`);
+                        appliedCount++;
+                    }
+                    
+                    if (this.transformations.normalize) {
+                        console.log('📊 Normalizing data to 0-1 range');
+                        appliedCount++;
+                    }
+                    
+                    if (this.transformations.standardize) {
+                        console.log('📈 Standardizing data (Z-score)');
+                        appliedCount++;
+                    }
+                    
+                    if (this.transformations.encoding !== 'none') {
+                        console.log(`🏷️ Applying ${this.transformations.encoding} encoding`);
+                        appliedCount++;
+                    }
+                    
+                    if (this.transformations.removeOutliers) {
+                        console.log('🔍 Removing outliers');
+                        appliedCount++;
+                    }
+                    
+                    if (this.transformations.featureSelection) {
+                        console.log('🎯 Applying feature selection');
+                        appliedCount++;
+                    }
+                    
+                    this.showStatus(`Successfully applied ${appliedCount} transformations!`, 'success');
+                }, 1000);
+            }
+            
+            // Clear all transformations
+            clearTransformations() {
+                if (confirm('Are you sure you want to clear all transformations?')) {
+                    this.clearAllData();
+                    this.showStatus('All transformations cleared!', 'success');
+                }
+            }
+            
+            // Clear all data and reset UI
+            clearAllData() {
+                this.transformations = {
+                    scale: 1.0,
+                    enableScaling: false,
+                    normalize: false,
+                    standardize: false,
+                    encoding: 'none',
+                    removeOutliers: false,
+                    featureSelection: false
+                };
+                
+                sessionStorage.removeItem(this.storageKey);
+                this.updateUI();
+                this.hideTransformationDisplay();
+            }
+            
+            // Show current state
+            showCurrentState() {
+                const display = document.getElementById('transformationDisplay');
+                const jsonDisplay = document.getElementById('transformationJson');
+                
+                jsonDisplay.textContent = JSON.stringify(this.transformations, null, 2);
+                display.style.display = 'block';
+                
+                // Show debug info
+                this.showDebugInfo();
+            }
+            
+            // Show debug information
+            showDebugInfo() {
+                const debugDiv = document.getElementById('debugInfo');
+                const debugContent = document.getElementById('debugContent');
+                
+                const debugData = {
+                    currentTransformations: this.transformations,
+                    sessionStorageData: sessionStorage.getItem(this.storageKey),
+                    sessionTime: sessionStorage.getItem(this.sessionKey),
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugContent.textContent = JSON.stringify(debugData, null, 2);
+                debugDiv.style.display = 'block';
+            }
+            
+            // Hide transformation display
+            hideTransformationDisplay() {
+                document.getElementById('transformationDisplay').style.display = 'none';
+                document.getElementById('debugInfo').style.display = 'none';
+            }
+            
+            // Show status message
+            showStatus(message, type = 'info') {
+                const statusDiv = document.getElementById('status');
+                statusDiv.textContent = message;
+                statusDiv.className = `status ${type}`;
+                statusDiv.style.display = 'block';
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Initializing Feature Engineering Manager');
+            window.featureManager = new FeatureEngineeringManager();
+        });
+        
+        // Handle page visibility changes (optional enhancement)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && window.featureManager) {
+                console.log('👁️ Page became visible - checking for updates');
+                // Could add logic here to refresh data if needed
+            }
+        });
+        
+        // Handle beforeunload to save any pending changes
+        window.addEventListener('beforeunload', () => {
+            if (window.featureManager) {
+                window.featureManager.saveTransformations();
+            }
+        });
+    </script>
+</body>
+</html>
+

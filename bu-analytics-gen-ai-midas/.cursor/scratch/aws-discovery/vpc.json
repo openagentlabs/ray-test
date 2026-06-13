@@ -1,0 +1,43 @@
+{
+    "Vpcs": [
+        {
+            "OwnerId": "074056539357",
+            "InstanceTenancy": "default",
+            "CidrBlockAssociationSet": [
+                {
+                    "AssociationId": "vpc-cidr-assoc-031585750cc0c9e27",
+                    "CidrBlock": "10.72.134.0/23",
+                    "CidrBlockState": {
+                        "State": "associated"
+                    }
+                }
+            ],
+            "IsDefault": false,
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "aws03-811391286931-ins-ai-MIDAS-DEV-DEV-vpc"
+                },
+                {
+                    "Key": "exl:uc:CidrSize",
+                    "Value": "23"
+                },
+                {
+                    "Key": "exl:uc:VpcNumber",
+                    "Value": "1"
+                },
+                {
+                    "Key": "exl:uc:CidrAddress",
+                    "Value": "10.72.134.0/23"
+                }
+            ],
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "VpcId": "vpc-0c4d673f3e95a93eb",
+            "State": "available",
+            "CidrBlock": "10.72.134.0/23",
+            "DhcpOptionsId": "dopt-d7419ead"
+        }
+    ]
+}

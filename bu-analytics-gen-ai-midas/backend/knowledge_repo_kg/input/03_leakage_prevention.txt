@@ -1,0 +1,23 @@
+kb:
+  leakage_prevention:
+    advanced_detection:
+      cross_validation_purge:
+        embargo_days: 7
+        gap_days: 30
+      future_information_scan:
+        methods:
+        - timestamp_comparison
+        - causality_check
+        - business_logic_validation
+      target_correlation_check:
+        action: flag_and_investigate
+        threshold: 0.95
+    audits:
+      purged_cv_recommendation: true
+      time_leak_check: correlate features with post-as_of events near boundary; flag
+        spikes
+    snapshotting:
+      drop_fields_patterns: '@kb.schema.leakage_tags.forbid_for_pd_patterns'
+      forbid_temporal:
+      - rolling_* including dates > <AS_OF_DATE>
+      rule: "use only values observed \u2264 <AS_OF_DATE>"

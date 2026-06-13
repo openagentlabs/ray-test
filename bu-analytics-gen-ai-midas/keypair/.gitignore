@@ -1,0 +1,2 @@
+# Private keys (manual midas-windows-dev-local.pem and any other PEMs) — never commit
+*.pem

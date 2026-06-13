@@ -1,0 +1,192 @@
+model_list:
+  # ==== Foundation models (Bedrock) ====
+
+  # ==== EP-1847: Amazon Titan Embeddings (us-east-1) ====
+  - model_name: amazon.titan-embed-text-v2:0.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/amazon.titan-embed-text-v2:0
+
+  # ==== Azure OpenAI models (East US 1) — disabled: Bedrock-only config ====
+
+  # - model_name: openai.o4-mini.azure.eastus
+  #   litellm_params:
+  #     model: azure/o4-mini
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: 2025-01-01-preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY
+
+  - model_name: openai.gpt-4-1-mini.azure.eastus
+    litellm_params:
+      model: azure/gpt-4.1-mini
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-01-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.gpt-4-1-nano.azure.eastus
+    litellm_params:
+      model: azure/gpt-4.1-nano
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-01-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.gpt-5-mini.azure.eastus
+    litellm_params:
+      model: azure/gpt-5-mini
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-01-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # ==== Azure OpenAI models (East US 2) - EP-901 — disabled: Bedrock-only config ====
+  # These models are deployed in US East 2 per EP-901 requirements
+  # Configuration: Content Filter v2, 10k TPM, Auto-update DISABLED
+  # Using separate API key: AZURE_OPENAI_API_KEY_EASTUS2
+
+  # - model_name: openai.model-router.azure.eastus2
+  #   litellm_params:
+  #     model: azure/model-router
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: 2025-03-01-preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # - model_name: openai.codex-mini.azure.eastus2
+  #   litellm_params:
+  #     model: azure/codex-mini
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: 2025-03-01-preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # gpt-5.1-codex requires Responses API (does not support Chat Completions)
+  - model_name: openai.gpt-5-1-codex.azure.eastus2
+    litellm_params:
+      model: azure/responses/gpt-5.1-codex
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # - model_name: openai.gpt-5-1-codex-mini.azure.eastus2
+  #   litellm_params:
+  #     model: azure/gpt-5.1-codex-mini
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: 2025-03-01-preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # - model_name: openai.gpt-5-1-codex-max.azure.eastus2
+  #   litellm_params:
+  #     model: azure/gpt-5.1-codex-max
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: 2025-03-01-preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # gpt-5.2-codex requires Responses API (does not support Chat Completions)
+  - model_name: openai.gpt-5-2-codex.azure.eastus2
+    litellm_params:
+      model: azure/responses/gpt-5.2-codex
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # - model_name: openai.gpt-5-2.azure.eastus2
+  #   litellm_params:
+  #     model: azure/gpt-5.2
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: 2025-03-01-preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # gpt-5.3-codex requires Responses API (does not support Chat Completions)
+  - model_name: openai.gpt-5-3-codex.azure.eastus2
+    litellm_params:
+      model: azure/responses/gpt-5.3-codex
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.gpt-5-4-nano.azure.eastus2
+    litellm_params:
+      model: azure/gpt-5.4-nano
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.gpt-5-4-mini.azure.eastus2
+    litellm_params:
+      model: azure/gpt-5.4-mini
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # gpt-5.4-pro requires Responses API (does not support Chat Completions)
+  # - model_name: openai.gpt-5-4-pro.azure.eastus2
+  #   litellm_params:
+  #     model: azure/responses/gpt-5.4-pro
+  #     api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+  #     api_version: preview
+  #     api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.gpt-5-4.azure.eastus2
+    litellm_params:
+      model: azure/gpt-5.4
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.text-embedding-3-large.azure.eastus2
+    litellm_params:
+      model: azure/text-embedding-3-large
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  - model_name: openai.text-embedding-3-small.azure.eastus2
+    litellm_params:
+      model: azure/text-embedding-3-small
+      api_base: https://az03-al-midas-dev-foundry-eastus2.openai.azure.com
+      api_version: 2025-03-01-preview
+      api_key: os.environ/AZURE_OPENAI_API_KEY_EASTUS2
+
+  # ==== Google Vertex AI models (us-central1) — disabled: Bedrock-only config ====
+  # Auth: vertex_credentials reads VERTEXAI_CREDENTIALS_JSON env var at runtime
+  # - model_name: google.gemini-2.5-flash.vertexai.us-central1
+  #   litellm_params:
+  #     model: gemini-2.5-flash
+  #     vertex_project: ai-exlerateai-usc1-dev
+  #     vertex_credentials: os.environ/VERTEXAI_CREDENTIALS_JSON
+  #     location: us-central1
+  #     temperature: 0.0
+  #     max_output_tokens: 2048
+  #     gemini_endpoint: us-central1-aiplatform-pscpublic.p.googleapis.com
+
+  # - model_name: google.gemini-2.5-pro.vertexai.us-central1
+  #   litellm_params:
+  #     model: gemini-2.5-pro
+  #     vertex_project: ai-exlerateai-usc1-dev
+  #     vertex_credentials: os.environ/VERTEXAI_CREDENTIALS_JSON
+  #     location: us-central1
+  #     temperature: 0.0
+  #     max_output_tokens: 2048
+  #     gemini_endpoint: us-central1-aiplatform-pscpublic.p.googleapis.com
+
+# ==== EXL Insurance LLM ====
+# Temporarily disabled: the proxy cannot reach https://exl-llm-dev.exlservice.com/v1
+# from its current network egress (every request times out), so exposing the
+# model only generates failed traffic and noisy alerts in the health checker.
+# Re-enable once the EXL Insurance LLM backend implementation / connectivity
+# is finished — the original entry is preserved below verbatim so the switch
+# back is just removing the leading "# " prefix.
+#  - model_name: meta.llama3-1-8b-instruct-v1:0.exl-insurance-llm-dev
+#    litellm_params:
+#      model: openai/EXL_LLM
+#      api_base: https://exl-llm-dev.exlservice.com/v1
+#      api_key: tensorrt_llm
+
+  # ==== Nvidia Nemotron Models ====
+  - model_name: nvidia.nemotron-nano-9b-v2.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/nvidia.nemotron-nano-9b-v2
+
+  - model_name: nvidia.nemotron-nano-12b-v2.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/nvidia.nemotron-nano-12b-v2
+
+  - model_name: nvidia.nemotron-nano-3-30b.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/nvidia.nemotron-nano-3-30b

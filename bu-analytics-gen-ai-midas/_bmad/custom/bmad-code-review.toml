@@ -1,0 +1,10 @@
+# MIDAS Scenario 1 — review includes PRD/traceability audit
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad-output/scenarios/01-requirements-traceability.md",
+  "For Model Lab PRs: produce a traceability section — list ST-*/REQ-*/CAP-* covered, flag any PRD requirement with no code/test mapping, flag any code with no REQ parent.",
+  "Fail review if implementation contradicts PRD/SPEC or adds undeclared business logic.",
+  "If SME gate applies: fail review unless test-artifacts/sme-reviews/<slug>/ST-NNN/sme-signoff.md shows Verdict=approved.",
+]

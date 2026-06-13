@@ -1,0 +1,13 @@
+# Dev-environment Helm overrides for midas-api-backend-svc.
+# Activates Phase A observability (CloudWatch Logs + EMF metrics).
+# Applied after values.yaml in helm-deploy-releases.sh via -f <this file>.
+observability:
+  enabled: true
+  metricsEnabled: true
+  logGroupName: "/midas/dev/backend"
+  environment: "dev"
+# Connect the backend to the routing-tier pod-manager (deployed via the
+# routing-tier chart) over in-cluster gRPC. Leases are acquired/released on
+# login/refresh/logout; failures are best-effort and only logged.
+# podManager:
+#   enabled: true

@@ -1,0 +1,23 @@
+# Ordered list of helm upgrade --install targets (see README.md)
+version: 1
+namespace: midas-apps
+releases:
+  - name: midas-web-frontend
+    chart: midas-web-frontend-svc
+    valuesFile: midas-web-frontend-svc/values.yaml
+  - name: midas-api-backend
+    chart: midas-api-backend-svc
+    valuesFile: midas-api-backend-svc/values.yaml
+  - name: midas-graph
+    chart: midas-graph-svc
+    valuesFile: midas-graph-svc/values.yaml
+  # One-shot ML batch Job. Enabled only when EC2_MT_TEST_JOB_ENABLED=true in
+  # Jenkins. When enabled, the pipeline also sets BACKEND_REPLICA_COUNT=0 to
+  # free the m6i.4xlarge node so the Job has full CPU and RAM.
+  - name: midas-ec2-mt-test
+    chart: midas-ec2-mt-test-svc
+    valuesFile: midas-ec2-mt-test-svc/values.yaml
+    # skipEcrImage: true tells helm-deploy-releases.sh not to inject
+    # image.repository from ECR_URL_* (the script handles this flag).
+    # The image repo is injected via EC2_MT_TEST_IMAGE_REPO env instead.
+    skipEcrImage: false

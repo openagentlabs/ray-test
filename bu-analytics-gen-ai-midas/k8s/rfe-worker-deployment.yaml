@@ -1,0 +1,76 @@
+# Optional horizontal-scaling worker pool for Step 3 RFE.
+#
+# Deploy ONLY when RFE_SCALING_MODE=distributed is set on the backend and
+# Redis + an RWX volume (EFS on AWS, Azure Files on Azure) are available.
+# Workers share the SAME container image as the backend but run
+# `python rfe_worker.py` as the entrypoint instead of uvicorn.
+#
+# They are stateless - scale up by increasing `replicas`. Each worker
+# BLPOPs the next job from the Redis queue and writes artifacts to the
+# shared rfe_artifacts PVC; the backend reads from the same volume to
+# serve the frontend.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: midas-rfe-worker
+  namespace: midas-saiyam
+  labels:
+    app: midas-rfe-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: midas-rfe-worker
+  template:
+    metadata:
+      labels:
+        app: midas-rfe-worker
+    spec:
+      nodeSelector:
+        midas-role: backend
+      containers:
+      - name: rfe-worker
+        image: 882884688997.dkr.ecr.us-east-1.amazonaws.com/midas-backend:2026-03-17-1
+        imagePullPolicy: Always
+        command: ["python", "rfe_worker.py"]
+        env:
+        - name: RFE_SCALING_MODE
+          value: "distributed"
+        - name: RFE_STORAGE_BACKEND
+          value: "filesystem"  # or "s3" when using cross-region shared storage
+        - name: RFE_ARTIFACTS_DIR
+          value: "/app/rfe_artifacts"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: REDIS_URL
+        volumeMounts:
+        - name: rfe-artifacts
+          mountPath: /app/rfe_artifacts
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+      volumes:
+      - name: rfe-artifacts
+        persistentVolumeClaim:
+          claimName: rfe-artifacts-rwx
+---
+# Companion PVC. Update `storageClassName` to match the RWX class in your
+# cluster (e.g. `efs-sc` on AWS, `azurefile-csi` on Azure).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rfe-artifacts-rwx
+  namespace: midas-saiyam
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  # storageClassName: efs-sc

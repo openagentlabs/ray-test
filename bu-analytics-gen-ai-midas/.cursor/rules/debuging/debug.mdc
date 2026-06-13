@@ -1,0 +1,71 @@
+---
+description: MIDAS debugging. Always run diagnostics inside the private VPC via the jumpbox. Read-only by default; mutations require explicit user approval.
+alwaysApply: false
+---
+
+# MIDAS debugging (`debug.mdc`)
+
+Applies when the agent needs to debug, diagnose, or inspect a MIDAS component. Read/inspect only; does not authorise shared-environment mutations (see `.cursor/rules/jenkins.mdc`).
+
+## Core principle
+
+MIDAS lives inside the private VPC. The laptop cannot reach EKS, RDS, ElastiCache, or internal ALBs directly. All diagnostic commands run **on the jumpbox** via SSM.
+
+| Key | Value |
+|---|---|
+| Region | `us-east-1` |
+| VPC | `vpc-0c4d673f3e95a93eb` (EV-vpc) |
+| Jumpbox EC2 ID | `i-04231b2a8a4d98b63` |
+
+Source of truth: `.cursor/rules/solution_const.mdc`.
+
+## Rule 1: debug EKS from the jumpbox via SSM
+
+The jumpbox has an EKS access entry with cluster-admin scope (see `deploy/ecs-app/eks-jumpbox-access.tf`). Run `kubectl` on the jumpbox, not on the laptop.
+
+### One-shot command
+
+```bash
+aws ssm send-command \
+  --region us-east-1 \
+  --instance-ids i-04231b2a8a4d98b63 \
+  --document-name "AWS-RunShellScript" \
+  --comment "MIDAS debug: <reason>" \
+  --parameters 'commands=["kubectl <subcommand> <args>"]'
+```
+
+Retrieve output:
+
+```bash
+aws ssm get-command-invocation \
+  --region us-east-1 \
+  --instance-id i-04231b2a8a4d98b63 \
+  --command-id <id>
+```
+
+### Interactive session
+
+```bash
+aws ssm start-session --target i-04231b2a8a4d98b63 --region us-east-1
+# then run kubectl inside the session
+```
+
+### Rules
+
+- Always pin `--region us-east-1` and `--instance-ids i-04231b2a8a4d98b63`.
+- Default to read-only `kubectl`: `get`, `describe`, `logs`, `top`, `events`.
+- Any mutating verb (`apply`, `delete`, `rollout restart`, `scale`, `edit`) requires explicit user approval and is an exception to pipeline-first (`.cursor/rules/jenkins.mdc`).
+- Never port-forward the EKS API to the laptop. Never add a public endpoint for debugging.
+- Do not copy kubeconfig, credentials, or tokens off the jumpbox.
+- If `kubectl` context is missing, refresh on the jumpbox: `aws eks update-kubeconfig --region us-east-1 --name <cluster-name>`. Discover the cluster name with `aws eks list-clusters`; do not hardcode it.
+
+## Adding more debug rules
+
+Append new numbered sections (`## Rule 2: ...`, `## Rule 3: ...`) for RDS, ElastiCache, ALB, networking, or log analysis as needed. Each new rule should state: where to run from, which tool, and the read-only-by-default constraint.
+
+## Related rules
+
+- `.cursor/rules/solution_const.mdc` - VPC, region, jumpbox IDs.
+- `.cursor/rules/architecture.mdc` - private-by-default constraint.
+- `.cursor/rules/jenkins.mdc` - pipeline-first for mutations.
+- `.cursor/rules/tool.mdc` - `jenkins_tools.py` for pipeline debugging.

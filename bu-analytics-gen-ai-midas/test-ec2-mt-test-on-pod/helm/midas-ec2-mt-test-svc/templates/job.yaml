@@ -1,0 +1,44 @@
+{{- if .Values.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Append a rollout suffix so re-deploys create a new Job rather than
+  # colliding with a completed/failed one from a previous run.
+  name: {{ .Chart.Name }}{{ with .Values.rollout.suffix }}-{{ . }}{{ end }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  {{- if gt (int .Values.job.activeDeadlineSeconds) 0 }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds }}
+  {{- end }}
+  {{- if ge (int .Values.job.ttlSecondsAfterFinished) 0 }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        {{- with .Values.rollout.suffix }}
+        midas.midas.io/rollout-suffix: {{ . | quote }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      restartPolicy: Never
+      containers:
+        - name: ec2-mt-test
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: AWS_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: S3_RESULTS_BUCKET
+              value: {{ .Values.s3ResultsBucket | quote }}
+            - name: S3_RESULTS_PREFIX
+              value: {{ .Values.s3ResultsPrefix | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+{{- end }}

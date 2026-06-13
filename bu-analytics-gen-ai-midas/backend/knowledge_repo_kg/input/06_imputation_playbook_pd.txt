@@ -1,0 +1,65 @@
+kb:
+  imputation_playbook_pd:
+    advanced_strategies:
+      deep_learning:
+        autoencoder:
+          activation: relu
+          hidden_layers:
+          - 128
+          - 64
+          - 32
+        gan_impute:
+          discriminator_layers:
+          - 128
+          - 64
+          generator_layers:
+          - 256
+          - 128
+      multivariate:
+        mice:
+          estimator: BayesianRidge
+          max_iter: 10
+        missforest:
+          max_features: sqrt
+          n_estimators: 100
+    categorical:
+      high_cardinality:
+        encoding: target_encoding
+        rare_bucket: __OTHER__
+        rare_level_floor_pct: <RARE_FLOOR|0.005>
+        scheme: out_of_fold_time_blocked
+      low_cardinality:
+        encoding: one_hot
+        include_missing_bucket: true
+    computation_scope:
+      backoff:
+      - <SEG1|product_type>
+      - GLOBAL
+      by_segment:
+      - <SEG1|product_type>
+      - <SEG2|secured_flag>
+      time_safe: true
+    dates:
+      derive_relative_patterns:
+      - '*months_since*'
+      - '*tenure*'
+      - '*age*'
+      missing_policy: recent_default + missing_flag
+    numeric:
+      add_missing_indicator: true
+      default: median_by_segment
+      outliers:
+        winsorize:
+          p_high: 0.99
+          p_low: 0.01
+      special_cases:
+        ratio_patterns:
+          negatives_to_na: true
+          zero_flag: true
+        score_patterns:
+          strategy: treat_missing_as_bin
+      transform:
+        log1p_for_patterns:
+        - '*amount*'
+        - '*balance*'
+        - '*income*'

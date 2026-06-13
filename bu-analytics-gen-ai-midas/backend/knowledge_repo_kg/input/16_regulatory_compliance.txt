@@ -1,0 +1,45 @@
+kb:
+  regulatory_compliance:
+    basel_requirements:
+      data_history_years: 5
+      downturn_adjustment: true
+      margin_of_conservatism: true
+      pd_floor: 0.0003
+    fair_lending:
+      bias_mitigation:
+      - reweighting
+      - preprocessing
+      - in_processing
+      - post_processing
+      disparate_impact_threshold: 0.8
+      documentation_required: true
+      protected_attributes:
+      - race
+      - ethnicity
+      - gender
+      - age
+      - marital_status
+    gdpr_compliance:
+      anonymization_techniques:
+      - k_anonymity
+      - differential_privacy
+      data_retention_days: 2555
+      pii_handling: encryption_at_rest
+      right_to_explanation: true
+    model_documentation:
+      required_sections:
+      - business_justification
+      - mathematical_specification
+      - data_sources_and_quality
+      - feature_engineering_logic
+      - performance_metrics
+      - limitations_and_assumptions
+      - monitoring_plan
+      - validation_results
+    sr_11_7_compliance:
+      validation_requirements:
+      - conceptual_soundness
+      - ongoing_monitoring
+      - outcomes_analysis
+      - benchmarking
+      - sensitivity_analysis

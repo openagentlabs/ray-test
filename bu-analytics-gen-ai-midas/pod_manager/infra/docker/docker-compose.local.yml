@@ -1,0 +1,101 @@
+# Local routing-tier stack for development and E2E (Phase 1).
+# Usage (from repo root):
+#   ./infra/docker/start-local.sh -s
+# Or manual steps — see docs/README.md and docs/local-testing/
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: midas
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d midas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "5432:5432"
+
+  backend-pool-node-0:
+    build: ../../pods/backend_pool_node
+    environment:
+      BACKEND_POOL_NODE_NAME: backend-pool-node-0
+      PORT: "8080"
+    ports:
+      - "18080:8080"
+
+  backend-pool-node-1:
+    build: ../../pods/backend_pool_node
+    environment:
+      BACKEND_POOL_NODE_NAME: backend-pool-node-1
+      PORT: "8080"
+    ports:
+      - "18081:8080"
+
+  login-pod:
+    build: ../../pods/login_pod
+    environment:
+      SESSION_COOKIE_NAME: pod_manager_user
+      PORT: "8080"
+    ports:
+      - "18082:8080"
+
+  router:
+    build: ../../router.svc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; [socket.create_connection(('127.0.0.1', p), 2).close() for p in (8804, 9000)]",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/midas
+      POD_MANAGER_POSTGRES_SCHEMA_NAME: pod_manager
+      POD_MANAGER_POSTGRES_TABLE_PREFIX: pm_
+      POD_MANAGER_KUBERNETES_ENABLED: "false"
+      POD_MANAGER_RECONCILIATION_ENABLED: "false"
+      POD_MANAGER_REAPER_ENABLED: "false"
+      POD_MANAGER_API_SERVICE_HOST: 0.0.0.0
+      POD_MANAGER_API_SERVICE_PORT: "8804"
+      POD_MANAGER_EXT_AUTHZ_HOST: 0.0.0.0
+      POD_MANAGER_EXT_AUTHZ_PORT: "9000"
+      POD_MANAGER_AUTH_DEV_MODE: "true"
+    ports:
+      - "8804:8804"
+      - "9000:9000"
+    volumes:
+      - ../../router.svc/server/app_config.toml:/app/app_config.toml:ro
+
+  envoy:
+    build: ../../envoy
+    depends_on:
+      router:
+        condition: service_healthy
+      backend-pool-node-0:
+        condition: service_started
+      login-pod:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo >/dev/tcp/127.0.0.1/10000'"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    environment:
+      ENVOY_EXT_AUTHZ_HOST: router
+      ENVOY_EXT_AUTHZ_PORT: "9000"
+    ports:
+      - "10000:10000"
+      - "8080:8080"

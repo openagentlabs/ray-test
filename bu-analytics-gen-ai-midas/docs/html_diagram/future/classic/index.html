@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EXLDecision — Classic Architecture Diagram</title>
+<style>
+/* ══ Reset & Variables ══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  /* Page chrome */
+  --page-bg:    #e8eef5;
+  --sidebar-bg: #1a1d27;
+  --sidebar-border: #2e3350;
+  --sidebar-accent: #4f8ef7;
+  --sidebar-text: #e2e8f0;
+  --sidebar-muted: #94a3b8;
+
+  /* Column tints — each major column has its own pastel fill */
+  --col-clients:  #dce8f5;
+  --col-ingress:  #d5f0ea;
+  --col-identity: #fdf0d5;
+  --col-biz:      #d5ecd8;
+  --col-agent:    #f0d5ef;
+  --col-data:     #fde8d5;
+  --col-compute:  #d5eeee;
+  --col-stores:   #ede0f5;
+
+  /* Box fills */
+  --box-clients:  #b8d4ee;
+  --box-ingress:  #a0d8ce;
+  --box-identity: #f7dfa0;
+  --box-biz:      #a8d8b0;
+  --box-agent:    #e0a8e0;
+  --box-data:     #f7c890;
+  --box-compute:  #90d4d4;
+  --box-stores:   #c8a8e8;
+
+  /* Arrow colours */
+  --arr-rest:  #2563eb;
+  --arr-grpc:  #7c3aed;
+  --arr-mcp:   #059669;
+  --arr-db:    #d97706;
+  --arr-cache: #0891b2;
+  --arr-s3:    #ea580c;
+
+  /* Text */
+  --txt-dark:  #1e293b;
+  --txt-mid:   #334155;
+  --txt-light: #64748b;
+
+  --radius: 8px;
+  --font: 'Segoe UI', 'Inter', system-ui, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--page-bg); color: var(--txt-dark); font-size: 13px; }
+
+/* ══ Layout ═════════════════════════════════════════════════════════════════ */
+.page-wrap { display: flex; min-height: 100vh; }
+
+/* sidebar — dark, same as other pages */
+.sidebar {
+  width: 230px; min-width: 230px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  padding: 24px 0;
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto; flex-shrink: 0;
+}
+.sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--sidebar-border); margin-bottom: 16px; }
+.sidebar-logo h1 { font-size: 15px; font-weight: 700; color: var(--sidebar-accent); }
+.sidebar-logo p  { font-size: 10px; color: var(--sidebar-muted); margin-top: 3px; }
+.nav-section { padding: 6px 20px 2px; font-size: 9px; font-weight: 700; color: var(--sidebar-muted); text-transform: uppercase; letter-spacing: 1px; }
+.nav-item {
+  display: block; padding: 6px 20px;
+  color: var(--sidebar-muted); text-decoration: none;
+  font-size: 12px; border-left: 2px solid transparent; transition: all .15s;
+}
+.nav-item:hover { color: var(--sidebar-text); border-left-color: var(--sidebar-accent); background: rgba(79,142,247,.07); }
+.nav-item.active { color: var(--sidebar-text); border-left-color: var(--sidebar-accent); background: rgba(79,142,247,.1); font-weight: 600; }
+
+/* main */
+.main { flex: 1; overflow-x: auto; background: var(--page-bg); }
+
+/* ══ Header ═════════════════════════════════════════════════════════════════ */
+.page-header {
+  background: #1e293b;
+  padding: 22px 40px 18px;
+  border-bottom: 3px solid #4f8ef7;
+}
+.page-header h1 {
+  font-size: 26px; font-weight: 900; color: #fff;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.page-header p { color: #94a3b8; font-size: 12px; margin-top: 5px; }
+.page-header .badges { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.badge {
+  background: #2e3350; border: 1px solid #3a4060;
+  color: #94a3b8; font-size: 10px; padding: 3px 10px; border-radius: 12px;
+}
+
+/* hint bar */
+.hint-bar {
+  background: #fff8e1; border-bottom: 1px solid #fbbf24;
+  padding: 7px 40px; font-size: 11px; color: #78350f;
+  display: flex; gap: 8px; align-items: center;
+}
+.hint-bar strong { color: #b45309; }
+
+/* ══ Canvas ═════════════════════════════════════════════════════════════════ */
+.canvas { padding: 28px 32px 60px; min-width: 1200px; }
+
+/* ══ Legend ═════════════════════════════════════════════════════════════════ */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  background: #fff; border: 1px solid #cbd5e1; border-radius: var(--radius);
+  padding: 10px 18px; margin-bottom: 22px; font-size: 11px;
+}
+.legend strong { color: var(--txt-light); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+.leg { display: flex; align-items: center; gap: 5px; }
+.leg-box  { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 1.5px solid rgba(0,0,0,.15); }
+.leg-arrow { width: 28px; height: 0; flex-shrink: 0; position: relative; }
+.leg-arrow::after {
+  content: ''; position: absolute; right: 0; top: -4px;
+  border: 4px solid transparent; border-left: none;
+}
+
+/* ══ The Diagram Grid ════════════════════════════════════════════════════════
+   Layout: 9 columns
+   Col 1: Clients
+   Col 2: Ingress (WAF→ALB→Istio)
+   Col 3: Identity / Authz
+   Col 4: Business Services (stacked)
+   Col 5: AI Agent Fabric
+   Col 6: Data Fabric
+   Col 7: Computation
+   Col 8: Managed Stores (DynamoDB, Redis, S3)
+   Col 9: External AWS Services
+═══════════════════════════════════════════════════════════════════════════════ */
+.diagram {
+  display: grid;
+  grid-template-columns: 130px 160px 175px 195px 200px 195px 200px 185px 175px;
+  grid-template-rows: auto;
+  gap: 0;
+  align-items: start;
+  position: relative;
+}
+
+/* ── Column panels ────────────────────────────────────────────── */
+.col-panel {
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 10px 8px 14px;
+  margin: 4px;
+  position: relative;
+}
+.col-panel .col-title {
+  font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 8px; text-align: center;
+  padding: 3px 6px; border-radius: 4px; display: block;
+}
+.col-panel.clients  { background: var(--col-clients);  border-color: #6ea8d4; }
+.col-panel.ingress  { background: var(--col-ingress);  border-color: #4db8a8; }
+.col-panel.identity { background: var(--col-identity); border-color: #d4a820; }
+.col-panel.biz      { background: var(--col-biz);      border-color: #50a060; }
+.col-panel.agent    { background: var(--col-agent);    border-color: #c060b8; }
+.col-panel.data     { background: var(--col-data);     border-color: #d47820; }
+.col-panel.compute  { background: var(--col-compute);  border-color: #20a0a0; }
+.col-panel.stores   { background: var(--col-stores);   border-color: #9060c0; }
+.col-panel.external { background: #e8f0e8;             border-color: #60a060; border-style: dashed; }
+
+/* ── Service boxes ────────────────────────────────────────────── */
+.svc {
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: filter .15s, transform .12s, box-shadow .15s;
+  border: 1.5px solid rgba(0,0,0,.12);
+  position: relative;
+  user-select: none;
+}
+.svc:last-child { margin-bottom: 0; }
+.svc:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  z-index: 10;
+}
+.svc .svc-icon { font-size: 18px; display: block; text-align: center; margin-bottom: 3px; }
+.svc .svc-name { font-size: 10.5px; font-weight: 700; text-align: center; color: var(--txt-dark); line-height: 1.3; }
+.svc .svc-sub  { font-size: 8.5px; text-align: center; color: var(--txt-mid); margin-top: 2px; line-height: 1.4; }
+.svc .svc-port { font-size: 8px; text-align: center; color: var(--txt-light); margin-top: 3px; }
+.svc .svc-tag  {
+  display: inline-block; font-size: 7.5px; font-weight: 700;
+  padding: 1px 5px; border-radius: 10px; margin-top: 4px;
+  background: rgba(255,255,255,.5); border: 1px solid rgba(0,0,0,.1);
+}
+
+/* stacked deck effect */
+.svc-deck { position: relative; margin-bottom: 12px; }
+.svc-deck .svc { margin-bottom: 0; }
+.svc-deck::before, .svc-deck::after {
+  content: '';
+  position: absolute;
+  left: 4px; right: -4px;
+  height: 100%; top: -4px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(0,0,0,.08);
+  background: inherit;
+  z-index: -1;
+}
+.svc-deck::after { left: 8px; right: -8px; top: -8px; z-index: -2; opacity: .7; }
+
+/* colour fills per category */
+.svc.clients-box  { background: var(--box-clients); }
+.svc.ingress-box  { background: var(--box-ingress); }
+.svc.identity-box { background: var(--box-identity); }
+.svc.biz-box      { background: var(--box-biz); }
+.svc.agent-box    { background: var(--box-agent); }
+.svc.data-box     { background: var(--box-data); }
+.svc.compute-box  { background: var(--box-compute); }
+.svc.store-box    { background: var(--box-stores); }
+.svc.external-box { background: #c8e8c8; }
+.svc.new-badge    { outline: 2px solid #c060b8; outline-offset: 2px; }
+
+/* midas-common bar — full width spanning across all service columns */
+.common-bar {
+  grid-column: 3 / 9;
+  background: #ede4f5;
+  border: 2px dashed #9060c0;
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin: 0 4px 0 4px;
+  cursor: pointer;
+  transition: filter .15s;
+}
+.common-bar:hover { filter: brightness(1.04); }
+.common-bar .cb-title { font-size: 10px; font-weight: 800; color: #6030a0; }
+.common-bar .cb-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.cb-chip {
+  background: #d0b8f0; border: 1px solid #b090d8;
+  border-radius: 5px; padding: 2px 7px;
+  font-size: 8.5px; font-weight: 600; color: #4020a0;
+}
+
+/* ── Arrows SVG overlay ───────────────────────────────────────── */
+#arrow-layer {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+#tooltip {
+  position: fixed; pointer-events: none;
+  background: #1e293b; border: 1px solid #334155;
+  border-radius: 8px; padding: 11px 14px;
+  font-size: 11px; color: #e2e8f0; max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.45);
+  z-index: 9999; display: none; line-height: 1.65;
+}
+#tooltip .tt-title { font-weight: 700; font-size: 12px; margin-bottom: 5px; color: #fff; }
+#tooltip .tt-row   { color: #94a3b8; margin-bottom: 2px; }
+#tooltip .tt-row span { color: #e2e8f0; }
+#tooltip .tt-link  { margin-top: 7px; color: #4f8ef7; font-size: 10px; }
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #e8eef5; }
+::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>EXL Decision</h1>
+    <p>Architecture Explorer</p>
+  </div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="../requirements/index.html">📜 Requirements</a>
+      <a class="nav-item" href="../decisions/index.html">⚖️ Architectural decisions</a>
+
+      <div class="nav-section">This diagram</div>
+      <a class="nav-item active" href="index.html">🏛️ Future — Classic Architecture Diagram</a>
+
+<div class="nav-section">Jump to Column</div>
+  <a class="nav-item" href="#col-clients">👤 Clients</a>
+  <a class="nav-item" href="#col-ingress">🛡️ Ingress</a>
+  <a class="nav-item" href="#col-identity">🪪 Identity &amp; Auth</a>
+  <a class="nav-item" href="#col-biz">⚙️ Business Services</a>
+  <a class="nav-item" href="#col-agent">🧠 AI Agent Fabric</a>
+  <a class="nav-item" href="#col-data">🗂️ Data Fabric</a>
+  <a class="nav-item" href="#col-compute">⚡ Computation</a>
+  <a class="nav-item" href="#col-stores">🗃️ Data Stores</a>
+  <a class="nav-item" href="#col-external">☁️ External AWS</a>
+
+  <div class="nav-section">System Layer (jump)</div>
+  <a class="nav-item" href="../index.html#layer-diagram">System Layer Diagram</a>
+  <a class="nav-item" href="../index.html#agent-platform">AI Agent Fabric</a>
+  <a class="nav-item" href="../index.html#gbm-flow">GBM Training Flow</a>
+  <a class="nav-item" href="../index.html#requirements">Requirements ✓</a>
+</nav>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1>EXLDecision — Microservice Architecture</h1>
+    <p>Classic component layout: Clients → Ingress → Services → Data Stores · AWS EKS us-east-1 · Private VPC vpc-0c4d673f3e95a93eb</p>
+    <div class="badges">
+      <span class="badge">14 Microservices</span>
+      <span class="badge">Istio mTLS Service Mesh</span>
+      <span class="badge">AWS Bedrock AgentCore</span>
+      <span class="badge">Kubeflow Pipelines</span>
+      <span class="badge">gRPC Internal · REST External</span>
+    </div>
+  </div>
+
+  <div class="hint-bar">
+    <strong>💡 Click</strong> any component to jump to its detail in the System Layer Diagram &nbsp;·&nbsp;
+    <strong>Hover</strong> for endpoint &amp; technology details &nbsp;·&nbsp;
+    <strong>★</strong> = New service
+  </div>
+
+  <div class="canvas">
+
+    <!-- ── Legend ── -->
+    <div class="legend">
+      <strong>Legend:</strong>
+      <div class="leg"><div class="leg-box" style="background:#b8d4ee;border-color:#6ea8d4"></div> Client</div>
+      <div class="leg"><div class="leg-box" style="background:#a0d8ce;border-color:#4db8a8"></div> Ingress</div>
+      <div class="leg"><div class="leg-box" style="background:#f7dfa0;border-color:#d4a820"></div> Identity / Auth</div>
+      <div class="leg"><div class="leg-box" style="background:#a8d8b0;border-color:#50a060"></div> Business Service</div>
+      <div class="leg"><div class="leg-box" style="background:#e0a8e0;border-color:#c060b8"></div> AI Agent Fabric ★</div>
+      <div class="leg"><div class="leg-box" style="background:#f7c890;border-color:#d47820"></div> Data Fabric</div>
+      <div class="leg"><div class="leg-box" style="background:#90d4d4;border-color:#20a0a0"></div> Computation</div>
+      <div class="leg"><div class="leg-box" style="background:#c8a8e8;border-color:#9060c0"></div> Data Store</div>
+      <span style="width:1px;background:#cbd5e1;height:20px;display:inline-block"></span>
+      <div class="leg"><svg width="32" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#2563eb" stroke-width="2"/><polygon points="24,3 32,7 24,11" fill="#2563eb"/></svg> REST</div>
+      <div class="leg"><svg width="32" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#7c3aed" stroke-width="2"/><polygon points="24,3 32,7 24,11" fill="#7c3aed"/></svg> gRPC</div>
+      <div class="leg"><svg width="32" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#059669" stroke-width="2"/><polygon points="24,3 32,7 24,11" fill="#059669"/></svg> MCP Tool</div>
+      <div class="leg"><svg width="32" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#d97706" stroke-width="2"/><polygon points="24,3 32,7 24,11" fill="#d97706"/></svg> DB R/W</div>
+      <div class="leg"><svg width="32" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#0891b2" stroke-width="2"/><polygon points="24,3 32,7 24,11" fill="#0891b2"/></svg> Cache</div>
+      <div class="leg"><svg width="32" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#ea580c" stroke-width="2"/><polygon points="24,3 32,7 24,11" fill="#ea580c"/></svg> S3 / S3 Files</div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         MAIN DIAGRAM  — two-row layout:
+         Row A: midas-common bar (full width)
+         Row B: column panels side by side
+    ══════════════════════════════════════════════════════════ -->
+
+    <!-- midas-common shared bar — above all service columns -->
+    <div style="margin: 0 4px 10px; cursor:pointer"
+         id="mc-common"
+         data-target="../index.html#layer-diagram"
+         data-tip-title="midas-common (shared pip package — imported by ALL 14 services)"
+         data-tip-note="ports/ StoragePort · CachePort · NoSQLPort · SecretsPort · AgentRuntimePort&#10;adapters/aws/ S3StorageAdapter · DynamoDBAdapter · RedisAdapter · SecretsManagerAdapter · AgentCoreAdapter&#10;clients/ gRPC stubs for all services · proto/ .proto + _pb2 generated · middleware/ jwt_extractor · request_id · rate_limit"
+         onclick="navigate('../index.html#layer-diagram')"
+         >
+      <div style="background:#ede4f5;border:2px dashed #9060c0;border-radius:8px;padding:9px 18px;transition:filter .15s"
+           onmouseenter="showTip(event,this.parentNode)" onmouseleave="hideTip()"
+           onmousemove="moveTip(event)">
+        <div style="font-size:10px;font-weight:800;color:#6030a0;margin-bottom:6px">
+          🔌 midas-common — Cloud Portability Abstraction Layer (pip package · ALL 14 services import this)
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="background:#d0b8f0;border:1px solid #b090d8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#4020a0">StoragePort</span>
+          <span style="background:#d0b8f0;border:1px solid #b090d8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#4020a0">CachePort</span>
+          <span style="background:#d0b8f0;border:1px solid #b090d8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#4020a0">NoSQLPort</span>
+          <span style="background:#d0b8f0;border:1px solid #b090d8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#4020a0">SecretsPort</span>
+          <span style="background:#d0b8f0;border:1px solid #b090d8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#4020a0">AgentRuntimePort</span>
+          <span style="background:#d0b8f0;border:1px solid #b090d8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#4020a0">QueuePort</span>
+          <span style="background:#c0a0e0;border:1px solid #a080c8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#3010a0">S3Adapter · S3FilesAdapter · DynamoDBAdapter · RedisAdapter · SecretsManagerAdapter · AgentCoreAdapter</span>
+          <span style="background:#c0a0e0;border:1px solid #a080c8;border-radius:5px;padding:2px 8px;font-size:8.5px;font-weight:600;color:#3010a0">gRPC client stubs · .proto files · Middleware</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ columns row ══════════════════════════════════════════ -->
+    <div style="display:flex;gap:0;align-items:flex-start;position:relative">
+
+      <!-- SVG arrow overlay (drawn by JS after layout) -->
+      <svg id="arrow-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:5">
+        <defs>
+          <marker id="a-rest"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#2563eb"/></marker>
+          <marker id="a-grpc"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#7c3aed"/></marker>
+          <marker id="a-mcp"   markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#059669"/></marker>
+          <marker id="a-db"    markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#d97706"/></marker>
+          <marker id="a-cache" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#0891b2"/></marker>
+          <marker id="a-s3"    markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#ea580c"/></marker>
+        </defs>
+      </svg>
+
+      <!-- ── COL 1: CLIENTS ─────────────────────────────────────── -->
+      <div id="col-clients" class="col-panel clients" style="min-width:126px;max-width:126px">
+        <span class="col-title" style="background:#6ea8d4;color:#fff">Clients</span>
+
+        <div class="svc clients-box"
+             data-id="browser" data-target="../index.html#layer-diagram"
+             data-tip-title="Web Browser (React SPA)"
+             data-tip-rest="HTTPS :443 → WAF → ALB → Istio"
+             data-tip-note="JWT Bearer token · All APIs via REST/JSON">
+          <span class="svc-icon">🌐</span>
+          <div class="svc-name">Web Browser</div>
+          <div class="svc-sub">React SPA</div>
+          <div class="svc-port">HTTPS :443</div>
+        </div>
+
+        <div class="svc clients-box"
+             data-id="dev-cli" data-target="../index.html#layer-diagram"
+             data-tip-title="Developer / CLI"
+             data-tip-rest="HTTPS :443 · curl / SDK"
+             data-tip-note="Bearer JWT · API consumer">
+          <span class="svc-icon">💻</span>
+          <div class="svc-name">Developer / CLI</div>
+          <div class="svc-sub">curl · SDK</div>
+          <div class="svc-port">Bearer JWT</div>
+        </div>
+
+        <div class="svc clients-box new-badge"
+             data-id="ai-actor" data-target="../index.html#agent-platform"
+             data-tip-title="AI Agent Actor"
+             data-tip-mcp="MCP tool calls → all platform services"
+             data-tip-note="AgentCore microVM session · RBAC enforced on every call · 8h max">
+          <span class="svc-icon">🧠</span>
+          <div class="svc-name">AI Agent</div>
+          <div class="svc-sub">AgentCore session</div>
+          <span class="svc-tag" style="background:#f0d0f0;color:#802080">★ NEW</span>
+        </div>
+      </div>
+
+      <!-- ── COL 2: INGRESS ─────────────────────────────────────── -->
+      <div id="col-ingress" class="col-panel ingress" style="min-width:156px;max-width:156px">
+        <span class="col-title" style="background:#4db8a8;color:#fff">Ingress Layer</span>
+
+        <div class="svc ingress-box"
+             data-id="waf" data-target="../index.html#layer-diagram"
+             data-tip-title="AWS WAF"
+             data-tip-rest="OWASP rules · rate-limit · geo-block · header inspect"
+             data-tip-note="Access logs → S3 midas-waf-logs/ · Managed rule groups">
+          <span class="svc-icon">🔒</span>
+          <div class="svc-name">AWS WAF</div>
+          <div class="svc-sub">OWASP rules<br/>Rate-limit · Geo-block</div>
+        </div>
+
+        <div class="svc ingress-box"
+             data-id="alb" data-target="../index.html#layer-diagram"
+             data-tip-title="AWS Application Load Balancer"
+             data-tip-rest=":443 TLS termination → :80 HTTP forward"
+             data-tip-note="ACM managed cert · Sticky sessions · /health checks · ALB access logs → S3">
+          <span class="svc-icon">⚖️</span>
+          <div class="svc-name">AWS ALB</div>
+          <div class="svc-sub">TLS termination<br/>:443 → :80</div>
+        </div>
+
+        <div class="svc ingress-box"
+             data-id="istio-gw" data-target="../index.html#layer-diagram"
+             data-tip-title="Istio Ingress Gateway"
+             data-tip-rest="JWT validation (JWKS) · VirtualService routing rules"
+             data-tip-note="HTTP/1.1 → gRPC upgrade · namespace: istio-system · All intra-cluster: mTLS STRICT">
+          <span class="svc-icon">🕸️</span>
+          <div class="svc-name">Istio Ingress<br/>Gateway</div>
+          <div class="svc-sub">JWT validate<br/>VirtualService route</div>
+          <div class="svc-sub" style="margin-top:3px;font-size:7.5px;color:#20706a">mTLS STRICT across all pods</div>
+        </div>
+      </div>
+
+      <!-- ── COL 3: IDENTITY & AUTHZ ──────────────────────────── -->
+      <div id="col-identity" class="col-panel identity" style="min-width:170px;max-width:170px">
+        <span class="col-title" style="background:#d4a820;color:#fff">Identity &amp; Auth</span>
+
+        <div class="svc identity-box"
+             data-id="identity-svc" data-target="../index.html#layer-diagram"
+             data-tip-title="identity-service"
+             data-tip-rest="GET /identity/login-url · /callback · /me · /jwks&#10;POST /identity/refresh · /logout"
+             data-tip-grpc="VerifyToken(token)→UserContext · GetUser(user_id)→UserRecord"
+             data-tip-note="Cognito PKCE flow · Redis session:{jti} · DynamoDB midas-users">
+          <span class="svc-icon">🪪</span>
+          <div class="svc-name">identity-service</div>
+          <div class="svc-sub">Cognito PKCE · JWT issue</div>
+          <div class="svc-port">:8080 REST · :50051 gRPC</div>
+        </div>
+
+        <div class="svc identity-box new-badge"
+             data-id="authz-svc" data-target="../index.html#layer-diagram"
+             data-tip-title="authz-service (NEW)"
+             data-tip-grpc="CheckPermission(uid,action,resource)→{allowed}&#10;GetUserPermissions(uid)→PermissionList"
+             data-tip-rest="GET/POST /authz/roles · PUT /authz/users/{id}/roles (admin)"
+             data-tip-note="RBAC engine · Redis authz:{uid}:{res} TTL=300s · DynamoDB midas-roles/permissions/user-roles">
+          <span class="svc-icon">🛂</span>
+          <div class="svc-name">authz-service</div>
+          <div class="svc-sub">RBAC · CheckPermission</div>
+          <div class="svc-port">:8080 REST · :50051 gRPC</div>
+          <span class="svc-tag" style="background:#fde68a;color:#92400e">★ NEW</span>
+        </div>
+
+        <div class="svc identity-box"
+             data-id="project-svc" data-target="../index.html#layer-diagram"
+             data-tip-title="project-service"
+             data-tip-rest="GET/POST /projects · GET/PUT/DELETE /projects/{id}"
+             data-tip-grpc="GetProject(project_id)→ProjectRecord · ListProjectsForUser(uid)→ProjectList"
+             data-tip-note="DynamoDB midas-projects · GSI on user_id">
+          <span class="svc-icon">📁</span>
+          <div class="svc-name">project-service</div>
+          <div class="svc-sub">Project CRUD</div>
+          <div class="svc-port">:8080 REST · :50051 gRPC</div>
+        </div>
+      </div>
+
+      <!-- ── COL 4: BUSINESS SERVICES ──────────────────────────── -->
+      <div id="col-biz" class="col-panel biz" style="min-width:190px;max-width:190px">
+        <span class="col-title" style="background:#50a060;color:#fff">Business Services</span>
+        <div style="font-size:8px;color:#40704a;text-align:center;margin-bottom:7px">All call authz-service CheckPermission</div>
+
+        <div class="svc-deck">
+          <div class="svc biz-box"
+               data-id="analytics-svc" data-target="../index.html#layer-diagram"
+               data-tip-title="analytics-service"
+               data-tip-rest="POST /analytics/qc · /dqs · /correlations · /vif · /bivariate"
+               data-tip-grpc="RunQC(dataset_id,cfg)→job_id · GetResult(job_id)→AnalyticsResult"
+               data-tip-note="→ data-fabric gRPC GetDataframe · DynamoDB midas-analytics-results">
+            <span class="svc-icon">📊</span>
+            <div class="svc-name">analytics-service</div>
+            <div class="svc-sub">QC · DQS · VIF · Bivariate</div>
+            <div class="svc-port">:8080 · :50051</div>
+          </div>
+        </div>
+
+        <div class="svc-deck">
+          <div class="svc biz-box"
+               data-id="llm-svc" data-target="../index.html#layer-diagram"
+               data-tip-title="llm-service"
+               data-tip-rest="POST /chat/completions · /execute-code · GET /chat/models"
+               data-tip-grpc="Chat(session_id,messages)→stream ChatChunk"
+               data-tip-note="→ AI Gateway LiteLLM (PrivateLink) · Redis llm-sel:{sid} · → graphrag gRPC VectorSearch for RAG">
+            <span class="svc-icon">🤖</span>
+            <div class="svc-name">llm-service</div>
+            <div class="svc-sub">Chat · RAG · Code exec</div>
+            <div class="svc-port">:8080 · :50051</div>
+          </div>
+        </div>
+
+        <div class="svc-deck">
+          <div class="svc biz-box"
+               data-id="docs-svc" data-target="../index.html#layer-diagram"
+               data-tip-title="documentation-service"
+               data-tip-rest="POST /documentation/generate → 202 {job_id}&#10;GET /documentation/{id}/status · /download"
+               data-tip-note="→ llm-service gRPC Chat · S3 Files midas-documentation/ · DynamoDB midas-doc-jobs">
+            <span class="svc-icon">📄</span>
+            <div class="svc-name">documentation-svc</div>
+            <div class="svc-sub">Auto doc generation</div>
+            <div class="svc-port">:8080 REST only</div>
+          </div>
+        </div>
+
+        <div class="svc-deck">
+          <div class="svc biz-box"
+               data-id="eval-svc" data-target="../index.html#layer-diagram"
+               data-tip-title="evaluation-service"
+               data-tip-rest="POST /evaluation · GET /evaluation/{id} · /compare"
+               data-tip-grpc="StoreEvaluation(model_id,metrics)→EvalRef"
+               data-tip-note="DynamoDB midas-evaluations · S3 Files meea.json.gz · Called by pipeline meea-evaluator pod">
+            <span class="svc-icon">📈</span>
+            <div class="svc-name">evaluation-service</div>
+            <div class="svc-sub">MEEA · model metrics</div>
+            <div class="svc-port">:8080 · :50051</div>
+          </div>
+        </div>
+
+        <div class="svc-deck">
+          <div class="svc biz-box"
+               data-id="graphrag-svc" data-target="../index.html#layer-diagram"
+               data-tip-title="graphrag-service"
+               data-tip-rest="POST /graphrag/build · /query · /vector/search · /vector/index"
+               data-tip-grpc="Query(dataset_id,text)→KGQueryResult · VectorSearch(emb,top_k)→SearchResults"
+               data-tip-note="OpenSearch Serverless (replaces FAISS) · S3 Files midas-knowledge-graphs/ · DynamoDB midas-graphrag-meta">
+            <span class="svc-icon">🕸️</span>
+            <div class="svc-name">graphrag-service</div>
+            <div class="svc-sub">Knowledge graph · RAG</div>
+            <div class="svc-port">:8080 · :50051</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── COL 5: AGENT PLATFORM ─────────────────────────────── -->
+      <div id="col-agent" class="col-panel agent" style="min-width:196px;max-width:196px">
+        <span class="col-title" style="background:#c060b8;color:#fff">AI Agent Fabric ★</span>
+
+        <div class="svc agent-box new-badge"
+             data-id="agent-svc" data-target="../index.html#agent-platform"
+             data-tip-title="agent-platform-service (NEW)"
+             data-tip-rest="GET/POST /agents · POST /agents/{id}/runs&#10;GET /agents/runs/{id}/stream (SSE) · GET /agents/tools"
+             data-tip-grpc="InvokeAgent(agent_id,session_id,input)→stream AgentChunk&#10;GetAgentStatus(run_id) · ListAgentTools()"
+             data-tip-note="agentcore_service · tool_registry · memory_service · session_service&#10;24 MCP tools · DynamoDB midas-agent-catalogue/runs">
+          <span class="svc-icon">🧠</span>
+          <div class="svc-name">agent-platform-service</div>
+          <div class="svc-sub">Agent runtime · Tool registry<br/>Memory · Session mgmt</div>
+          <div class="svc-port">:8080 REST · :50051 gRPC</div>
+          <span class="svc-tag" style="background:#f9d5f5;color:#801880">★ NEW</span>
+        </div>
+
+        <div class="svc agent-box new-badge"
+             data-id="agentcore" data-target="../index.html#agent-platform"
+             data-tip-title="AWS Bedrock AgentCore (via AgentRuntimePort)"
+             data-tip-note="Runtime API: CreateAgentRuntime · InvokeAgentRuntime (stream)&#10;Memory API: store/retrieve long-term facts&#10;microVM per session · 8h max · mTLS · Outbound Auth">
+          <span class="svc-icon">☁️</span>
+          <div class="svc-name">AWS AgentCore</div>
+          <div class="svc-sub">microVM sessions<br/>Long-term memory</div>
+          <div class="svc-sub" style="font-size:7.5px;margin-top:2px;color:#70407a">PrivateLink VPC endpoint</div>
+          <span class="svc-tag" style="background:#f9d5f5;color:#801880">★ NEW</span>
+        </div>
+
+        <!-- OOB agents stacked -->
+        <div style="background:#e8c0e8;border:1.5px solid #c070c0;border-radius:7px;padding:7px 8px;margin-top:4px">
+          <div style="font-size:8.5px;font-weight:700;color:#701070;margin-bottom:4px;text-align:center">📦 Out-of-the-Box Agents</div>
+          <div style="font-size:8px;color:#601060;line-height:1.8">
+            🔍 data-qa-agent<br/>
+            🎓 train-agent<br/>
+            💡 insight-agent<br/>
+            📝 doc-agent<br/>
+            🔧 pipeline-builder-agent
+          </div>
+        </div>
+
+        <!-- MCP tools indicator -->
+        <div style="background:#f0d0f0;border:1px dashed #c070b0;border-radius:6px;padding:6px 8px;margin-top:6px;text-align:center">
+          <div style="font-size:8px;font-weight:700;color:#801880">24 MCP Platform Tools</div>
+          <div style="font-size:7.5px;color:#a040a0;margin-top:2px">All services exposed as tools<br/>RBAC enforced on every call</div>
+        </div>
+      </div>
+
+      <!-- ── COL 6: DATA FABRIC ─────────────────────────────────── -->
+      <div id="col-data" class="col-panel data" style="min-width:190px;max-width:190px">
+        <span class="col-title" style="background:#d47820;color:#fff">Data Fabric</span>
+        <div style="font-size:8px;color:#9a5010;text-align:center;margin-bottom:7px">Single owner of ALL data<br/>No service writes S3 directly</div>
+
+        <div class="svc data-box new-badge"
+             data-id="datafabric-svc" data-target="../index.html#layer-diagram"
+             data-tip-title="data-fabric-service (NEW)"
+             data-tip-rest="POST /data/upload · GET /data/datasets · /datasets/{id}&#10;POST /data/datasets/{id}/split · GET /{id}/preview"
+             data-tip-grpc="GetDataset · GetDataframe(scope)→ParquetBytes LZ4&#10;ListDatasets · GetRawFile · RegisterArtefact · GetArtefact"
+             data-tip-note="S3 midas-raw/ (uploads) · S3 Files midas-datasets/ + midas-artefacts/&#10;DynamoDB midas-data-catalogue · Redis df:{id}:{scope} LZ4 TTL=1800s">
+          <span class="svc-icon">🗂️</span>
+          <div class="svc-name">data-fabric-service</div>
+          <div class="svc-sub">Dataset CRUD · Upload<br/>Split · Preview · Artefacts</div>
+          <div class="svc-port">:8080 REST · :50051 gRPC</div>
+          <span class="svc-tag" style="background:#fde8c0;color:#924000">★ NEW</span>
+        </div>
+
+        <!-- Data types served -->
+        <div style="background:#fce0b0;border:1px solid #d4a840;border-radius:7px;padding:7px 8px;margin-top:4px">
+          <div style="font-size:8.5px;font-weight:700;color:#904020;margin-bottom:3px">Data served via gRPC</div>
+          <div style="font-size:8px;color:#804010;line-height:1.8">
+            📦 ParquetBytes (LZ4)<br/>
+            📄 RawFileBytes<br/>
+            🏷️ DatasetMeta JSON<br/>
+            📎 ArtefactRef (S3 key)
+          </div>
+        </div>
+
+        <div style="background:#fce0b0;border:1px solid #d4a840;border-radius:7px;padding:7px 8px;margin-top:6px">
+          <div style="font-size:8.5px;font-weight:700;color:#904020;margin-bottom:3px">S3 / S3 Files Layout</div>
+          <div style="font-size:7.5px;color:#805020;line-height:1.7">
+            midas-raw/ (CSV/Excel)<br/>
+            midas-datasets/parquet/<br/>
+            midas-datasets/splits/<br/>
+            midas-artefacts/{run_id}/<br/>
+            midas-documentation/<br/>
+            midas-agent-runs/ ★
+          </div>
+        </div>
+      </div>
+
+      <!-- ── COL 7: COMPUTATION ─────────────────────────────────── -->
+      <div id="col-compute" class="col-panel compute" style="min-width:196px;max-width:196px">
+        <span class="col-title" style="background:#20a0a0;color:#fff">Computation</span>
+        <div style="font-size:8px;color:#108080;text-align:center;margin-bottom:7px">Kubeflow Pipelines on EKS<br/>Replaces BackgroundJobManager</div>
+
+        <div class="svc compute-box new-badge"
+             data-id="compute-svc" data-target="../index.html#layer-diagram"
+             data-tip-title="computation-service (NEW)"
+             data-tip-rest="GET/POST/PUT/DELETE /computation/pipelines/{id}&#10;POST /computation/pipelines/{id}/runs → 202 {run_id}&#10;GET /computation/runs/{id} · /runs/{id}/stream (SSE)"
+             data-tip-grpc="SubmitRun(pipeline_id,params)→RunRef · GetRunStatus(run_id)→RunStatus"
+             data-tip-note="kfp.Client SDK → Kubeflow API · Redis train:progress:{id} pub/sub → SSE bridge&#10;DynamoDB midas-pipeline-catalogue + midas-pipeline-runs">
+          <span class="svc-icon">⚡</span>
+          <div class="svc-name">computation-service</div>
+          <div class="svc-sub">Pipeline CRUD · Run submit<br/>SSE progress stream</div>
+          <div class="svc-port">:8080 REST · :50051 gRPC</div>
+          <span class="svc-tag" style="background:#b0f0f0;color:#005050">★ NEW</span>
+        </div>
+
+        <!-- Kubeflow -->
+        <div class="svc compute-box"
+             data-id="kubeflow" data-target="../index.html#layer-diagram"
+             data-tip-title="Kubeflow Pipelines + Argo Workflows"
+             data-tip-note="KFP API Server · Argo Workflows Controller&#10;Pipeline YAML DAG compiled from @kfp.component functions&#10;namespace: kubeflow · Step-level retry + logs">
+          <span class="svc-icon">☸️</span>
+          <div class="svc-name">Kubeflow + Argo</div>
+          <div class="svc-sub">Pipeline orchestration<br/>namespace: kubeflow</div>
+        </div>
+
+        <!-- pipeline step pods stacked -->
+        <div style="background:#a8e4e4;border:1.5px dashed #20a0a0;border-radius:7px;padding:7px 8px;margin-top:4px">
+          <div style="font-size:8.5px;font-weight:700;color:#005050;margin-bottom:3px;text-align:center">🔬 Pipeline Step Pods</div>
+          <div style="font-size:7.5px;color:#006060;line-height:1.8">
+            🔧 feature-engineer.py<br/>
+            🌳 gbm-trainer.py<br/>
+            ✂️ rfe-selector.py<br/>
+            🤖 auto-trainer.py<br/>
+            📊 meea-evaluator.py
+          </div>
+          <div style="font-size:7px;color:#007070;margin-top:3px">Each pod: own ECR image · calls<br/>data-fabric gRPC GetDataframe</div>
+        </div>
+      </div>
+
+      <!-- ── COL 8: MANAGED STORES ──────────────────────────────── -->
+      <div id="col-stores" class="col-panel stores" style="min-width:180px;max-width:180px">
+        <span class="col-title" style="background:#9060c0;color:#fff">Data Stores</span>
+        <div style="font-size:8px;color:#604090;text-align:center;margin-bottom:7px">All via PrivateLink VPC endpoints</div>
+
+        <div class="svc store-box"
+             data-id="dynamo" data-target="../index.html#storage"
+             data-tip-title="DynamoDB (16 tables)"
+             data-tip-note="midas-users · midas-sessions · midas-roles · midas-permissions · midas-user-roles&#10;midas-projects · midas-data-catalogue · midas-analytics-results&#10;midas-messages · midas-doc-jobs · midas-pipeline-catalogue&#10;midas-pipeline-runs · midas-evaluations · midas-graphrag-meta&#10;midas-agent-catalogue · midas-agent-runs ★&#10;Access via NoSQLPort abstraction">
+          <span class="svc-icon">🗃️</span>
+          <div class="svc-name">DynamoDB</div>
+          <div class="svc-sub">16 tables · NoSQLPort</div>
+          <div class="svc-sub" style="font-size:7.5px;margin-top:2px;color:#604090">users · sessions · roles<br/>projects · pipelines · agents ★</div>
+        </div>
+
+        <div class="svc store-box"
+             data-id="redis" data-target="../index.html#storage"
+             data-tip-title="ElastiCache Redis"
+             data-tip-note="session:{jti} TTL=3600s · authz:{uid}:{res} TTL=300s&#10;df:{dataset_id}:{scope} LZ4 TTL=1800s · llm-sel:{sid}&#10;train:progress:{run_id} pub/sub · qc:{dataset_id}:{hash}&#10;agent:active:{sid} ★ · agent:progress:{run_id} ★&#10;Access via CachePort abstraction · allkeys-lru eviction">
+          <span class="svc-icon">⚡</span>
+          <div class="svc-name">ElastiCache Redis</div>
+          <div class="svc-sub">Sessions · RBAC cache<br/>DataFrames · Progress pub/sub</div>
+          <div class="svc-sub" style="font-size:7.5px;margin-top:2px;color:#604090">CachePort · allkeys-lru</div>
+        </div>
+
+        <div class="svc store-box"
+             data-id="s3" data-target="../index.html#storage"
+             data-tip-title="AWS S3 + S3 Files"
+             data-tip-note="S3: midas-raw/ (uploads) · midas-waf-logs/&#10;S3 Files: midas-datasets/parquet/ · midas-datasets/splits/&#10;S3 Files: midas-artefacts/{run_id}/model/ + /eval/&#10;S3 Files: midas-knowledge-graphs/ · midas-documentation/&#10;S3 Files: midas-agent-runs/ ★&#10;ONLY data-fabric-service writes S3/S3-Files · StoragePort abstraction">
+          <span class="svc-icon">🪣</span>
+          <div class="svc-name">S3 + S3 Files</div>
+          <div class="svc-sub">Raw uploads · Parquet<br/>Artefacts · Docs · Agent runs ★</div>
+          <div class="svc-sub" style="font-size:7.5px;margin-top:2px;color:#604090">StoragePort abstraction</div>
+        </div>
+
+        <div class="svc store-box"
+             data-id="secrets" data-target="../index.html#storage"
+             data-tip-title="AWS Secrets Manager"
+             data-tip-note="/midas/identity/cognito-client-id + secret&#10;/midas/identity/jwt-signing-key&#10;/midas/llm/ai-gateway-key&#10;/midas/db/*&#10;/midas/agent-platform/agentcore-* ★&#10;SecretsPort abstraction · fetched at pod startup · auto-rotation">
+          <span class="svc-icon">🔑</span>
+          <div class="svc-name">Secrets Manager</div>
+          <div class="svc-sub">SecretsPort · auto-rotate<br/>Fetched at pod startup</div>
+        </div>
+      </div>
+
+      <!-- ── COL 9: EXTERNAL AWS SERVICES ──────────────────────── -->
+      <div id="col-external" class="col-panel external" style="min-width:170px;max-width:170px">
+        <span class="col-title" style="background:#60a060;color:#fff;border:1px dashed #60a060">External AWS Services</span>
+        <div style="font-size:8px;color:#407040;text-align:center;margin-bottom:7px;font-style:italic">All via PrivateLink endpoints</div>
+
+        <div class="svc external-box"
+             data-id="cognito" data-target="../index.html#layer-diagram"
+             data-tip-title="AWS Cognito User Pool"
+             data-tip-note="PKCE OAuth2 authorization code flow&#10;PrivateLink VPC endpoint · JWKS endpoint for token validation&#10;Exclusively owned by identity-service">
+          <span class="svc-icon">🪪</span>
+          <div class="svc-name">AWS Cognito</div>
+          <div class="svc-sub">User Pool · PKCE OAuth2<br/>Owned: identity-service</div>
+        </div>
+
+        <div class="svc external-box"
+             data-id="opensearch" data-target="../index.html#layer-diagram"
+             data-tip-title="Amazon OpenSearch Serverless"
+             data-tip-note="Vector index (replaces FAISS on local disk)&#10;k-NN search · Document embeddings&#10;Exclusively owned by graphrag-service">
+          <span class="svc-icon">🔍</span>
+          <div class="svc-name">OpenSearch<br/>Serverless</div>
+          <div class="svc-sub">Vector index · k-NN search<br/>Replaces FAISS</div>
+        </div>
+
+        <div class="svc external-box"
+             data-id="aigateway" data-target="../index.html#layer-diagram"
+             data-tip-title="AI Gateway (LiteLLM)"
+             data-tip-note="OpenAI-compatible REST API&#10;VPC PrivateLink endpoint (no Internet)&#10;External git submodule: ai_gateway/&#10;Owned by Unified-Cloud-DevOps team · Do not edit">
+          <span class="svc-icon">🤖</span>
+          <div class="svc-name">AI Gateway</div>
+          <div class="svc-sub">LiteLLM · OpenAI API<br/>Owned: Unified-Cloud-DevOps</div>
+        </div>
+
+        <div class="svc external-box new-badge"
+             data-id="agentcore-ext" data-target="../index.html#agent-platform"
+             data-tip-title="AWS Bedrock AgentCore (NEW)"
+             data-tip-note="Runtime API: CreateAgentRuntime · InvokeAgentRuntime (stream)&#10;Memory API: CreateMemoryRecord · RetrieveMemories&#10;PrivateLink VPC endpoint · microVM sessions · 8h max&#10;AgentRuntimePort abstraction">
+          <span class="svc-icon">🧠</span>
+          <div class="svc-name">Bedrock AgentCore</div>
+          <div class="svc-sub">Runtime API · Memory API<br/>microVM sessions</div>
+          <span class="svc-tag" style="background:#e0f8e0;color:#206020">★ NEW</span>
+        </div>
+      </div>
+
+    </div><!-- /columns row -->
+
+    <!-- ══ Flow summary table ════════════════════════════════════ -->
+    <div style="margin-top:28px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:16px 20px">
+      <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:10px">Key Request Flows</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Flow</th>
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Path</th>
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Protocol</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:5px 10px;font-weight:600;color:#1e293b">Login</td>
+            <td style="padding:5px 10px;color:#475569">Browser → WAF → ALB → Istio GW → identity-service → Cognito (PKCE) → Redis session</td>
+            <td style="padding:5px 10px"><span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px">REST</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:5px 10px;font-weight:600;color:#1e293b">Data Upload</td>
+            <td style="padding:5px 10px;color:#475569">Browser → Istio GW → data-fabric-service → S3 midas-raw/ + DynamoDB midas-data-catalogue</td>
+            <td style="padding:5px 10px"><span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px">REST</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:5px 10px;font-weight:600;color:#1e293b">Analytics (QC/DQS)</td>
+            <td style="padding:5px 10px;color:#475569">Browser → Istio GW → analytics-service → authz gRPC CheckPermission → data-fabric gRPC GetDataframe → result → DynamoDB</td>
+            <td style="padding:5px 10px"><span style="background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:4px;font-size:10px">gRPC internal</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:5px 10px;font-weight:600;color:#1e293b">GBM Training</td>
+            <td style="padding:5px 10px;color:#475569">analytics-service → computation-service → Kubeflow → feature-engineer + gbm-trainer + meea-evaluator pods → data-fabric (artefacts) → evaluation-service</td>
+            <td style="padding:5px 10px"><span style="background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:4px;font-size:10px">gRPC + KFP</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:5px 10px;font-weight:600;color:#1e293b">LLM Chat + RAG</td>
+            <td style="padding:5px 10px;color:#475569">Browser → llm-service → graphrag gRPC VectorSearch → OpenSearch → AI Gateway (LiteLLM) → streamed response</td>
+            <td style="padding:5px 10px"><span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px">REST stream</span></td>
+          </tr>
+          <tr>
+            <td style="padding:5px 10px;font-weight:600;color:#c026a0">AI Agent Run ★</td>
+            <td style="padding:5px 10px;color:#475569">Browser → agent-platform-service → AgentCore (microVM) → 24 MCP tools → REST/gRPC to owning services → response streamed via SSE</td>
+            <td style="padding:5px 10px"><span style="background:#fce7f3;color:#9d174d;padding:1px 6px;border-radius:4px;font-size:10px">MCP / SSE</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /canvas -->
+</main>
+</div><!-- /page-wrap -->
+
+<!-- ══ Tooltip ══════════════════════════════════════════════════════════════ -->
+<div id="tooltip"></div>
+
+<script>
+// ─── Tooltip ──────────────────────────────────────────────────────────────
+const tip = document.getElementById('tooltip');
+
+function showTip(e, el) {
+  const title = el.dataset.tipTitle || el.querySelector('.svc-name')?.textContent || '';
+  const rest  = el.dataset.tipRest  || '';
+  const grpc  = el.dataset.tipGrpc  || '';
+  const mcp   = el.dataset.tipMcp   || '';
+  const note  = el.dataset.tipNote  || '';
+  const target = el.dataset.target  || '';
+
+  let html = `<div class="tt-title">${title}</div>`;
+  if (rest)   html += `<div class="tt-row"><span style="color:#93c5fd">REST:</span> ${rest.replace(/\n/g,'<br/>')}</div>`;
+  if (grpc)   html += `<div class="tt-row"><span style="color:#a78bfa">gRPC:</span> ${grpc.replace(/\n/g,'<br/>')}</div>`;
+  if (mcp)    html += `<div class="tt-row"><span style="color:#6ee7b7">MCP:</span> ${mcp.replace(/\n/g,'<br/>')}</div>`;
+  if (note)   html += `<div class="tt-row">${note.replace(/\n/g,'<br/>')}</div>`;
+  if (target) html += `<div class="tt-link">🔗 Click to view in System Layer Diagram</div>`;
+
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  moveTip(e);
+}
+function hideTip()    { tip.style.display = 'none'; }
+function moveTip(e) {
+  const x = e.clientX + 14, y = e.clientY + 14;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = (x + tw > window.innerWidth  ? e.clientX - tw - 14 : x) + 'px';
+  tip.style.top  = (y + th > window.innerHeight ? e.clientY - th - 14 : y) + 'px';
+}
+
+function navigate(target) {
+  if (target) window.location.href = target;
+}
+
+// Attach events to all .svc and #mc-common
+document.querySelectorAll('.svc, #mc-common').forEach(el => {
+  el.addEventListener('mouseenter', e => showTip(e, el));
+  el.addEventListener('mousemove',  moveTip);
+  el.addEventListener('mouseleave', hideTip);
+  el.addEventListener('click', () => navigate(el.dataset.target));
+});
+
+// ── Draw SVG arrows between columns ──────────────────────────────────────
+// We draw a representative set of arrows connecting the column panels.
+// Arrows are drawn after the DOM has rendered (requestAnimationFrame).
+window.addEventListener('load', drawArrows);
+window.addEventListener('resize', drawArrows);
+
+function drawArrows() {
+  const svg = document.getElementById('arrow-layer');
+  // clear existing arrows (keep defs)
+  [...svg.children].forEach(c => { if (c.tagName !== 'defs') c.remove(); });
+
+  const wrap = document.querySelector('.page-wrap .main .canvas > div:nth-child(3)');
+  if (!wrap) return;
+  const wrapRect = wrap.getBoundingClientRect();
+
+  function cx(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left - wrapRect.left,
+      y: r.top  - wrapRect.top,
+      cx: r.left - wrapRect.left + r.width / 2,
+      cy: r.top  - wrapRect.top  + r.height / 2,
+      right:  r.right  - wrapRect.left,
+      bottom: r.bottom - wrapRect.top,
+      w: r.width,
+      h: r.height
+    };
+  }
+
+  const arrows = [
+    // Clients → Ingress
+    { from:'col-clients', to:'col-ingress', type:'rest',  label:'HTTPS REST' },
+    // Ingress → Identity
+    { from:'col-ingress', to:'col-identity', type:'rest', label:'Route' },
+    // Ingress → Biz
+    { from:'col-ingress', to:'col-biz',     type:'rest',  label:'Route' },
+    // Ingress → Agent
+    { from:'col-ingress', to:'col-agent',   type:'rest',  label:'Route' },
+    // Identity → Biz (gRPC CheckPermission)
+    { from:'col-identity', to:'col-biz',    type:'grpc',  label:'CheckPermission' },
+    // Biz → Data Fabric gRPC
+    { from:'col-biz',     to:'col-data',    type:'grpc',  label:'GetDataframe' },
+    // Biz → Compute gRPC
+    { from:'col-biz',     to:'col-compute', type:'grpc',  label:'SubmitRun' },
+    // Agent → Biz (MCP)
+    { from:'col-agent',   to:'col-biz',     type:'mcp',   label:'MCP tools' },
+    // Agent → Data Fabric
+    { from:'col-agent',   to:'col-data',    type:'mcp',   label:'MCP tools' },
+    // Agent → Compute
+    { from:'col-agent',   to:'col-compute', type:'mcp',   label:'MCP tools' },
+    // Data Fabric → Stores
+    { from:'col-data',    to:'col-stores',  type:'db',    label:'NoSQLPort / StoragePort' },
+    // Compute → Stores
+    { from:'col-compute', to:'col-stores',  type:'db',    label:'NoSQLPort' },
+    // Biz → External (LLM → AI Gateway, graphrag → OpenSearch)
+    { from:'col-biz',     to:'col-external',type:'rest',  label:'AI Gateway / OpenSearch' },
+    // Identity → External (Cognito)
+    { from:'col-identity',to:'col-external',type:'rest',  label:'Cognito PKCE' },
+    // Agent → External (AgentCore)
+    { from:'col-agent',   to:'col-external',type:'mcp',   label:'AgentCore Runtime' },
+    // Stores ↔ Data Fabric (S3/Redis)
+    { from:'col-data',    to:'col-stores',  type:'s3',    label:'S3 Files' },
+  ];
+
+  const colors = { rest:'#2563eb', grpc:'#7c3aed', mcp:'#059669', db:'#d97706', cache:'#0891b2', s3:'#ea580c' };
+  const markers = { rest:'a-rest', grpc:'a-grpc', mcp:'a-mcp', db:'a-db', cache:'a-cache', s3:'a-s3' };
+
+  arrows.forEach(a => {
+    const f = cx(a.from), t = cx(a.to);
+    if (!f || !t) return;
+
+    const x1 = f.right;
+    const y1 = f.cy;
+    const x2 = t.x;
+    const y2 = t.cy;
+    const mx = (x1 + x2) / 2;
+
+    const col = colors[a.type] || '#999';
+    const mk  = markers[a.type] || 'a-rest';
+
+    // Bezier path
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke', col);
+    path.setAttribute('stroke-width','1.6');
+    path.setAttribute('stroke-opacity', a.type === 'mcp' ? '0.55' : '0.65');
+    path.setAttribute('marker-end', `url(#${mk})`);
+    if (a.type === 'mcp') path.setAttribute('stroke-dasharray', '5,3');
+    svg.appendChild(path);
+
+    // Label at midpoint
+    if (a.label) {
+      const lx = mx;
+      const ly = (y1 + y2) / 2 - 3;
+      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x', lx);
+      txt.setAttribute('y', ly);
+      txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('fill', col);
+      txt.setAttribute('font-size','7.5');
+      txt.setAttribute('font-family','Segoe UI,Inter,sans-serif');
+      txt.setAttribute('opacity','0.8');
+      txt.textContent = a.label;
+      svg.appendChild(txt);
+    }
+  });
+}
+
+// ── Inbound highlight from system layer diagram ───────────────────────────
+(function() {
+  const hash = window.location.hash;
+  if (!hash) return;
+  const target = document.querySelector(hash);
+  if (!target) return;
+  setTimeout(() => {
+    target.scrollIntoView({ behavior:'smooth', block:'start' });
+    target.style.transition = 'box-shadow 0.3s ease';
+    target.style.boxShadow = '0 0 0 3px #4f8ef7, 0 0 20px rgba(79,142,247,.35)';
+    setTimeout(() => { target.style.boxShadow = ''; }, 2200);
+  }, 350);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+kb:
+  eda_plan_pd:
+    advanced_eda:
+      hypothesis_testing:
+        independence:
+        - chi_square
+        - mutual_information
+        - cramers_v
+        normality:
+        - shapiro_wilk
+        - anderson_darling
+        - jarque_bera
+        stationarity:
+        - adf
+        - kpss
+        - phillips_perron
+      multivariate_analysis:
+        clustering:
+          evaluate_separation: true
+          methods:
+          - kmeans
+          - dbscan
+          - hierarchical
+        manifold_learning:
+          methods:
+          - tsne
+          - umap
+          n_components: 2
+        pca:
+          biplot_top_k: 10
+          variance_explained_threshold: 0.95
+      visualization_gallery:
+        automated_reports:
+        - sweetviz
+        - pandas_profiling
+        - dtale
+        - custom_dashboard
+    bivariate_with_target:
+      bad_rate_by_bin_for_patterns:
+      - '*score*'
+      - '*ratio*'
+      - '*util*'
+      - '*income*'
+      - '*term*'
+      rank_proxies_auc_ks_patterns:
+      - '*score*'
+      - '*dti*'
+      - '*util*'
+      - '*age*'
+      woe_iv_for_top_n_numeric: 20
+    dependency_and_risk:
+      correlation_matrix:
+        method: spearman
+      mutual_information_matrix: true
+      pairwise_corr_cutoff: <PAIR_CUT|0.9>
+      vif_cutoff: <VIF|10>
+    drift_checks:
+      bin_stability_across_vintages: true
+      kolmogorov_smirnov_test: true
+      psi_train_to_test_on_top_n: 20
+      wasserstein_distance: true
+    missingness_mechanisms:
+      tests:
+      - predict is_na(v) from controls to detect MNAR (oof)
+      - 'compare target rates: NA vs non-NA (if label available)'
+      - little_mcar_test
+    outputs:
+    - eda_overview.html
+    - dq_audit.json
+    - feature_dependency_report.json
+    overview_artifacts:
+    - row/column counts, date range, vintage distribution
+    - missingness table & heatmap
+    - bad rate (if label available) by vintage/segment
+    univariate:
+      categorical:
+        plots:
+        - barplot(top=20)
+        - pie_chart(top=10)
+        stats:
+        - cardinality
+        - dominance_ratio
+        - missing_rate
+        - entropy
+      numerical:
+        plots:
+        - histogram
+        - boxplot
+        - qq_plot
+        - density
+        stats:
+        - mean
+        - std
+        - p1
+        - p50
+        - p99
+        - missing_rate
+        - unique_count
+        - skewness
+        - kurtosis

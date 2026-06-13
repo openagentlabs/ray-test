@@ -1,0 +1,134 @@
+model_list:
+  # ==== Inference profiles (cross-region, use /converse/) ====
+  - model_name: meta.llama3-3-70b-instruct-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.meta.llama3-3-70b-instruct-v1:0
+
+  - model_name: mistral.pixtral-large-2502-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.mistral.pixtral-large-2502-v1:0
+
+  - model_name: amazon.nova-premier-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.amazon.nova-premier-v1:0
+
+  - model_name: amazon.nova-2-lite-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.amazon.nova-2-lite-v1:0
+
+  - model_name: amazon.nova-micro-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.amazon.nova-micro-v1:0
+
+  - model_name: anthropic.claude-sonnet-4-20250514-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-sonnet-4-20250514-v1:0
+
+  - model_name: anthropic.claude-haiku-4-5-20251001-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-haiku-4-5-20251001-v1:0
+
+  - model_name: anthropic.claude-sonnet-4-5-20250929-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+
+  # Claude 4.6 models use simplified Bedrock IDs (no :0 suffix in the actual model ID)
+  - model_name: anthropic.claude-opus-4-6-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-opus-4-6-v1
+
+  - model_name: anthropic.claude-sonnet-4-6-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-sonnet-4-6
+
+  - model_name: anthropic.claude-opus-4-5-20251101-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-opus-4-5-20251101-v1:0
+
+  # NOTE: amazon.nova-2-pro-v1:0 — preview access confirmed for MIDAS account
+  - model_name: amazon.nova-2-pro-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.amazon.nova-2-pro-v1:0
+
+  # ==== EP-1847: New Bedrock models ====
+
+  # NOTE: amazon.nova-2-sonic-v1:0 is a SPEECH model (input: SPEECH, output: SPEECH/TEXT)
+  # It's not compatible with the chat completions API and has been excluded.
+
+  # Google Gemma 3 models (us-east-1 regional - no cross-region profile available)
+  - model_name: google.gemma-3-4b-it.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/google.gemma-3-4b-it
+
+  - model_name: google.gemma-3-12b-it.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/google.gemma-3-12b-it
+
+  - model_name: google.gemma-3-27b-it.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/google.gemma-3-27b-it
+
+  # Meta Llama 4 models (cross-region)
+  - model_name: meta.llama4-maverick-17b-instruct-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.meta.llama4-maverick-17b-instruct-v1:0
+
+  - model_name: meta.llama4-scout-17b-instruct-v1:0.bedrock.us-cross-region
+    litellm_params:
+      model: bedrock/converse/us.meta.llama4-scout-17b-instruct-v1:0
+
+  # Mistral Devstral model (us-east-1 regional - no cross-region profile available)
+  - model_name: mistral.devstral-2-123b.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/mistral.devstral-2-123b
+
+  # NVIDIA Nemotron Super model (us-east-1 regional - no cross-region profile available)
+  - model_name: nvidia.nemotron-super-3-120b.bedrock.us-east-1
+    litellm_params:
+      model: bedrock/converse/nvidia.nemotron-super-3-120b
+
+## Guardrails configuration
+## Active guardrails are defined in deploy/ai_gateway/config/guardrails.yaml (MIDAS-owned).
+## Strategy: exlerate-no-grounding is default_on:true (all requests); the other 3 profiles
+## are default_on:false (opt-in via request body, virtual key, or team assignment).
+## Jenkinsfile_ORD5_litellm copies guardrails.yaml here before create_model_config.sh merges it.
+guardrails: []
+
+router_settings:
+  routing_strategy: usage-based-routing-v2
+  enable_pre_call_check: true
+
+# environment_variables:
+#   STORE_MODEL_IN_DB: 'True'
+#   LITELLM_LOG: "DEBUG"
+
+litellm_settings:
+  cache: False
+  debug: True
+  detailed_debug: True
+  max_budget: 1000.0
+  budget_duration: 1mo
+  max_internal_user_budget: 1000.0
+  internal_user_budget_duration: "1mo"
+  # Langfuse observability callback.
+  # NOTE: since LiteLLM v1.82 the legacy `callbacks: ["langfuse"]` alias no
+  # longer wires up the global success/failure loggers - you must declare
+  # success_callback and failure_callback explicitly. Without this, any
+  # request that does NOT carry a per-key metadata.logging override
+  # (master-key traffic, Playground, untagged keys, internal LiteLLM
+  # service calls) silently drops Langfuse tracing; only per-key overrides
+  # keep working, which is how the AI-gateway default project went dark
+  # after the v1.82 upgrade while Decision.ai kept receiving traces.
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  store_audit_logs: True
+  # S3 callbacks - enabled after bucket creation at deploy time
+  # success_callback: ["s3"]
+  # failure_callback: ["s3"]
+  # service_callback: ["s3"]
+  
+  # S3 callback params - defined at deploy time by Terraform
+  s3_callback_params:
+    s3_bucket_name: ""
+    s3_region_name: ""
+  

@@ -1,0 +1,21 @@
+kb:
+  binning_safety:
+    merge_strategy: adjacent_monotone_merge
+    min_bad_per_bin: 50
+    min_bin_size_pct: <MIN_BIN|0.02>
+    monotonicity_enforcement:
+      force_monotonic_features:
+      - '*score*'
+      - '*age*'
+      - '*income*'
+      methods:
+      - isotonic_regression
+      - adjacent_violators
+      - spline_smoothing
+    rebin_if:
+      iv_too_high: 0.5
+      non_monotonic_bad_rate: true
+      psi_by_bin_gt: <PSI_FAIL|0.25>
+    woe_smoothing:
+      alpha: 0.5
+      method: laplace

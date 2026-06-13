@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lending Data Knowledge Graph</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .graph-container {
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            overflow: hidden;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            max-width: 250px;
+        }
+        
+        .legend h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 250px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .node:hover {
+            filter: brightness(1.2);
+        }
+        
+        .link {
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        
+        .link:hover {
+            opacity: 1;
+            stroke-width: 3px;
+        }
+        
+        .node-label {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+        
+        .category-label {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Feature Graph</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="categoryFilter">Category:</label>
+                <select id="categoryFilter">
+                    <option value="all">All Categories</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button onclick="resetView()">Reset View</button>
+            </div>
+        </div>
+        
+        <div class="graph-container">
+            <svg id="network"></svg>
+            
+            <div class="legend">
+                <h3>Categories</h3>
+                <div id="legend-content"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+
+    <script>
+        // Define the knowledge graph data structure
+        const categories = {
+            'Borrower Demographics': {
+                color: '#FF6B6B',
+                variables: ['addr_state', 'zip_code', 'emp_title', 'emp_length', 'home_ownership', 'annual_inc', 'annual_inc_joint', 'is_inc_v', 'verified_status_joint']
+            },
+            'Loan Characteristics': {
+                color: '#4ECDC4',
+                variables: ['loan_amnt', 'funded_amnt', 'funded_amnt_inv', 'term', 'int_rate', 'installment', 'grade', 'sub_grade', 'purpose', 'title', 'desc']
+            },
+            'Credit History': {
+                color: '#45B7D1',
+                variables: ['fico_range_low', 'fico_range_high', 'last_fico_range_low', 'last_fico_range_high', 'earliest_cr_line', 'open_acc', 'total_acc', 'pub_rec', 'delinq_2yrs']
+            },
+            'Financial Ratios': {
+                color: '#96CEB4',
+                variables: ['dti', 'dti_joint', 'revol_util', 'il_util', 'all_util']
+            },
+            'Payment History': {
+                color: '#FECA57',
+                variables: ['loan_status', 'last_pymnt_d', 'last_pymnt_amnt', 'next_pymnt_d', 'total_pymnt', 'total_pymnt_inv', 'total_rec_prncp', 'total_rec_int', 'total_rec_late_fee']
+            },
+            'Outstanding Balances': {
+                color: '#FF9FF3',
+                variables: ['out_prncp', 'out_prncp_inv', 'revol_bal', 'total_bal_il', 'max_bal_bc', 'tot_cur_bal', 'total_rev_hi_lim']
+            },
+            'Recent Activity': {
+                color: '#F38BA8',
+                variables: ['open_acc_6m', 'open_il_6m', 'open_il_12m', 'open_il_24m', 'open_rv_12m', 'open_rv_24m', 'inq_last_6mths', 'inq_last_12m', 'collections_12_mths_ex_med']
+            },
+            'Risk Indicators': {
+                color: '#FF8B8B',
+                variables: ['mths_since_last_delinq', 'mths_since_last_major_derog', 'mths_since_last_record', 'mths_since_rcnt_il', 'acc_now_delinq', 'collection_recovery_fee', 'recoveries', 'tot_coll_amt']
+            },
+            'System/Process': {
+                color: '#A8E6CF',
+                variables: ['id', 'member_id', 'application_type', 'issue_d', 'last_credit_pull_d', 'initial_list_status', 'policy_code', 'pymnt_plan', 'url', 'inq_fi', 'total_cu_tl']
+            }
+        };
+
+        // Create nodes and links
+        const nodes = [];
+        const links = [];
+        
+        // Add category nodes (central hubs)
+        Object.keys(categories).forEach((category, i) => {
+            nodes.push({
+                id: category,
+                type: 'category',
+                category: category,
+                color: categories[category].color,
+                size: 25,
+                x: Math.cos(2 * Math.PI * i / Object.keys(categories).length) * 300,
+                y: Math.sin(2 * Math.PI * i / Object.keys(categories).length) * 300
+            });
+        });
+        
+        // Add variable nodes
+        Object.keys(categories).forEach(category => {
+            categories[category].variables.forEach((variable, i) => {
+                const angle = (2 * Math.PI * i) / categories[category].variables.length;
+                const radius = 100 + Math.random() * 50;
+                const categoryNode = nodes.find(n => n.id === category);
+                
+                nodes.push({
+                    id: variable,
+                    type: 'variable',
+                    category: category,
+                    color: categories[category].color,
+                    size: 8,
+                    x: categoryNode.x + Math.cos(angle) * radius,
+                    y: categoryNode.y + Math.sin(angle) * radius
+                });
+                
+                // Link variable to its category
+                links.push({
+                    source: variable,
+                    target: category,
+                    type: 'category-link'
+                });
+            });
+        });
+        
+        // Add semantic relationships between variables
+        const relationships = [
+            // FICO relationships
+            ['fico_range_low', 'fico_range_high'],
+            ['last_fico_range_low', 'last_fico_range_high'],
+            ['fico_range_low', 'last_fico_range_low'],
+            ['fico_range_high', 'last_fico_range_high'],
+            
+            // Amount relationships
+            ['loan_amnt', 'funded_amnt'],
+            ['funded_amnt', 'funded_amnt_inv'],
+            ['out_prncp', 'out_prncp_inv'],
+            ['total_pymnt', 'total_pymnt_inv'],
+            
+            // Income relationships
+            ['annual_inc', 'annual_inc_joint'],
+            ['dti', 'dti_joint'],
+            ['is_inc_v', 'verified_status_joint'],
+            
+            // Payment relationships
+            ['total_rec_prncp', 'total_rec_int'],
+            ['total_rec_int', 'total_rec_late_fee'],
+            ['last_pymnt_d', 'next_pymnt_d'],
+            
+            // Balance relationships
+            ['revol_bal', 'total_rev_hi_lim'],
+            ['total_bal_il', 'il_util'],
+            ['revol_bal', 'revol_util'],
+            
+            // Time-based relationships
+            ['open_il_6m', 'open_il_12m'],
+            ['open_il_12m', 'open_il_24m'],
+            ['open_rv_12m', 'open_rv_24m'],
+            ['inq_last_6mths', 'inq_last_12m'],
+            
+            // Grade relationships
+            ['grade', 'sub_grade'],
+            ['int_rate', 'grade'],
+            
+            // Risk relationships
+            ['delinq_2yrs', 'mths_since_last_delinq'],
+            ['collections_12_mths_ex_med', 'tot_coll_amt'],
+            ['collection_recovery_fee', 'recoveries']
+        ];
+        
+        relationships.forEach(([source, target]) => {
+            if (nodes.find(n => n.id === source) && nodes.find(n => n.id === target)) {
+                links.push({
+                    source: source,
+                    target: target,
+                    type: 'relationship'
+                });
+            }
+        });
+
+        // Set up the SVG
+        const width = 1200;
+        const height = 800;
+        
+        const svg = d3.select("#network")
+            .attr("width", width)
+            .attr("height", height);
+            
+        const g = svg.append("g");
+        
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+            
+        svg.call(zoom);
+        
+        // Create force simulation
+        let simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
+                if (d.type === 'category-link') return 80;
+                return 120;
+            }))
+            .force("charge", d3.forceManyBody().strength(d => {
+                if (d.type === 'category') return -1000;
+                return -300;
+            }))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(d => d.size + 5));
+
+        // Create links
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link")
+            .attr("stroke", d => d.type === 'category-link' ? '#ddd' : '#999')
+            .attr("stroke-width", d => d.type === 'category-link' ? 2 : 1.5);
+
+        // Create nodes
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", d => d.size)
+            .attr("fill", d => d.color)
+            .attr("stroke", "#fff")
+            .attr("stroke-width", d => d.type === 'category' ? 3 : 2)
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        // Add labels
+        const labels = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", d => d.type === 'category' ? 'category-label' : 'node-label')
+            .attr("text-anchor", "middle")
+            .attr("dy", d => d.type === 'category' ? 5 : 3)
+            .text(d => d.type === 'category' ? d.id : d.id.replace(/_/g, ' '))
+            .attr("fill", d => d.type === 'category' ? '#2c3e50' : '#555');
+
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+        
+        node.on("mouseover", function(event, d) {
+            const variableCount = d.type === 'category' ? 
+                categories[d.id].variables.length : 
+                null;
+                
+            const content = d.type === 'category' ? 
+                `<strong>${d.id}</strong><br>Variables: ${variableCount}<br>Key focus area for lending analysis` :
+                `<strong>${d.id}</strong><br>Category: ${d.category}<br>Variable in lending dataset`;
+                
+            tooltip.style("display", "block")
+                .html(content)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mouseout", function() {
+            tooltip.style("display", "none");
+        });
+
+        // Update positions
+        function ticked() {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+                
+            labels
+                .attr("x", d => d.x)
+                .attr("y", d => d.y);
+        }
+
+        simulation.on("tick", ticked);
+
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Create legend
+        const legendContent = d3.select("#legend-content");
+        Object.keys(categories).forEach(category => {
+            const item = legendContent.append("div").attr("class", "legend-item");
+            item.append("div")
+                .attr("class", "legend-color")
+                .style("background-color", categories[category].color);
+            item.append("span").text(category);
+        });
+
+        // Add category filter
+        const categoryFilter = d3.select("#categoryFilter");
+        Object.keys(categories).forEach(category => {
+            categoryFilter.append("option").attr("value", category).text(category);
+        });
+
+        categoryFilter.on("change", function() {
+            const selectedCategory = this.value;
+            
+            node.style("opacity", d => {
+                if (selectedCategory === "all") return 1;
+                return d.category === selectedCategory || d.id === selectedCategory ? 1 : 0.1;
+            });
+            
+            labels.style("opacity", d => {
+                if (selectedCategory === "all") return 1;
+                return d.category === selectedCategory || d.id === selectedCategory ? 1 : 0.1;
+            });
+            
+            link.style("opacity", d => {
+                if (selectedCategory === "all") return 0.6;
+                const sourceCategory = nodes.find(n => n.id === d.source.id)?.category;
+                const targetCategory = nodes.find(n => n.id === d.target.id)?.category;
+                return (sourceCategory === selectedCategory || targetCategory === selectedCategory ||
+                        d.source.id === selectedCategory || d.target.id === selectedCategory) ? 0.6 : 0.1;
+            });
+        });
+
+        // Control functions        
+        window.resetView = function() {
+            svg.transition().duration(750).call(
+                zoom.transform,
+                d3.zoomIdentity
+            );
+            categoryFilter.property("value", "all").dispatch("change");
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "routing-tier.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "routing-tier.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "routing-tier.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: traffic
+      port: {{ .Values.service.trafficPort }}
+      targetPort: {{ .Values.service.trafficTargetPort }}
+    - name: health
+      port: {{ .Values.service.healthPort }}
+      targetPort: {{ .Values.service.healthPort }}

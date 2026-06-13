@@ -1,0 +1,18 @@
+## Deployment Info Knowledge Notes
+
+- **API Documentation**
+  - Capture REST/GraphQL surface area with versioned OpenAPI/AsyncAPI specs, schema examples, auth flows (OAuth2, PAT, mTLS), and rate-limit policies. Include scenario-driven guides, e.g., “Deploying Model Serving API behind API Management with staged rollouts”.
+  - Document error taxonomies (4xx client validation vs 5xx infra), retry/backoff guidance, and payload validation schemas. Provide language-specific “Hello API” snippets plus Postman collections/SDK links to accelerate integration testing.
+  - Maintain changelog + deprecation schedule; pair each API change with contract tests in CI to keep docs executable.
+
+- **Deployment Guide**
+  - Offer environment matrices: dev/stage/prod topology diagrams, infra-as-code snippets (Terraform/Bicep), and blue/green vs canary rollout playbooks. Detail steps for containerized deployment (Docker build args, multi-arch images, base OS hardening, SBOM export).
+  - Include model artifacts promotion workflow: registry tagging, reproducible builds, feature store consistency checks, data drift gates, automated smoke tests, and rollback criteria.
+  - Describe observability stack setup (Prometheus/Grafana, OpenTelemetry traces, structured logs), secret management (Key Vault/Secrets Manager rotation), and compliance hooks (audit logging, PII redaction).
+  - Provide troubleshooting runbooks: deployment pipeline failures, dependency mismatches, GPU/CPU quota exhaustion, network ACL issues, plus how to trigger self-tests post-deploy.
+
+- **Usage Examples**
+  - End-to-end scenario recipes: “Streamlit inference client hitting staging endpoint with JWT auth,” “Airflow DAG calling batch scoring API and storing predictions in Delta Lake,” or “Edge device calling on-prem container via gRPC with fallback cache.”
+  - Show multi-tenant usage patterns (per-tenant API keys, throttling), error-handling templates (exponential backoff with circuit breaker), and performance tuning tips (batch vs realtime, async clients).
+  - Highlight monitoring hooks consumers should wire (custom headers for trace correlation, response-metric emission) and security best practices (signed requests, IP safelists, payload encryption).
+  - Provide IaC-ready examples: sample `docker-compose`, Helm chart overrides, Azure ML/Vertex AI deployment YAML, plus CI pipelines demonstrating automated tests → build → deploy → smoke flow.

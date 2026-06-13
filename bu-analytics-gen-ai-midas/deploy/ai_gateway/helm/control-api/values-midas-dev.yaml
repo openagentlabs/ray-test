@@ -1,0 +1,99 @@
+# MIDAS overlay for control-api Helm chart.
+# Account: 811391286931 (ns-ai-midas-dev-use1-dev), region: us-east-1, cluster: midas-eks-aigtw-dev.
+# Image:   built from deploy/ai_gateway/CI/Dockerfile.c1-api-midas (zero-JFrog); repo-root context.
+#
+# This file is rendered AFTER the upstream ai_gateway/helm/control-api/values.yaml
+# baseline, so every key here wins. We deliberately keep this overlay minimal —
+# most upstream defaults already line up with what ORD1 Terraform actually created
+# in the cluster (SA `c1-api-irsa-account`, Secret `c1-db-config`, Secret
+# `litellm-api-key`, ConfigMap `c1-alb-config`).
+#
+# What we override here:
+#   - image:      MIDAS ECR repo + tag (Jenkins `--set image.tag` at deploy time).
+#   - config.*:   in-cluster DNS for langfuse/litellm (matches what ORD5 patched
+#                 into the langfuse-host secret so the Langfuse observability
+#                 chain resolves without external DNS).
+#   - replicas + resources: dev-sized.
+#   - ingress:    overlay overrides the host, LB name, healthcheck path/port.
+#                 ALB annotations (certificate-arn, subnets, security-groups)
+#                 are injected by the ORD6 Jenkinsfile from the c1-alb-config
+#                 ConfigMap (per ORD4/ORD5 pattern).
+#
+# What we do NOT override:
+#   - volumes / volumeMounts: the upstream chart's deployment.yaml HARDCODES
+#     the volume block (`litellm-api-key`, `langfuse-org-keys` plain Secrets);
+#     it does not reference `.Values.volumes`. Overriding them here would be
+#     dead code — the real wiring is in the template.
+#   - serviceAccount.name, databaseFromSecret, dbPasswordSecretName: upstream
+#     defaults (`c1-api-irsa-account`, `c1-db-config`) already match ORD1.
+#
+# Known-limitation TODOs (promoted post-M-7 / post-M-17):
+#   - `langfuse-org-keys` secret (combined `public_key` + `secret_key` used
+#     by the deployment's file mounts) is NOT provisioned by ORD1 — ORD1
+#     publishes `langfuse-public-key` and `langfuse-secret-key` as two separate
+#     Secrets in the langfuse namespace. The ORD6 Jenkinsfile bridges these
+#     by generating the combined secret at deploy time (see "Bridge langfuse
+#     org keys" stage). Eventual home = `langfuse_app_deps.tf` (ORD1).
+#   - ACM certificate ARN + public DNS land with M-7 + M-1; until then the
+#     ingress terminates HTTP only and the ALB listener HTTPS redirect is inert.
+
+image:
+  repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-control-api
+  tag: 1.0.0-midas-latest           # overridden by --set image.tag in Jenkins
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+config:
+  # Fortify "Insecure Transport": false positive.
+  # Both are cluster-internal *.svc.cluster.local URLs with no external exposure.
+  # Accepted risk per ADR 0010.
+  langfuseUrl: "http://langfuse-web.langfuse.svc.cluster.local:3000"
+  litellmUrl:  "http://litellm.litellm.svc.cluster.local:4000"
+  langfuseTimeoutS: "30"
+  litellmTimeoutS: "30"
+  certificateVerify: "True"
+  debug: "False"
+  uvNativeTls: "true"
+  # OSS-mode auth: no Cognito (mirrors Step 32 decision for Langfuse).
+  exlerateAuthUrl: ""
+  cognitoUserPoolId: ""
+  cognitoAppClientId: ""
+  # We materialise the combined `langfuse-org-keys` Secret OURSELVES in the
+  # ORD6 Jenkinsfile (bridging from the two split secrets ORD1 publishes in
+  # the langfuse namespace). The chart's `createLocalSecret` path would fight
+  # that apply, so we keep it OFF.
+  createLocalSecret: false
+
+replicaCount: 1
+
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits:   { cpu: 500m, memory: 1Gi }
+
+ingress:
+  enabled: true
+  className: alb
+  hosts:
+    - host: ""                      # catch-all; real DNS lands with M-1.
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: control-api
+              port:
+                number: 9001
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: midas-aigtw-c1-api
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/healthcheck-port: "9001"
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=600
+    alb.ingress.kubernetes.io/load-balancer-name: midas-aigtw-c1-api-alb-dev
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06

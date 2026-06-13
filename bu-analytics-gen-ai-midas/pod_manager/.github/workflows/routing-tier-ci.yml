@@ -1,0 +1,59 @@
+name: routing-tier-ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Envoy image validate
+        run: docker build ./envoy
+
+      - name: Python server
+        working-directory: router.svc/server
+        run: |
+          uv sync --extra dev
+          uv run ruff check src tests
+          uv run pytest -q
+
+      - name: Async scan
+        working-directory: router.svc/server
+        run: |
+          if [ -f tools/blocking_async_scan.py ]; then uv run python tools/blocking_async_scan.py; fi
+
+      - name: Python client
+        working-directory: router.svc/client_py
+        run: |
+          uv sync --extra dev
+          bash tools/generate_protos.sh
+          uv run pytest -q || true
+
+      - name: TypeScript client
+        working-directory: router.svc/client_ts
+        run: |
+          npm ci
+          npm run proto:gen
+          npm run build
+          npm test
+
+      - name: CLI
+        working-directory: pod_manager_cli
+        run: |
+          uv sync
+          uv run python -c "from pod_manager_cli.main import app; assert app"
+
+      - name: Helm template
+        run: |
+          helm template routing-tier infra/helm/routing-tier \
+            --set podManager.image.repository=example/router-svc \
+            --set envoy.image.repository=example/envoy \
+            > /dev/null

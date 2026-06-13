@@ -1,0 +1,53 @@
+kb:
+  error_recovery:
+    computation_failures:
+      convergence_issues:
+        recovery:
+        - relax_tolerance
+        - switch_optimizer
+        - use_simpler_model
+        - increase_iterations
+      oom_errors:
+        detection: memory_usage > 0.9 * available
+        recovery:
+        - auto_sample_to_50%
+        - switch_to_chunked_processing
+        - use_approximate_algorithms
+        - increase_swap_space
+      timeout_errors:
+        recovery:
+        - checkpoint_and_resume
+        - parallelize_computation
+        - reduce_complexity
+    data_issues:
+      missing_critical_columns:
+        detection: schema_contract.required_fields
+        recovery:
+        - check_alternate_names_mapping
+        - prompt_user_for_mapping
+        - create_derived_if_possible
+        - fail_with_specific_guidance
+      shape_mismatches:
+        recovery:
+        - align_on_common_keys
+        - pad_with_nulls
+        - subset_to_intersection
+      unexpected_dtypes:
+        recovery:
+        - attempt_safe_casting
+        - create_derived_feature
+        - quarantine_column
+        - log_and_continue
+    quality_issues:
+      extreme_outliers:
+        detection: z_score > 10
+        recovery:
+        - investigate_data_quality
+        - apply_robust_scaling
+        - cap_at_percentiles
+      high_missing_rate:
+        recovery:
+        - investigate_systematic_issue
+        - try_alternative_source
+        - document_and_drop
+        threshold: 0.5

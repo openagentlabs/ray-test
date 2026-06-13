@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solutions-service"
+version = "0.1.0"
+description = "Async solutions microservice (gRPC, Postgres, returns Result types)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "asyncpg>=0.30",
+  "boto3>=1.35",
+  "googleapis-common-protos>=1.66",
+  "grpcio>=1.66",
+  "kubernetes-asyncio>=30.1.0",
+  "protobuf>=5.29",
+  "opentelemetry-api>=1.29.0,<2",
+  "opentelemetry-sdk>=1.29.0,<2",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "python-dotenv>=1.0",
+  "returns>=0.23",
+  "aiohttp>=3.10",
+  "PyJWT>=2.9",
+  "cryptography>=42",
+]
+
+[project.optional-dependencies]
+dev = [
+  "boto3-stubs[essential]>=1.35",
+  "grpcio-tools>=1.66",
+  "mypy>=1.13",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+  "ruff>=0.8",
+  "types-setuptools",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[project.scripts]
+solutions-service = "solutions_service.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+src = ["src", "tools"]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["src/solutions"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "I", "UP", "B", "ASYNC", "S", "ANN",
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"src/solutions_service/main.py" = ["ANN201", "S104"]
+"src/solutions_service/core/cloudwatch_logging_defaults_generated.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["returns.contrib.mypy.returns_plugin"]
+mypy_path = "src"
+packages = ["solutions_service", "solutions"]
+
+[[tool.mypy.overrides]]
+module = "returns.*"
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = "grpc.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "opentelemetry.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "solutions.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "envoy.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "pod_manager.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "kubernetes_asyncio.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "asyncpg.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "google.rpc.*"
+ignore_missing_imports = true

@@ -1,0 +1,47 @@
+kb:
+  monitoring:
+    data_quality_monitoring:
+      new_categories_alert: true
+      null_rate_increase: 0.1
+      range_violations: immediate_alert
+      schema_changes: block_pipeline
+    distribution_shifts:
+      check_frequency: daily
+      methods:
+      - kolmogorov_smirnov
+      - wasserstein
+      - jensen_shannon
+      - psi
+      thresholds:
+        critical: 0.2
+        warning: 0.1
+    feature_drift:
+      adaptation_strategy: retrain_if_drift>0.15
+      alert_channels:
+      - email
+      - slack
+      - dashboard
+      check_frequency: daily
+      reference_window: last_stable_month
+    model_bias_monitoring:
+      fairness_metrics:
+      - demographic_parity
+      - equal_opportunity
+      - calibration
+      protected_attributes:
+      - gender
+      - race
+      - age_group
+      threshold_disparate_impact: 0.8
+    performance_degradation:
+      alert_thresholds:
+        auc_drop: 0.03
+        gini_drop: 0.06
+        ks_drop: 0.05
+      comparison_window: rolling_30d
+      metrics:
+      - auc
+      - ks
+      - brier_score
+      - log_loss
+      - gini

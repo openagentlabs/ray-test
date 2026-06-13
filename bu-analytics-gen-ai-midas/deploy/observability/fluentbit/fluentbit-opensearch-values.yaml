@@ -1,0 +1,55 @@
+# Fluent Bit Helm values — MIDAS Phase C dual-write to OpenSearch
+#
+# This values file is applied ON TOP of the existing Fluent Bit DaemonSet
+# configuration. It adds an opensearch output that dual-writes log records
+# to the Amazon OpenSearch Service domain while keeping the existing
+# CloudWatch Logs output unchanged.
+#
+# Deploy command (Jenkins, not laptop against shared envs):
+#   helm upgrade --install fluent-bit aws/aws-for-fluent-bit \
+#     --namespace kube-system \
+#     --reuse-values \
+#     -f deploy/observability/fluentbit/fluentbit-opensearch-values.yaml \
+#     --set opensearch.host="${OPENSEARCH_DOMAIN_ENDPOINT}" \
+#     --set opensearch.awsRegion="${AWS_REGION}"
+#
+# OPENSEARCH_DOMAIN_ENDPOINT comes from Terraform output opensearch_domain_endpoint.
+# AWS_REGION = us-east-1
+#
+# Pre-requisites:
+#   - observability_opensearch_enabled=true and terraform apply completed
+#   - EKS node role has opensearch_write policy attached (done by TF module)
+
+# Additional Fluent Bit outputs block (merged with existing values).
+additionalOutputs: |
+  [OUTPUT]
+      Name              opensearch
+      Match             kube.midas.*
+      Host              ${OPENSEARCH_DOMAIN_ENDPOINT}
+      Port              443
+      TLS               On
+      TLS.Verify        On
+      AWS_Auth          On
+      AWS_Region        us-east-1
+      AWS_Service       es
+      Index             midas-backend
+      Type              _doc
+      Suppress_Type_Name On
+      # Daily index rotation: midas-backend-YYYY.MM.dd
+      Logstash_Format   On
+      Logstash_Prefix   midas-backend
+      Logstash_DateFormat %Y.%m.%d
+      # Preserve the structured JSON fields from the MIDAS JsonFormatter
+      Include_Tag_Key   On
+      Tag_Key           fluentbit_tag
+      # Retry on transient failures
+      Retry_Limit       3
+
+# Fluent Bit parser for MIDAS JSON logs (already structured by JsonFormatter).
+additionalParsers: |
+  [PARSER]
+      Name              midas_json
+      Format            json
+      Time_Key          @timestamp
+      Time_Format       %Y-%m-%dT%H:%M:%S.%LZ
+      Decode_Field_As   escaped log

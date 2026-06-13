@@ -1,0 +1,10 @@
+apiVersion: v2
+name: routing-tier
+description: Envoy data plane with router.svc ext_authz sidecar (routing tier)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - envoy
+  - pod-manager
+  - ext-authz

@@ -1,0 +1,36 @@
+#!/bin/bash
+# Installs AWS CLI v2, kubectl, and Helm 3 on first boot for EKS jump box (SSM Session Manager).
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+log() { echo "[jumpbox-bootstrap] $*"; }
+
+if ! command -v aws >/dev/null 2>&1; then
+  log "Installing AWS CLI v2..."
+  apt-get update -qq
+  apt-get install -y -qq unzip curl
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  unzip -qo /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install --update
+fi
+
+# Client minor matches cluster; patch .0 for static binary URL (supported client skew within minor).
+KUBECTL_URL="https://dl.k8s.io/release/v${kubernetes_version}.0/bin/linux/amd64/kubectl"
+if ! command -v kubectl >/dev/null 2>&1; then
+  log "Installing kubectl (v${kubernetes_version}.0)..."
+  curl -fsSL "$KUBECTL_URL" -o /usr/local/bin/kubectl
+  chmod 0755 /usr/local/bin/kubectl
+fi
+
+# Helm install: version comes from Terraform template vars (see curl URL below).
+# Requires outbound HTTPS to GitHub releases (or mirror); some corporate VPC paths reset TLS - use an internal artifact mirror if needed.
+if ! command -v helm >/dev/null 2>&1; then
+  log "Installing Helm (v${helm_version})..."
+  apt-get update -qq
+  apt-get install -y -qq curl tar
+  curl -fsSL "https://github.com/helm/helm/releases/download/v${helm_version}/helm-v${helm_version}-linux-amd64.tar.gz" -o /tmp/helm-linux-amd64.tar.gz
+  tar -xzf /tmp/helm-linux-amd64.tar.gz -C /tmp
+  install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
+  rm -rf /tmp/linux-amd64 /tmp/helm-linux-amd64.tar.gz
+fi
+
+log "Bootstrap complete."

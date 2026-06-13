@@ -1,0 +1,14 @@
+[project]
+name = "backend-pool-node"
+version = "0.1.0"
+description = "Minimal HTTP backend pool node for routing-tier local/E2E tests"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["aiohttp>=3.10"]
+
+[project.scripts]
+backend-pool-node = "app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

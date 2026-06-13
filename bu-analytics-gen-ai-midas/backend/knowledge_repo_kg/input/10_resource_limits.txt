@@ -1,0 +1,31 @@
+kb:
+  resource_limits:
+    chunk_rows: 5000000
+    max_ram_gb: 16
+    max_runtime_minutes: 120
+    performance_optimization:
+      approximations:
+        methods:
+        - hyperloglog_for_cardinality
+        - reservoir_sampling
+        - quantile_sketches
+        - bloom_filters
+        when_rows_exceed: 50000000
+      caching:
+        cache_backend: redis
+        expensive_operations:
+        - segment_statistics
+        - woe_computation
+        - feature_interactions
+        ttl_hours: 24
+      parallelization:
+        strategies:
+        - chunk_size: 100MB
+          method: dask
+        - method: ray
+          n_workers: auto
+        - backend: multiprocessing
+          method: joblib
+    sampling:
+      for_eda_if_rows_gt: 10000000
+      sample_frac: 0.25

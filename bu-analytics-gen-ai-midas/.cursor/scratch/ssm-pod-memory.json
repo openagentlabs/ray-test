@@ -1,0 +1,21 @@
+{
+  "commands": [
+    "export AWS_DEFAULT_REGION=us-east-1",
+    "export KUBECONFIG=/root/.kube/config",
+    "aws eks update-kubeconfig --region us-east-1 --name midas-eks-dev",
+    "POD=$(kubectl get pods -n midas-apps -l app.kubernetes.io/name=midas-api-backend-svc -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)",
+    "if [ -z \"$POD\" ]; then POD=$(kubectl get pods -n midas-apps -o jsonpath='{range .items[*]}{.metadata.name}{\"\\n\"}{end}' | grep api-backend | head -1); fi",
+    "echo \"Pod: $POD\"",
+    "echo '=== kubectl top (live usage if Metrics API exists) ==='",
+    "kubectl top pod -n midas-apps \"$POD\" 2>&1 || true",
+    "echo ''",
+    "echo '=== cgroup v2 memory.current (bytes, container RSS-ish) ==='",
+    "kubectl exec -n midas-apps \"$POD\" -- cat /sys/fs/cgroup/memory.current 2>&1 || true",
+    "echo ''",
+    "echo '=== cgroup memory.max (limit; max = no limit) ==='",
+    "kubectl exec -n midas-apps \"$POD\" -- cat /sys/fs/cgroup/memory.max 2>&1 || true",
+    "echo ''",
+    "echo '=== cgroup v1 fallback ==='",
+    "kubectl exec -n midas-apps \"$POD\" -- cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>&1 || true"
+  ]
+}

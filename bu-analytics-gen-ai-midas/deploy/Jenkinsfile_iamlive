@@ -1,0 +1,94 @@
+#!groovy
+
+@Library('exl-shared-pipelines') _
+
+properties([
+    parameters([
+        choice(name: 'ENVIRONMENT',  choices: ['dev']),
+        choice(name: 'ACTION',       choices: ['plan']),
+        booleanParam(name: 'DEPLOY_ALB_NLB', defaultValue: true, description: 'When checked (default), Terraform creates the private NLB + ALB ingress in front of EKS. Uncheck only to explicitly remove the load balancers.'),
+        string(name: 'ALB_NLB_CERT_ARN', defaultValue: '', description: 'ACM certificate ARN (arn:aws:acm:us-east-1:...) for the ALB HTTPS:443 listener. Supports ACM-issued and imported/self-signed certs. Leave empty to use the value from the environment tfvars file.'),
+    ])
+])
+
+pipeline {
+    agent {
+        label 'cicd'
+    }
+    environment {
+        CUSTOMER            = "midas"
+        ENVIRONMENT         = "${params.ENVIRONMENT}"
+        OIDC_ROLE_NAME      = "EXLJenkinsCrossAccountRole-BU"
+        DEPLOYER_ROLE_NAME  = "midas-deployer-role"
+        AWS_DEFAULT_REGION  = "us-east-1"
+        AWS_REGION          = "us-east-1"
+        // https://developer.hashicorp.com/terraform/tutorials/automation/automate-terraform
+        TF_IN_AUTOMATION = '1'
+        // https://terragrunt.gruntwork.io/docs/features/provider-cache-server/
+        TERRAGRUNT_PROVIDER_CACHE = '1'
+    }
+    stages {
+        stage('Get customer mapping') {
+            steps {
+                script {
+                    env.TENANT_ENV = sh(script: "jq -r --arg env '${env.ENVIRONMENT}' '.[\$env].tenant_env' deploy/resources/customer-mapping/${env.CUSTOMER}.json", returnStdout: true).trim()
+                    env.TENANT_ID  = sh(script: "jq -r --arg env '${env.ENVIRONMENT}' '.[\$env].tenant_id' deploy/resources/customer-mapping/${env.CUSTOMER}.json", returnStdout: true).trim()
+                    env.AWS_ACCOUNT_ID = sh(script: "jq -r --arg env '${env.ENVIRONMENT}' '.[\$env].aws_account_id' deploy/resources/customer-mapping/${env.CUSTOMER}.json", returnStdout: true).trim()
+                    env.TERRAFORM_STATE_BUCKET = sh(script: "jq -r --arg env '${env.ENVIRONMENT}' '.[\$env].terraform_state_bucket' deploy/resources/customer-mapping/${env.CUSTOMER}.json", returnStdout: true).trim()
+
+                    env.AWS_ROLE_ARN = "arn:aws:iam::${env.AWS_ACCOUNT_ID}:role/${env.OIDC_ROLE_NAME}"
+                    env.AWS_DEPLOY_ROLE_ARN = "arn:aws:iam::${env.AWS_ACCOUNT_ID}:role/${env.DEPLOYER_ROLE_NAME}"
+                }
+            }
+        }
+        stage('Terragrunt Init') {
+            steps {
+                script{
+                    ansiColor('xterm') {
+                        withAWS(role: "${env.AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                            sh """
+                            set -e
+                            cd deploy/ecs-app
+                            terraform init -upgrade \\
+                                -backend-config="bucket=${env.TERRAFORM_STATE_BUCKET}" \\
+                                -backend-config="key=app-deploy-omf-${env.TENANT_ENV}/${env.TENANT_ID}/terraform.tfstate" \\
+                                -backend-config="region=${env.AWS_REGION}"
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('Execute Terraform') {
+            steps {
+                script{
+                    ansiColor('xterm') {
+                        withAWS(role: "${env.AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                            def fileName = captureAwsPolicy(name: 'terraform-plan') {
+                                sh """
+                                set -e
+                                cd deploy/ecs-app
+                                terraform plan -out=tfplan \\
+                                    -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                    -var-file=tfvars/${env.TENANT_ENV}.tfvars \\
+                                    -var "aws_account_id=${env.AWS_ACCOUNT_ID}" \\
+                                    -var "environment=${env.TENANT_ENV}" \\
+                                    -var "terraform_state_bucket=${env.TERRAFORM_STATE_BUCKET}" \\
+                                    -var "aws_region=${env.AWS_REGION}" \\
+                                    -var "alb_nlb_enabled=${params.DEPLOY_ALB_NLB != null ? params.DEPLOY_ALB_NLB : true}" \\
+                                    ${params.ALB_NLB_CERT_ARN ? "-var \"alb_nlb_certificate_arn=${params.ALB_NLB_CERT_ARN}\"" : ""}
+                                """
+                            }
+                            echo "Policy is at ${fileName}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

@@ -1,0 +1,63 @@
+### Optimizing Model Training (Model Training)
+
+
+
+- **Use Bayesian Optimization for structured search**  
+
+  - Apply when hyperparameters interact non-linearly (e.g., `learning_rate`, `max_depth`, `min_child_weight` for XGBoost/LightGBM).  
+
+  - Start with 5-10 random probes, then let Gaussian Process or Tree-structured Parzen Estimator propose new trials targeting the best AUC-ROC or F1.  
+
+  - Constrain bounds tightly (e.g., `learning_rate` 0.01-0.3, `max_depth` 3-10) and keep `max_iterations` modest (30-50) to avoid overfitting on the validation set.  
+
+  - Incorporate early stopping on validation AUC/F1 to shorten expensive runs.
+
+
+
+- **Random Search for high-dimensional spaces**  
+
+  - Prefer when you have many categorical/boolean switches (e.g., data sampling flags, regularization on/off).  
+
+  - Generate several hundred candidates but cap training iterations per candidate to stay within runtime budget.  
+
+  - Stratify sampling so every metric target (AUC-ROC, F1-Score, Recall, Precision, Log Loss, Accuracy) receives a subset of trials; this avoids bias toward a single objective.
+
+
+
+- **Multi-metric evaluation pipeline**  
+
+  - Split your validation scoring hook so each training run outputs all six metrics.  
+
+  - Decide objective priority per use case (e.g., credit risk → Recall & AUC-ROC; marketing uplift → Precision & F1).  
+
+  - Implement Pareto filtering: keep parameter sets that dominate others across multiple metrics, then select based on business tie-breakers (latency, interpretability).
+
+
+
+- **Adaptive iteration control**  
+
+  - Tie `max_training_iterations` to convergence rate: start at 200 rounds, but stop if Log Loss doesn’t improve for 30 rounds.  
+
+  - For Random Search, reduce iterations for obviously poor candidates (e.g., fail-fast if AUC stays under 0.6 after 50 trees).  
+
+  - For Bayesian Optimization, allocate more iterations to promising regions by increasing boosting rounds only when the surrogate model predicts high improvement.
+
+
+
+- **Regularization & stability practices**  
+
+  - Add smoothness constraints (e.g., XGBoost `gamma`, LightGBM `min_gain_to_split`) to keep optimized models from chasing noise in small segments.  
+
+  - Check `Log Loss` during tuning to ensure probabilistic calibration, not just classification metrics.  
+
+  - Re-run the top 3-5 configurations with different random seeds to confirm stability before finalizing.
+
+
+
+- **Automation framework tips**  
+
+  - Log each trial’s hyperparameters, seed, metrics, and training time in a structured store (SQLite/MLflow).  
+
+  - Use GPU/CPU resource tags so the optimizer avoids overloading hardware.  
+
+  - Trigger lightweight SHAP analysis on the best model per metric to verify features behave as expected before deployment.

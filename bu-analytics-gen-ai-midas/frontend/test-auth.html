@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    <button onclick="clearStorage()">Clear LocalStorage</button>
+    <button onclick="checkAuth()">Check Auth State</button>
+    <button onclick="goToApp()">Go to App</button>
+    
+    <div id="status"></div>
+    
+    <script>
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            document.getElementById('status').innerHTML = 'Storage cleared!';
+        }
+        
+        function checkAuth() {
+            const userData = localStorage.getItem('userData');
+            const status = userData ? 'User is authenticated' : 'User is NOT authenticated';
+            document.getElementById('status').innerHTML = status + '<br>User data: ' + userData;
+        }
+        
+        function goToApp() {
+            window.location.href = 'http://localhost:5173';
+        }
+        
+        // Check auth state on load
+        checkAuth();
+    </script>
+</body>
+</html> 

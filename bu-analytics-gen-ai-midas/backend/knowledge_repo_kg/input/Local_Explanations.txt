@@ -1,0 +1,61 @@
+**Local Explanations (AI Explainability)**  
+Scenario-focused repository entry:
+
+- **Purpose**: Provide case-level transparency into model predictions so auditors, model owners, and business stakeholders understand why a specific decision occurred and how to respond.
+- **Primary techniques**: SHAP (Shapley Additive Explanations), LIME (Local Interpretable Model-agnostic Explanations), Counterfactual Analysis.
+
+### 1. SHAP Values
+- **When to use**: Tabular models (tree-based, linear, deep), complex feature interactions, need for consistent contribution scores.
+- **Workflow**:
+  1. Choose an explainer variant (TreeExplainer for boosting/forest models, KernelExplainer for black-box models, DeepExplainer for neural nets).
+  2. Define a background dataset that reflects “typical” observations; for regulated use, store provenance and sampling logic.
+  3. For each prediction, compute per-feature SHAP values; visualize with waterfall/force plots for single instances and beeswarm/bar charts for cohorts.
+- **Technical practices**:
+  - Aggregate SHAP values at feature-group or segmentation levels (e.g., per customer segment) to detect bias or drift.
+  - Track stability: compare SHAP distributions across training vs. recent production windows to catch feature behavior changes.
+  - For high-cardinality categorical features, apply target encoding or embedding summarization before explanation to keep plots readable.
+  - Incorporate SHAP interaction values to surface pairwise feature interactions that dominate local behavior.
+- **Treatment tips**:
+  - If SHAP highlights a feature that violates policy (e.g., sensitive attribute), flag and route to governance workflow.
+  - Use SHAP dependence plots to identify non-linear behaviors; if undesirable, adjust feature engineering or apply monotonic constraints.
+
+### 2. LIME
+- **When to use**: Models lacking native explainers, real-time explanations with strict latency budgets, NLP/vision tasks where perturbations are intuitive (masking words, occluding pixels).
+- **Workflow**:
+  1. Define a neighborhood sampling strategy (e.g., kernel width tuned to expected local linearity).
+  2. Generate perturbed samples around the target instance, run through the original model, and fit a sparse interpretable surrogate (typically L1-regularized linear model or decision tree).
+  3. Present weighted feature contributions as the local explanation.
+- **Technical practices**:
+  - Persist the random seed and perturbation metadata for reproducibility.
+  - Limit feature count to top-k contributors (e.g., k=8) to keep dashboards concise.
+  - For text, tokenize consistently with the production pipeline to avoid mismatches; for images, log the superpixel masks used.
+  - Validate local fidelity by reporting R² or cosine similarity between surrogate predictions and real model predictions in the neighborhood; set acceptance thresholds.
+- **Treatment tips**:
+  - Compare LIME explanations across multiple perturbation seeds; if unstable, enlarge the neighborhood or fall back to SHAP.
+  - Use LIME to prototype new features: simulate feature toggles to see immediate impact before expensive retraining.
+  - Integrate with monitoring by triggering alerts when LIME highlights features outside the approved list.
+
+### 3. Counterfactual Explanations
+- **When to use**: Scenario planning (“what needs to change for approval”), fairness assessments, actionable recommendations for end users.
+- **Workflow**:
+  1. Define actionable vs. immutable features (e.g., income can change, age cannot).
+  2. Choose an optimization approach: gradient-based methods for differentiable models, evolutionary/search methods (e.g., DiCE) for black-box models.
+  3. Generate minimal changes that flip the prediction or move it toward a target score, while enforcing plausibility constraints.
+  4. Rank counterfactuals by feasibility, cost, and adherence to policy.
+- **Technical practices**:
+  - Encode constraints: monotonic bounds, business rules (loan amount cannot decrease below outstanding balance), regulator-defined exclusion zones.
+  - Measure diversity: ensure multiple alternative counterfactuals (different feature sets) so users have options.
+  - Log the distance metric (L1/L2, Mahalanobis) and ensure scaling matches feature preprocessing.
+  - Integrate with fairness checks by comparing counterfactual feasibility across sensitive groups.
+- **Treatment tips**:
+  - Pair counterfactual outputs with SHAP context to explain why the current decision happened and how to change it.
+  - If counterfactuals require unrealistic changes, flag the model for retraining or feature redesign.
+  - For time-series use cases, include temporal sequencing (e.g., “reduce churn probability by increasing engagement over the next 4 weeks”).
+
+### Implementation & Governance Notes
+- Version every explanation run with model ID, dataset hash, and explanation parameters for auditability.
+- Provide human-readable templates:
+  - “Prediction denied because [Top SHAP features]; to reverse, adjust [Counterfactual suggestions].”
+- Embed explanation artifacts in your MLOps stack: store SHAP summaries, LIME surrogates, and counterfactual sets alongside prediction logs.
+- Stress-test explanations under adversarial conditions (e.g., noise injection) to ensure robustness.
+- Align with regulatory frameworks (e.g., EU AI Act transparency) by documenting methodology, limitations, and human-in-the-loop review steps.

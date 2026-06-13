@@ -1,0 +1,7 @@
+[submodule "ai_gateway"]
+	path = ai_gateway
+	url = https://ucgithub.exlservice.com/Unified-Cloud-DevOps/bu-digital-exlerate-aigateway.git
+	branch = develop
+	# fetch-only: pushurl is DISABLED in .git/modules/ai_gateway/config
+	# To pull upstream changes: cd ai_gateway && git fetch origin && git merge origin/develop
+	# Never push directly to the upstream repo from here.

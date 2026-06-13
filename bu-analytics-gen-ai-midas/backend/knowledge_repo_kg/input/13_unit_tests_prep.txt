@@ -1,0 +1,44 @@
+kb:
+  unit_tests_prep:
+  - expect: pass
+    name: no_post_asof_features
+    test_code: 'assert all(feature_date <= as_of_date for feature_date in feature_dates)
+
+      '
+    type: rule
+  - expect: pass
+    name: id_uniqueness_or_surrogate
+    test_code: 'assert df.duplicated(subset=id_columns).sum() == 0
+
+      '
+    type: rule
+  - expect: pass
+    name: imputation_methods_recorded
+    test_code: 'assert all(col in imputation_log for col in df.columns)
+
+      '
+    type: rule
+  - expect: pass
+    name: bins_meet_min_size
+    test_code: 'assert all(bin_size >= min_bin_size for bin_size in bin_sizes)
+
+      '
+    type: rule
+  - expect: pass
+    name: lineage_complete
+    test_code: 'assert all(feature in lineage_dict for feature in final_features)
+
+      '
+    type: rule
+  - expect: pass
+    name: no_constant_features
+    test_code: 'assert all(df[col].nunique() > 1 for col in df.columns)
+
+      '
+    type: rule
+  - expect: pass
+    name: target_leakage_check
+    test_code: 'assert all(corr < 0.95 for corr in target_correlations)
+
+      '
+    type: rule

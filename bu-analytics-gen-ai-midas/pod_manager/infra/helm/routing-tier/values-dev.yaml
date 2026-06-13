@@ -1,0 +1,47 @@
+# Deprecated alias — use values-aws.yaml for AWS deployments.
+# Kept for backward compatibility with existing scripts.
+global:
+  awsRegion: us-east-1
+  deployTarget: aws
+
+serviceName: router-svc
+
+serviceAccount:
+  roleArn: ""
+
+envoy:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/envoy-router"
+    tag: "0.1.0"
+
+podManager:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/router-svc"
+    tag: "0.1.0"
+  logLevel: DEBUG
+
+loginPod:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/login-pod"
+    tag: "0.1.0"
+
+backendPool:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/backend-pool-node"
+    tag: "0.1.0"
+
+ingress:
+  enabled: true
+  scheme: internet-facing
+  listeners:
+    http:
+      enabled: true
+      port: 80
+    https:
+      enabled: false
+      port: 443
+      certificateArn: ""
+      sslRedirect: false
+
+grpcIngress:
+  enabled: true

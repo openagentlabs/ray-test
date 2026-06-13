@@ -1,0 +1,120 @@
+# ADOT OTel Collector Helm values — MIDAS Phase B
+#
+# Deploys the AWS Distro for OpenTelemetry (ADOT) Collector as a DaemonSet.
+# Receives OTLP gRPC from backend pods and exports metrics to AMP via
+# Prometheus Remote Write (private, PrivateLink).
+#
+# Deploy command (run via Jenkins, not from laptop against shared envs):
+#   helm upgrade --install adot-collector open-telemetry/opentelemetry-collector \
+#     --namespace adot \
+#     --create-namespace \
+#     -f deploy/observability/otel-collector/values.yaml \
+#     --set config.exporters.prometheusremotewrite.endpoint="${AMP_REMOTE_WRITE_URL}" \
+#     --set config.exporters.prometheusremotewrite.aws_auth.region="${AWS_REGION}" \
+#     --set config.exporters.prometheusremotewrite.aws_auth.service="aps"
+#
+# AMP_REMOTE_WRITE_URL comes from Terraform output amp_remote_write_url.
+# AWS_REGION = us-east-1
+#
+# Pre-requisites:
+#   - observability_amp_enabled=true in deploy/ecs-app/variables.tf and applied
+#   - EKS node role has the amp_remote_write policy attached (done by TF module)
+#   - Helm repo: helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+
+mode: daemonset
+
+image:
+  repository: public.ecr.aws/aws-observability/aws-otel-collector
+  tag: latest
+
+serviceAccount:
+  create: true
+  name: adot-collector
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  processors:
+    batch:
+      timeout: 10s
+      send_batch_size: 1000
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 200
+
+  exporters:
+    prometheusremotewrite:
+      # Override at deploy time with the TF output amp_remote_write_url.
+      # Example: https://aps-workspaces.us-east-1.amazonaws.com/workspaces/<id>/api/v1/remote_write
+      endpoint: "${AMP_REMOTE_WRITE_URL}"
+      auth:
+        authenticator: sigv4auth
+      tls:
+        insecure: false
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+
+    logging:
+      loglevel: warn
+
+  extensions:
+    sigv4auth:
+      region: "us-east-1"
+      service: "aps"
+    health_check: {}
+    pprof:
+      endpoint: "localhost:1777"
+
+  service:
+    extensions:
+      - sigv4auth
+      - health_check
+    pipelines:
+      metrics:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - batch
+        exporters:
+          - prometheusremotewrite
+          - logging
+
+service:
+  type: ClusterIP
+  ports:
+    otlp-grpc:
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    otlp-http:
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+tolerations:
+  - operator: Exists
+
+affinity: {}
+
+# Prevents the Collector from being scheduled on fargate nodes (none in MIDAS).
+nodeSelector: {}

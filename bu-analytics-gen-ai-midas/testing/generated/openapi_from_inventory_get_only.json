@@ -1,0 +1,1260 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MIDAS route inventory stub",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://placeholder.invalid",
+      "description": "override via case.call(base_url=\u2026)"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/cognito/login-url": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/users": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/auto-training/analyze/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/auto-training/meea-status/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/auto-training/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/calculate-vif-correlation/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/chat/states": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{dataset_id}/history": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/dataset-preview/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/dataset-type-classification/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/classify-variables/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/column-distribution-by-scope/{column_name}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/column-distribution/{column_name}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/column-info": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/column-info-by-scope": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/compare-column-stats": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/download-column-stats": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/download-processed": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/dqs": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/dqs-by-scope": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/eda-snapshot": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/export": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/overview-bundle": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/raw-data": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/stats": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/export-model/{model_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/export-segment-model/{model_id}/{segment_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/feature-transformation/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/get-codebook/{training_mode}/{training_type}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/insights/bivariate/{dataset_id}/variable/{variable_name}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/insights/correlation/{dataset_id}/heatmap": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/insights/correlation/{dataset_id}/heatmap/categorical": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/insights/correlation/{dataset_id}/variable/{variable_name}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/insights/jobs/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/keepalive": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge-graph-progress/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/llm-config": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-codebook/{algorithm}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/list/all": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/list/by-dataset": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/chat-summary": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/error-patterns": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/explainability": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/feature-importance": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/granular-accuracy": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/granular-accuracy/by-segments": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/pdp-data": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/performance": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/phase/{phase_num}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/prediction-confidence": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/model-evaluation/{model_id}/samples": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/download-artifacts": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/monotone/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/result/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-auto-training/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-auto-training/{model_id}/segment/{segment_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-auto-training/{model_id}/unified-results": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-profiling/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/preview": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/{model_id}/compare": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/{model_id}/history": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/{model_id}/results": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/{model_id}/screen": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segment-training/{model_id}/unified-results": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation-model-evaluation/segments/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation-model-evaluation/{dataset_id}/{segment_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation/audit-log/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation/insight-pins/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation/schemes/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation/schemes/{dataset_id}/{scheme_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmentation/top-variables/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/segmented-dataset-preview/{dataset_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/train-global-model/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/train-multiple-models/status/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/training-logs/{model_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    },
+    "/api/v1/upload-chunked/{upload_id}/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "inventory stub \u2014 validate transport only"
+          },
+          "401": {
+            "description": "unauthorized"
+          },
+          "404": {
+            "description": "not found"
+          }
+        }
+      }
+    }
+  }
+}

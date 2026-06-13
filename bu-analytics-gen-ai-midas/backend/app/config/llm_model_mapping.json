@@ -1,0 +1,434 @@
+{
+  "chat": {
+    "gpt-4.1-mini": {
+      "provider": "azure",
+      "model": "gpt-4.1-mini",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview",
+      "api_version": "2025-01-01-preview",
+      "gateway_model_id": "openai.gpt-4-1-mini.azure.eastus",
+      "tags": ["fast", "cheap", "coding"]
+    },
+    "gpt-4.1-nano": {
+      "provider": "azure",
+      "model": "gpt-4.1-nano",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/gpt-4.1-nano/chat/completions?api-version=2025-01-01-preview",
+      "api_version": "2025-01-01-preview",
+      "gateway_model_id": "openai.gpt-4-1-nano.azure.eastus",
+      "tags": ["fast", "cheap"]
+    },
+    "gpt-5-mini": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5-mini",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "minimal",
+      "gateway_model_id": "openai.gpt-5-mini.azure.eastus",
+      "tags": ["fast", "coding"]
+    },
+    "gpt-5-nano": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5-nano",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "minimal",
+      "tags": ["fast", "cheap"]
+    },
+    "gpt-5.4": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5.4",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-4.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "gpt-5.4-mini": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5.4-mini",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-4-mini.azure.eastus2",
+      "tags": ["fast", "cheap", "coding"]
+    },
+    "gpt-5.4-nano": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5.4-nano",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-4-nano.azure.eastus2",
+      "tags": ["fast", "cheap"]
+    },
+    "gpt-5.1-codex": {
+      "provider": "azure/responses",
+      "model": "gpt-5.1-codex",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-1-codex.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "gpt-5.2-codex": {
+      "provider": "azure/responses",
+      "model": "gpt-5.2-codex",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-04-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-2-codex.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "gpt-5.3-codex": {
+      "provider": "azure/responses",
+      "model": "gpt-5.3-codex",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-03-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-3-codex.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "claude-haiku-4-5": {
+      "provider": "azure_ai",
+      "model": "claude-haiku-4-5",
+      "api_base": "https://ri-deployment-commongroup.services.ai.azure.com/anthropic",
+      "api_version": "2025-01-01-preview",
+      "gateway_model_id": "anthropic.claude-haiku-4-5-20251001-v1:0.bedrock.us-cross-region",
+      "tags": ["fast", "cheap", "coding"]
+    },
+    "claude-sonnet-4-5": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "gateway_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "claude-sonnet-4-6": {
+      "provider": "azure_ai",
+      "model": "claude-sonnet-4-6",
+      "api_base": "https://ri-deployment-commongroup.services.ai.azure.com/anthropic",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "1025",
+      "gateway_model_id": "anthropic.claude-sonnet-4-6-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "claude-opus-4-5": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.anthropic.claude-opus-4-5-20251101-v1:0",
+      "reasoning_effort": "1025",
+      "gateway_model_id": "anthropic.claude-opus-4-5-20251101-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "claude-opus-4-6": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.anthropic.claude-opus-4-6-v1",
+      "reasoning_effort": "1025",
+      "gateway_model_id": "anthropic.claude-opus-4-6-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "nvidia.nemotron-nano-3-30b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/nvidia.nemotron-nano-3-30b",
+      "gateway_model_id": "nvidia.nemotron-nano-3-30b.bedrock.us-east-1",
+      "tags": ["fast", "cheap"]
+    },
+    "nvidia.nemotron-super-3-120b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/nvidia.nemotron-super-3-120b",
+      "gateway_model_id": "nvidia.nemotron-super-3-120b.bedrock.us-east-1",
+      "tags": ["coding"]
+    },
+    "mistral.devstral-2-123b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/mistral.devstral-2-123b",
+      "gateway_model_id": "mistral.devstral-2-123b.bedrock.us-east-1",
+      "tags": ["coding"]
+    },
+    "meta.llama4-scout-17b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.meta.llama4-scout-17b-instruct-v1:0",
+      "gateway_model_id": "meta.llama4-scout-17b-instruct-v1:0.bedrock.us-cross-region",
+      "tags": ["fast", "cheap"]
+    },
+    "meta.llama4-maverick-17b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.meta.llama4-maverick-17b-instruct-v1:0",
+      "gateway_model_id": "meta.llama4-maverick-17b-instruct-v1:0.bedrock.us-cross-region",
+      "tags": ["fast"]
+    },
+    "meta.llama3-3-70b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.meta.llama3-3-70b-instruct-v1:0",
+      "gateway_model_id": "meta.llama3-3-70b-instruct-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "google.gemma-3-27b-it": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/google.gemma-3-27b-it",
+      "gateway_model_id": "google.gemma-3-27b-it.bedrock.us-east-1",
+      "tags": ["coding"]
+    },
+    "google.gemma-3-12b-it": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/google.gemma-3-12b-it",
+      "gateway_model_id": "google.gemma-3-12b-it.bedrock.us-east-1",
+      "tags": ["fast", "cheap"]
+    },
+    "google.gemma-3-4b-it": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/google.gemma-3-4b-it",
+      "gateway_model_id": "google.gemma-3-4b-it.bedrock.us-east-1",
+      "tags": ["fast", "cheap"]
+    },
+    "nova-2-lite": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.amazon.nova-2-lite-v1:0",
+      "gateway_model_id": "amazon.nova-2-lite-v1:0.bedrock.us-cross-region",
+      "tags": ["fast", "cheap"]
+    },
+    "nova-premier": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.amazon.nova-premier-v1:0",
+      "gateway_model_id": "amazon.nova-premier-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    }
+  },
+  "knowledge_graph": {
+    "gpt-4.1-mini": {
+      "provider": "azure",
+      "model": "gpt-4.1-mini",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/chat/completions?api-version=2025-01-01-preview",
+      "api_version": "2025-01-01-preview",
+      "gateway_model_id": "openai.gpt-4-1-mini.azure.eastus",
+      "tags": ["fast", "cheap", "coding"]
+    },
+    "gpt-4.1-nano": {
+      "provider": "azure",
+      "model": "gpt-4.1-nano",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/gpt-4.1-nano/chat/completions?api-version=2025-01-01-preview",
+      "api_version": "2025-01-01-preview",
+      "gateway_model_id": "openai.gpt-4-1-nano.azure.eastus",
+      "tags": ["fast", "cheap"]
+    },
+    "gpt-5-mini": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5-mini",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "minimal",
+      "gateway_model_id": "openai.gpt-5-mini.azure.eastus",
+      "tags": ["fast", "coding"]
+    },
+    "gpt-5-nano": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5-nano",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "minimal",
+      "tags": ["fast", "cheap"]
+    },
+    "gpt-5.4": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5.4",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-4.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "gpt-5.4-mini": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5.4-mini",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-4-mini.azure.eastus2",
+      "tags": ["fast", "cheap", "coding"]
+    },
+    "gpt-5.4-nano": {
+      "provider": "azure/gpt5_series",
+      "model": "gpt-5.4-nano",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-4-nano.azure.eastus2",
+      "tags": ["fast", "cheap"]
+    },
+    "gpt-5.1-codex": {
+      "provider": "azure/responses",
+      "model": "gpt-5.1-codex",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-1-codex.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "gpt-5.2-codex": {
+      "provider": "azure/responses",
+      "model": "gpt-5.2-codex",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-04-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-2-codex.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "gpt-5.3-codex": {
+      "provider": "azure/responses",
+      "model": "gpt-5.3-codex",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+      "api_version": "2025-03-01-preview",
+      "reasoning_effort": "low",
+      "gateway_model_id": "openai.gpt-5-3-codex.azure.eastus2",
+      "tags": ["coding"]
+    },
+    "claude-haiku-4-5": {
+      "provider": "azure_ai",
+      "model": "claude-haiku-4-5",
+      "api_base": "https://ri-deployment-commongroup.services.ai.azure.com/anthropic",
+      "api_version": "2025-01-01-preview",
+      "gateway_model_id": "anthropic.claude-haiku-4-5-20251001-v1:0.bedrock.us-cross-region",
+      "tags": ["fast", "cheap", "coding"]
+    },
+    "claude-sonnet-4-5": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "gateway_model_id": "anthropic.claude-sonnet-4-5-20250929-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "claude-sonnet-4-6": {
+      "provider": "azure_ai",
+      "model": "claude-sonnet-4-6",
+      "api_base": "https://ri-deployment-commongroup.services.ai.azure.com/anthropic",
+      "api_version": "2025-01-01-preview",
+      "reasoning_effort": "1025",
+      "gateway_model_id": "anthropic.claude-sonnet-4-6-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "claude-opus-4-5": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.anthropic.claude-opus-4-5-20251101-v1:0",
+      "reasoning_effort": "1025",
+      "gateway_model_id": "anthropic.claude-opus-4-5-20251101-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "claude-opus-4-6": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.anthropic.claude-opus-4-6-v1",
+      "reasoning_effort": "1025",
+      "gateway_model_id": "anthropic.claude-opus-4-6-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "nvidia.nemotron-nano-3-30b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/nvidia.nemotron-nano-3-30b",
+      "gateway_model_id": "nvidia.nemotron-nano-3-30b.bedrock.us-east-1",
+      "tags": ["fast", "cheap"]
+    },
+    "nvidia.nemotron-super-3-120b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/nvidia.nemotron-super-3-120b",
+      "gateway_model_id": "nvidia.nemotron-super-3-120b.bedrock.us-east-1",
+      "tags": ["coding"]
+    },
+    "mistral.devstral-2-123b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/mistral.devstral-2-123b",
+      "gateway_model_id": "mistral.devstral-2-123b.bedrock.us-east-1",
+      "tags": ["coding"]
+    },
+    "meta.llama4-scout-17b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.meta.llama4-scout-17b-instruct-v1:0",
+      "gateway_model_id": "meta.llama4-scout-17b-instruct-v1:0.bedrock.us-cross-region",
+      "tags": ["fast", "cheap"]
+    },
+    "meta.llama4-maverick-17b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.meta.llama4-maverick-17b-instruct-v1:0",
+      "gateway_model_id": "meta.llama4-maverick-17b-instruct-v1:0.bedrock.us-cross-region",
+      "tags": ["fast"]
+    },
+    "meta.llama3-3-70b": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.meta.llama3-3-70b-instruct-v1:0",
+      "gateway_model_id": "meta.llama3-3-70b-instruct-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    },
+    "google.gemma-3-27b-it": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/google.gemma-3-27b-it",
+      "gateway_model_id": "google.gemma-3-27b-it.bedrock.us-east-1",
+      "tags": ["coding"]
+    },
+    "google.gemma-3-12b-it": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/google.gemma-3-12b-it",
+      "gateway_model_id": "google.gemma-3-12b-it.bedrock.us-east-1",
+      "tags": ["fast", "cheap"]
+    },
+    "google.gemma-3-4b-it": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/google.gemma-3-4b-it",
+      "gateway_model_id": "google.gemma-3-4b-it.bedrock.us-east-1",
+      "tags": ["fast", "cheap"]
+    },
+    "nova-2-lite": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.amazon.nova-2-lite-v1:0",
+      "gateway_model_id": "amazon.nova-2-lite-v1:0.bedrock.us-cross-region",
+      "tags": ["fast", "cheap"]
+    },
+    "nova-premier": {
+      "provider": "bedrock",
+      "model": "bedrock/converse/us.amazon.nova-premier-v1:0",
+      "gateway_model_id": "amazon.nova-premier-v1:0.bedrock.us-cross-region",
+      "tags": ["coding"]
+    }
+  },
+  "embedding": {
+    "text-embedding-ada-002": {
+      "provider": "azure",
+      "model": "text-embedding-ada-002",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/text-embedding-ada-002/embeddings?api-version=2023-05-15",
+      "api_version": "2023-05-15"
+    },
+    "text-embedding-3-small": {
+      "provider": "azure",
+      "model": "text-embedding-3-small",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15",
+      "api_version": "2023-05-15",
+      "gateway_model_id": "openai.text-embedding-3-small.azure.eastus2"
+    },
+    "text-embedding-3-large": {
+      "provider": "azure",
+      "model": "text-embedding-3-large",
+      "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2023-05-15",
+      "api_version": "2023-05-15",
+      "gateway_model_id": "openai.text-embedding-3-large.azure.eastus2"
+    },
+    "amazon.titan-embed-text-v2": {
+      "provider": "bedrock",
+      "model": "bedrock/amazon.titan-embed-text-v2:0",
+      "gateway_model_id": "amazon.titan-embed-text-v2:0.bedrock.us-east-1"
+    }
+  },
+  "_disabled": {
+    "_note": "Models below are disabled. Move entries back into chat/knowledge_graph to re-enable.",
+    "chat": {
+      "gpt-5.1-codex-mini": {
+        "provider": "azure/responses",
+        "model": "gpt-5.1-codex-mini",
+        "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+        "api_version": "preview",
+        "reasoning_effort": "low"
+      }
+    },
+    "knowledge_graph": {
+      "gpt-5.1-codex-mini": {
+        "provider": "azure/responses",
+        "model": "gpt-5.1-codex-mini",
+        "api_base": "https://ri-deployment-commongroup.cognitiveservices.azure.com/",
+        "api_version": "preview",
+        "reasoning_effort": "low"
+      }
+    }
+  }
+}

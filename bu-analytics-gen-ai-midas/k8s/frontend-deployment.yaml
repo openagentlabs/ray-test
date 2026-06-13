@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: midas-frontend
+  namespace: midas-saiyam
+  labels:
+    app: midas-frontend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: midas-frontend
+  template:
+    metadata:
+      labels:
+        app: midas-frontend
+    spec:
+      nodeSelector:
+          midas-role: frontend
+      containers:
+      - name: frontend
+        image: 882884688997.dkr.ecr.us-east-1.amazonaws.com/midas-frontend:2026-03-17-1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: BACKEND_UPSTREAM
+          value: http://midas-backend.midas-saiyam.svc.cluster.local:8000
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 20
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: midas-frontend
+  namespace: midas-saiyam
+  labels:
+    app: midas-frontend
+spec:
+  selector:
+    app: midas-frontend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 80
+  type: NodePort

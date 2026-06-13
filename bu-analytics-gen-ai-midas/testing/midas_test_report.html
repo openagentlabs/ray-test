@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MIDAS Comprehensive Test Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .summary {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .dataset-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .feature-category {
+            background: #e9ecef;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .test-result {
+            padding: 15px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 5px solid;
+        }
+        .passed {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .failed {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .test-details {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .detail-item {
+            margin: 3px 0;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .detail-value {
+            color: #007bff;
+        }
+        .expected-vs-actual {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .comparison-item {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .match {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .mismatch {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .comparison-label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .timing {
+            color: #6c757d;
+            font-size: 0.8em;
+        }
+        .metric-highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MIDAS Comprehensive Test Report</h1>
+        <p>Generated on: 2025-12-11 15:42:19</p>
+    </div>
+    
+    <div class="dataset-info">
+        <h2>Dataset Information</h2>
+        <p><strong>Dataset:</strong> C:\Users\saiyam268728\OneDrive - EXLService.com (I) Pvt. Ltd\Documents\MIDAS-Saiyam\Model_Documentation\midas\testing\loan_data_sample 3.csv</p>
+        <p><strong>Data Dictionary:</strong> testing/LCDataDictionary 2 4.csv</p>
+        <p><strong>Dataset ID:</strong> <span class="metric-highlight">9f88f473-574b-49b6-8c97-5a92cad39ac2</span></p>
+        <p><strong>Test User:</strong> testuser</p>
+    </div>
+    
+    <div class="summary">
+        <h2>Test Suite Summary</h2>
+        <div class="stats">
+            <div class="stat-box">
+                <h3>29</h3>
+                <p>Features Tested</p>
+            </div>
+            <div class="stat-box">
+                <h3>24</h3>
+                <p>Passed Tests</p>
+            </div>
+            <div class="stat-box">
+                <h3>5</h3>
+                <p>Failed Tests</p>
+            </div>
+            <div class="stat-box">
+                <h3>82.8%</h3>
+                <p>Success Rate</p>
+            </div>
+        </div>
+    </div>
+    
+    <h2>Test Results with Details</h2>
+
+    <div class="feature-category">
+        <h3>Data Management & Ingestion</h3>
+
+        <div class="test-result passed">
+            <strong>Data Ingestion</strong>: <span class="timing">(2025-12-11T15:37:51.488078)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Dataset Id</span>: <span class="detail-value">9f88f473-574b-49b6-8c97-5a92cad39ac2</span></div>
+                <div class="detail-item"><span class="detail-label">Upload Time (Seconds)</span>: <span class="detail-value">1.97</span></div>
+                <div class="detail-item"><span class="detail-label">Response Status</span>: <span class="detail-value">Success</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Data Dictionary Upload</strong>: <span class="timing">(2025-12-11T15:37:51.488731)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.01</span></div>
+                <div class="detail-item"><span class="detail-label">Data Dictionary Entries</span>: <span class="detail-value">78</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Problem Type Detection</strong>: <span class="timing">(2025-12-11T15:37:52.525895)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Problem Type</span>: <span class="detail-value">classification</span></div>
+                <div class="detail-item"><span class="detail-label">Target Variable Type</span>: <span class="detail-value">Categorical</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Problem Type:</span>
+                        <span>Expected: <strong>classification</strong> | Actual: <strong>classification</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>DatasetOverviewSidebar - Overview</h3>
+
+        <div class="test-result passed">
+            <strong>Overview Key Statistics</strong>: <span class="timing">(2025-12-11T15:37:55.625755)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Records</span>: <span class="detail-value">46630</span></div>
+                <div class="detail-item"><span class="detail-label">Columns</span>: <span class="detail-value">75</span></div>
+                <div class="detail-item"><span class="detail-label">High Missing (>95%)</span>: <span class="detail-value">17</span></div>
+                <div class="detail-item"><span class="detail-label">Duplicates</span>: <span class="detail-value">0</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">3.1</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Records:</span>
+                        <span>Expected: <strong>46630</strong> | Actual: <strong>46630</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Columns:</span>
+                        <span>Expected: <strong>75</strong> | Actual: <strong>75</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">High Missing 95 Percent:</span>
+                        <span>Expected: <strong>17</strong> | Actual: <strong>17</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Duplicates:</span>
+                        <span>Expected: <strong>0</strong> | Actual: <strong>0</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Overview Data Types</strong>: <span class="timing">(2025-12-11T15:37:56.770693)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Numerical</span>: <span class="detail-value">52</span></div>
+                <div class="detail-item"><span class="detail-label">Categorical</span>: <span class="detail-value">19</span></div>
+                <div class="detail-item"><span class="detail-label">Datetime</span>: <span class="detail-value">4</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">1.14</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Numerical:</span>
+                        <span>Expected: <strong>52</strong> | Actual: <strong>52</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Categorical:</span>
+                        <span>Expected: <strong>19</strong> | Actual: <strong>19</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Datetime:</span>
+                        <span>Expected: <strong>4</strong> | Actual: <strong>4</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Overview Column Details</strong>: <span class="timing">(2025-12-11T15:37:58.654496)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Columns With Details</span>: <span class="detail-value">75</span></div>
+                <div class="detail-item"><span class="detail-label">Total Columns</span>: <span class="detail-value">75</span></div>
+                <div class="detail-item"><span class="detail-label">Csv Downloadable</span>: <span class="detail-value">No</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">1.88</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Columns With Details:</span>
+                        <span>Expected: <strong>75</strong> | Actual: <strong>75</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Total Columns:</span>
+                        <span>Expected: <strong>75</strong> | Actual: <strong>75</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Overview Target Variable</strong>: <span class="timing">(2025-12-11T15:38:01.736416)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Name</span>: <span class="detail-value">target_flag</span></div>
+                <div class="detail-item"><span class="detail-label">Type</span>: <span class="detail-value">Categorical</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">3.08</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Name:</span>
+                        <span>Expected: <strong>target_flag</strong> | Actual: <strong>target_flag</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Type:</span>
+                        <span>Expected: <strong>Categorical</strong> | Actual: <strong>Categorical</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>DatasetOverviewSidebar - Quality</h3>
+
+        <div class="test-result passed">
+            <strong>Quality Metrics</strong>: <span class="timing">(2025-12-11T15:38:03.266738)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Empty Columns</span>: <span class="detail-value">17</span></div>
+                <div class="detail-item"><span class="detail-label">Constant Columns</span>: <span class="detail-value">3</span></div>
+                <div class="detail-item"><span class="detail-label">Sparse Columns (>50% Missing)</span>: <span class="detail-value">4</span></div>
+                <div class="detail-item"><span class="detail-label">Formatting Issues</span>: <span class="detail-value">1</span></div>
+                <div class="detail-item"><span class="detail-label">Total Issues</span>: <span class="detail-value">25</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">1.53</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Total Issues:</span>
+                        <span>Expected: <strong>25</strong> | Actual: <strong>25</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Quality Recommendations</strong>: <span class="timing">(2025-12-11T15:38:05.630930)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Recommendations Rendered</span>: <span class="detail-value">2</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Recommendation Details</span>: <span class="detail-value">[Missing Values Detected, Constant Columns Found]</span>
+                </div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">2.36</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Recommendations Rendered:</span>
+                        <span>Expected: <strong>2</strong> | Actual: <strong>2</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>DatasetOverviewSidebar - Insights</h3>
+
+        <div class="test-result passed">
+            <strong>Insights Quick Insights</strong>: <span class="timing">(2025-12-11T15:38:07.052208)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Total Insights</span>: <span class="detail-value">4</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Insight Details</span>: <span class="detail-value">[Data Distribution, Missing Values, High Cardinality, Target Variable]</span>
+                </div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">1.42</span></div>
+                <div class="expected-vs-actual">
+                    <div class="comparison-label">Expected vs Actual Comparison:</div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Total Insights:</span>
+                        <span>Expected: <strong>4</strong> | Actual: <strong>4</strong></span>
+                        <span class="match"> (✓ Match)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>DatasetOverviewSidebar - Config</h3>
+
+        <div class="test-result passed">
+            <strong>Config Knowledge Graph</strong>: <span class="timing">(2025-12-11T15:38:07.064055)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Knowledge Graph Accessible</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Status</span>: <span class="detail-value">processing...</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.01</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>Automated Data Quality</h3>
+
+        <div class="test-result failed">
+            <strong>Data Quality Missing Values</strong>: <span class="timing">(2025-12-11T15:40:13.991501)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Error</span>: <span style="color: #dc3545;">Unable to fetch data quality results</span></div>
+            </div>
+
+        </div>
+
+        <div class="test-result failed">
+            <strong>Data Quality Outliers</strong>: <span class="timing">(2025-12-11T15:40:54.130757)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Error</span>: <span style="color: #dc3545;">Unable to fetch data quality results</span></div>
+            </div>
+
+        </div>
+
+        <div class="test-result failed">
+            <strong>Data Quality Duplicates</strong>: <span class="timing">(2025-12-11T15:41:34.090365)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Error</span>: <span style="color: #dc3545;">Unable to fetch data quality results</span></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>Automation - Code Execution</h3>
+
+        <div class="test-result failed">
+            <strong>Code Execution</strong>: <span class="timing">(2025-12-11T15:41:35.326352)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Error</span>: <span style="color: #dc3545;">Code execution request failed: {'error': '{"detail":"Internal server error: Expecting value: line 1 column 1 (char 0)"}', 'status_code': 500}</span></div>
+                <div class="detail-item"><span class="detail-label">Time Taken Seconds</span>: <span class="detail-value">1.24</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>Data Insights</h3>
+
+        <div class="test-result passed">
+            <strong>Data Split</strong>: <span class="timing">(2025-12-11T15:41:36.089417)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.76</span></div>
+                <div class="detail-item"><span class="detail-label">Radio Buttons Available</span>: <span class="detail-value">Dev, Hold, Entire</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Bivariate Analysis</strong>: <span class="timing">(2025-12-11T15:41:40.861415)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">4.77</span></div>
+                <div class="detail-item"><span class="detail-label">Variables Analyzed</span>: <span class="detail-value">74</span></div>
+                <div class="detail-item"><span class="detail-label">Analysis Content</span>: <span class="detail-value">Generated successfully</span></div>
+                <div class="detail-item"><span class="detail-label">Download Ready</span>: <span class="detail-value">Data structure suitable for Excel export</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Correlation Analysis</strong>: <span class="timing">(2025-12-11T15:41:58.384640)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">17.5</span></div>
+                <div class="detail-item"><span class="detail-label">Numeric Correlation Analysis</span>: <span class="detail-value">Present with Pearson and Spearman coefficients (50 variables)</span></div>
+                <div class="detail-item"><span class="detail-label">Categorical Correlation Analysis</span>: <span class="detail-value">Present with Chi-Square and Cramér's V (22 variables)</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Information Value</strong>: <span class="timing">(2025-12-11T15:42:02.441289)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">4.06</span></div>
+                <div class="detail-item"><span class="detail-label">Iv Analysis</span>: <span class="detail-value">Generated successfully</span></div>
+                <div class="detail-item"><span class="detail-label">Download Ready</span>: <span class="detail-value">Data structure suitable for Excel export (Full Insight Report and Detailed IV Report)</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Vif Analysis</strong>: <span class="timing">(2025-12-11T15:42:02.705294)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.26</span></div>
+                <div class="detail-item"><span class="detail-label">Vif Analysis</span>: <span class="detail-value">Generated successfully</span></div>
+                <div class="detail-item"><span class="detail-label">Variables Analyzed</span>: <span class="detail-value">35</span></div>
+                <div class="detail-item"><span class="detail-label">Download Ready</span>: <span class="detail-value">Data structure suitable for Excel export</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Correlation Matrix</strong>: <span class="timing">(2025-12-11T15:42:05.768539)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">3.06</span></div>
+                <div class="detail-item"><span class="detail-label">Correlation Matrix</span>: <span class="detail-value">Generated successfully</span></div>
+                <div class="detail-item"><span class="detail-label">Variables</span>: <span class="detail-value">33</span></div>
+                <div class="detail-item"><span class="detail-label">Download Ready</span>: <span class="detail-value">Data structure suitable for Excel export</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Generate Auto Insights</strong>: <span class="timing">(2025-12-11T15:42:07.929259)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">2.16</span></div>
+                <div class="detail-item"><span class="detail-label">Auto Insights</span>: <span class="detail-value">Generated successfully</span></div>
+                <div class="detail-item"><span class="detail-label">Download Ready</span>: <span class="detail-value">Data structure suitable for Excel export (Full Insight Report)</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>Segmentation Analysis</h3>
+
+        <div class="test-result passed">
+            <strong>Segmentation Cart</strong>: <span class="timing">(2025-12-11T15:42:12.951840)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Method</span>: <span class="detail-value">CART</span></div>
+                <div class="detail-item"><span class="detail-label">Variables Used</span>: <span class="detail-value">last_pymnt_d, id, out_prncp_inv, total_rec_int, open_acc</span></div>
+                <div class="detail-item"><span class="detail-label">Segments</span>: <span class="detail-value">4</span></div>
+                <div class="detail-item"><span class="detail-label">Recommendation</span>: <span class="detail-value">Segments failed 1/4 quality checks. Consider recreating with different parameters.</span></div>
+                <div class="detail-item"><span class="detail-label">Monotonicity Insight</span>: <span class="detail-value">Monotonicity: As WoE decreases, Bad Rate increases (good). (corr=-0.989)</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Segmentation Chaid</strong>: <span class="timing">(2025-12-11T15:42:15.366565)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Method</span>: <span class="detail-value">CHAID</span></div>
+                <div class="detail-item"><span class="detail-label">Variables Used</span>: <span class="detail-value">total_bal_il, collections_12_mths_ex_med, acc_now_delinq, collection_recovery_fee, funded_amnt_inv</span></div>
+                <div class="detail-item"><span class="detail-label">Segments</span>: <span class="detail-value">4</span></div>
+                <div class="detail-item"><span class="detail-label">Recommendation</span>: <span class="detail-value">Segments failed 1/4 quality checks. Consider recreating with different parameters.</span></div>
+                <div class="detail-item"><span class="detail-label">Monotonicity Insight</span>: <span class="detail-value">Monotonicity: As WoE decreases, Bad Rate increases (good). (corr=-1.000)</span></div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Codebook View And Download</strong>: <span class="timing">(2025-12-11T15:42:15.386433)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.02</span></div>
+                <div class="detail-item"><span class="detail-label">Cart Endpoint Accessible</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Chaid Endpoint Accessible</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Cart Download Ready</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Chaid Download Ready</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Cart Codebook</span>: <span class="detail-value">{
+  "Algorithm": "cart",
+  "Number of Sections": 13,
+  "Total Code Length": 43028,
+  "Has Python Imports": true,
+  "Has Python Functions": true,
+  "Python File Valid": true
+}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Chaid Codebook</span>: <span class="detail-value">{
+  "Algorithm": "chaid",
+  "Number of Sections": 13,
+  "Total Code Length": 43031,
+  "Has Python Imports": true,
+  "Has Python Functions": true,
+  "Python File Valid": true
+}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="feature-category">
+        <h3>Feature Engineering</h3>
+
+        <div class="test-result passed">
+            <strong>Feature Engineering Apply To Segments</strong>: <span class="timing">(2025-12-11T15:42:15.387569)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.00</span></div>
+                <div class="detail-item"><span class="detail-label">Segments Available</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Number Of Segments</span>: <span class="detail-value">4</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Segment Ids</span>: <span class="detail-value">[0, 1, 2, 3]</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Feature Engineering Woe</strong>: <span class="timing">(2025-12-11T15:42:17.978283)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">2.59</span></div>
+                <div class="detail-item"><span class="detail-label">Transformation Success</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Transformed Variables Produced</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Number Of Transformed Variables</span>: <span class="detail-value">74</span></div>
+                <div class="detail-item"><span class="detail-label">Download Report Ready</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Sample Variables</span>: <span class="detail-value">[id_transform_woe, member_id_transform_woe, loan_amnt_transform_woe, funded_amnt_transform_woe, funded_amnt_inv_transform_woe]</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result passed">
+            <strong>Feature Engineering Log</strong>: <span class="timing">(2025-12-11T15:42:18.957492)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.98</span></div>
+                <div class="detail-item"><span class="detail-label">Transformation Success</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Transformed Variables Produced</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Number Of Transformed Variables</span>: <span class="detail-value">52</span></div>
+                <div class="detail-item"><span class="detail-label">Download Report Ready</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Sample Variables</span>: <span class="detail-value">[id_transform_log, member_id_transform_log, loan_amnt_transform_log, funded_amnt_transform_log, funded_amnt_inv_transform_log]</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-result failed">
+            <strong>Feature Engineering One Hot Encoding</strong>: <span class="timing">(2025-12-11T15:42:19.598223)</span>
+
+            <div class="test-details">
+                <div class="detail-item"><span class="detail-label">Error</span>: <span style="color: #dc3545;">Transformation failed or no transformed variables produced</span></div>
+                <div class="detail-item"><span class="detail-label">Processing Time (Seconds)</span>: <span class="detail-value">0.64</span></div>
+                <div class="detail-item"><span class="detail-label">Transformation Success</span>: <span class="detail-value">True</span></div>
+                <div class="detail-item"><span class="detail-label">Transformed Variables Produced</span>: <span class="detail-value">False</span></div>
+                <div class="detail-item"><span class="detail-label">Number Of Transformed Variables</span>: <span class="detail-value">0</span></div>
+                <div class="detail-item"><span class="detail-label">Download Report Ready</span>: <span class="detail-value">False</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Sample Variables</span>: <span class="detail-value">[]</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

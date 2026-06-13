@@ -1,0 +1,18 @@
+# MIDAS team override — bmad-dev-story (scenario test gate)
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad-output/testing/scenario-test-gate.md",
+  "file:{project-root}/_bmad-output/testing/sme-verification-gate.md",
+  "file:{project-root}/_bmad-output/scenarios/01-requirements-traceability.md",
+  "Scenario 1: implement ONLY the single story file provided. Read intake, PRD, SPEC, and traceability.md; follow PRD logic strictly — no undeclared behavior. Complete SUB-* in order; if PRD cannot be met, stop and request spec/PRD update.",
+  "Scenarios 1–3: Do NOT mark the story complete until tests are written/updated, executed, and passing. Include test command output in the final summary.",
+  "Backend: pytest with RATE_LIMIT_ENABLED=false and auth dependency_overrides per project-context. Frontend: Vitest co-located tests; loading/empty/error states for data UI.",
+  "Never edit ai_gateway/. Follow MIDAS architecture: S3 for large blobs, no whole-file CSV in memory.",
+]
+
+activation_steps_append = [
+  "Before closing: run tests per _bmad-output/testing/scenario-test-gate.md (scoped to touched files). If tests fail, fix and re-run until green.",
+  "If tests assert formulas, metrics, training, or feature-engineering logic: read _bmad-output/testing/sme-verification-gate.md, create SME package under test-artifacts/sme-reviews/<slug>/ST-NNN/, and STOP — instruct the human to share with SME. Do not claim done without sme-signoff.md Verdict=approved.",
+]

@@ -1,0 +1,476 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== Theme System (CSS Custom Properties) ========== */
+/* Light theme (default) */
+:root {
+  --color-bg: #f8fafc;
+  --color-bg-secondary: #f1f5f9;
+  --color-bg-tertiary: #e2e8f0;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f9fafb;
+  --color-border: #e2e8f0;
+  --color-border-secondary: #e5e7eb;
+  --color-text: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+}
+
+/* Dark theme */
+.dark {
+  --color-bg: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-surface: #1e293b;
+  --color-surface-hover: #334155;
+  --color-border: #334155;
+  --color-border-secondary: #475569;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-accent: #60a5fa;
+  --color-accent-hover: #3b82f6;
+}
+
+/* Model Training step dark theme overrides */
+.dark .model-training-step .bg-white {
+  background-color: var(--color-surface);
+}
+.dark .model-training-step .bg-gray-50 {
+  background-color: var(--color-bg-secondary);
+}
+.dark .model-training-step .bg-gray-100 {
+  background-color: var(--color-bg-tertiary);
+}
+.dark .model-training-step .border-gray-200,
+.dark .model-training-step .border-gray-300 {
+  border-color: var(--color-border);
+}
+.dark .model-training-step .text-gray-900,
+.dark .model-training-step .text-black {
+  color: var(--color-text);
+}
+.dark .model-training-step .text-gray-700,
+.dark .model-training-step .text-gray-600 {
+  color: var(--color-text-secondary);
+}
+.dark .model-training-step .text-gray-500 {
+  color: var(--color-text-muted);
+}
+
+/* Data Split pane should be all-white text in dark mode */
+.dark .data-split-pane {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+.dark .data-split-pane * {
+  color: #ffffff;
+}
+.dark .data-split-pane input,
+.dark .data-split-pane select,
+.dark .data-split-pane textarea {
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+  color: #ffffff;
+}
+
+/* Model Documentation dark theme overrides */
+.dark .model-documentation .bg-white {
+  background-color: var(--color-surface);
+}
+.dark .model-documentation .bg-gray-50,
+.dark .model-documentation .bg-gray-100 {
+  background-color: var(--color-bg-secondary);
+}
+.dark .model-documentation .bg-blue-50,
+.dark .model-documentation .bg-blue-100,
+.dark .model-documentation .bg-indigo-50,
+.dark .model-documentation .bg-purple-50,
+.dark .model-documentation .bg-green-50,
+.dark .model-documentation .bg-orange-50,
+.dark .model-documentation .bg-emerald-50,
+.dark .model-documentation .bg-yellow-50,
+.dark .model-documentation .bg-red-50,
+.dark .model-documentation .bg-cyan-50 {
+  background-color: var(--color-surface);
+}
+.dark .model-documentation .bg-blue-100 {
+  background-color: #1f2937;
+}
+.dark .model-documentation .border-blue-200 {
+  border-color: #374151;
+}
+.dark .model-documentation .border-gray-200,
+.dark .model-documentation .border-gray-300,
+.dark .model-documentation .border-blue-200,
+.dark .model-documentation .border-purple-200,
+.dark .model-documentation .border-green-200,
+.dark .model-documentation .border-orange-200,
+.dark .model-documentation .border-emerald-200,
+.dark .model-documentation .border-yellow-200,
+.dark .model-documentation .border-red-200 {
+  border-color: var(--color-border);
+}
+.dark .model-documentation .text-gray-900,
+.dark .model-documentation .text-black {
+  color: var(--color-text);
+}
+.dark .model-documentation .text-gray-800,
+.dark .model-documentation .text-gray-700,
+.dark .model-documentation .text-gray-600 {
+  color: var(--color-text-secondary);
+}
+.dark .model-documentation .text-gray-500,
+.dark .model-documentation .text-gray-400 {
+  color: var(--color-text-muted);
+}
+.dark .model-documentation input,
+.dark .model-documentation select,
+.dark .model-documentation textarea {
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* Model Evaluation dark theme overrides */
+.dark .model-evaluation .bg-white {
+  background-color: var(--color-surface);
+}
+.dark .model-evaluation .bg-gray-50,
+.dark .model-evaluation .bg-gray-100 {
+  background-color: var(--color-bg-secondary);
+}
+.dark .model-evaluation .bg-blue-50,
+.dark .model-evaluation .bg-blue-100,
+.dark .model-evaluation .bg-indigo-50,
+.dark .model-evaluation .bg-purple-50,
+.dark .model-evaluation .bg-green-50,
+.dark .model-evaluation .bg-orange-50,
+.dark .model-evaluation .bg-emerald-50,
+.dark .model-evaluation .bg-yellow-50,
+.dark .model-evaluation .bg-red-50,
+.dark .model-evaluation .bg-cyan-50 {
+  background-color: var(--color-surface);
+}
+.dark .model-evaluation .border-gray-200,
+.dark .model-evaluation .border-gray-300,
+.dark .model-evaluation .border-blue-200,
+.dark .model-evaluation .border-purple-200,
+.dark .model-evaluation .border-green-200,
+.dark .model-evaluation .border-orange-200,
+.dark .model-evaluation .border-emerald-200,
+.dark .model-evaluation .border-yellow-200,
+.dark .model-evaluation .border-red-200 {
+  border-color: var(--color-border);
+}
+.dark .model-evaluation .text-gray-900,
+.dark .model-evaluation .text-black {
+  color: var(--color-text);
+}
+.dark .model-evaluation .text-gray-800,
+.dark .model-evaluation .text-gray-700,
+.dark .model-evaluation .text-gray-600 {
+  color: var(--color-text-secondary);
+}
+.dark .model-evaluation .text-gray-500,
+.dark .model-evaluation .text-gray-400 {
+  color: var(--color-text-muted);
+}
+.dark .model-evaluation input,
+.dark .model-evaluation select,
+.dark .model-evaluation textarea {
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* Smooth theme transitions */
+html {
+  transition: color-scheme 0.3s ease;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+/* Base font family */
+html, body, #root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-variation-settings: 'slnt' 0;
+}
+
+/* Prevent page scrollbars */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Custom Animations */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rotateIn {
+  from {
+    opacity: 0;
+    transform: rotate(-180deg) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes wiggle {
+  0%, 7% {
+    transform: rotateZ(0);
+  }
+  15% {
+    transform: rotateZ(-15deg);
+  }
+  20% {
+    transform: rotateZ(10deg);
+  }
+  25% {
+    transform: rotateZ(-10deg);
+  }
+  30% {
+    transform: rotateZ(6deg);
+  }
+  35% {
+    transform: rotateZ(-4deg);
+  }
+  40%, 100% {
+    transform: rotateZ(0);
+  }
+}
+
+@keyframes slide {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+/* Animation Classes */
+.animate-slideInLeft {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.8s ease-out;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.animate-fadeInDown {
+  animation: fadeInDown 0.8s ease-out;
+}
+
+.animate-zoomIn {
+  animation: zoomIn 0.8s ease-out;
+}
+
+.animate-rotateIn {
+  animation: rotateIn 0.8s ease-out;
+}
+
+.animate-wiggle {
+  animation: wiggle 0.6s ease-in-out;
+}
+
+.animate-slide {
+  animation: slide 1s ease-in-out infinite;
+}
+
+.animate-fade {
+  animation: fade 2s ease-in-out infinite;
+}
+
+/* Banking use case animations */
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-wiggle {
+  animation: wiggle 0.6s ease-in-out;
+}
+
+.animate-slide {
+  animation: slide 1s ease-in-out infinite;
+}
+
+.animate-fade {
+  animation: fade 2s ease-in-out infinite;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Floating Animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ========== Radio Button Styling ========== */
+/* Match radio buttons to primary button color (blue-600) */
+input[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid #9ca3af; /* gray-400 */
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  position: relative;
+  flex-shrink: 0;
+}
+
+input[type="radio"]:hover {
+  border-color: #2563eb; /* blue-600 */
+}
+
+input[type="radio"]:checked {
+  border-color: #2563eb; /* blue-600 */
+  background-color: #2563eb; /* blue-600 */
+  box-shadow: inset 0 0 0 3px white;
+}
+
+input[type="radio"]:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+input[type="radio"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark mode radio buttons */
+.dark input[type="radio"] {
+  border-color: #6b7280; /* gray-500 */
+  background-color: transparent;
+}
+
+.dark input[type="radio"]:hover {
+  border-color: #3b82f6; /* blue-500 */
+}
+
+.dark input[type="radio"]:checked {
+  border-color: #3b82f6; /* blue-500 */
+  background-color: #3b82f6; /* blue-500 */
+  box-shadow: inset 0 0 0 3px #1f2937; /* gray-800 inner ring matches dark bg */
+}
+
+.dark input[type="radio"]:focus-visible {
+  outline-color: #3b82f6;
+}

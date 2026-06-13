@@ -1,0 +1,97 @@
+kb:
+  assumptions:
+    as_of_date_field: <AS_OF_DATE>
+    performance_window_months: <PERF_WIN|12>
+  schema:
+    data_sources:
+      bureau_data:
+        features_to_derive:
+        - bureau_score_change_6m
+        - new_accounts_opened_3m
+        - total_credit_inquiries_6m
+        join_keys:
+        - ssn
+        - customer_id
+        lag_days: 30
+        refresh_frequency: monthly
+      external_macro:
+        features:
+        - unemployment_rate_state
+        - home_price_index_zip
+        - gdp_growth_rate
+        refresh_frequency: monthly
+      internal_behavioral:
+        aggregation_windows:
+        - 7
+        - 30
+        - 90
+        - 180
+        - 365
+        features_to_derive:
+        - payment_consistency_score
+        - utilization_trend
+        - transaction_velocity
+        refresh_frequency: daily
+    id_fields:
+    - <CUSTOMER_ID|customer_id>
+    - <ACCOUNT_ID|account_id>
+    leakage_tags:
+      forbid_for_pd_patterns:
+      - '*principal_paid*'
+      - '*paid_to_date*'
+      - '*outstanding*'
+      - '*status*'
+      - last_*
+      - '*_to_date'
+      - total_*_paid
+      - '*recovery*'
+      - '*chargeoff*'
+      - '*default*'
+      - '*days_past_due*'
+      - out_prncp
+      - total_pymnt
+    role_tags:
+      categorical_patterns:
+      - '*purpose*'
+      - '*employment*'
+      - '*state*'
+      - '*region*'
+      - '*product*'
+      - '*secured*'
+      - '*channel*'
+      - '*segment*'
+      - '*tier*'
+      date_like_patterns:
+      - '*date*'
+      - '*dt'
+      - '*timestamp*'
+      - '*as_of*'
+      - '*origination*'
+      - '*application*'
+      - '*snapshot*'
+      numerical_patterns:
+      - '*amount*'
+      - '*balance*'
+      - '*limit*'
+      - '*rate*'
+      - '*installment*'
+      - '*income*'
+      - '*ratio*'
+      - '*score*'
+      - '*util*'
+      - '*age*'
+      - '*vintage*'
+      - '*ltv*'
+      ordinal_patterns:
+      - '*delinq*'
+      - '*inq*'
+      - '*dpd_band*'
+      - '*util_band*'
+    time_fields:
+      as_of: <AS_OF_DATE>
+      event_fields:
+      - <DEFAULT_EVENT_DATE|default_event_date>
+      - <CHARGEOFF_DATE|chargeoff_date>
+      - <RECOVERY_DATE|recovery_date>
+      - <SNAPSHOT_DATE|snapshot_date>
+      performance_window_months: <PERF_WIN|12>

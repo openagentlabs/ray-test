@@ -1,0 +1,183 @@
+services:
+  # ── Local Postgres - always available for offline / no-VPN dev ───────────────
+  # AWS RDS (Terraform): midas-dev-us-east-1-pg-20260406163456132500000004.cuzwqoeau6l8.us-east-1.rds.amazonaws.com:5432
+  # To use AWS RDS instead, set DATABASE_URL in backend/.env to the RDS URL.
+  postgres:
+    image: postgres:15-alpine
+    container_name: midas-postgres
+    environment:
+      POSTGRES_USER: midas_pg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: midas_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - midas-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U midas_pg -d midas_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Local Redis - always available for offline / no-VPN dev ──────────────────
+  # AWS ElastiCache (TLS+auth): master.midas-dev-redis.ez4lfs.use1.cache.amazonaws.com:6379
+  # To use AWS ElastiCache instead, set REDIS_URL in backend/.env to the rediss:// URL.
+  redis:
+    image: redis:7-alpine
+    container_name: midas-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - midas-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  backend-volume-init:
+    image: busybox:1.36
+    container_name: midas-backend-volume-init
+    command: ["sh", "-c", "mkdir -p /uploads /kg_cache /kg_logs /rfe_artifacts && chmod -R 0777 /uploads /kg_cache /kg_logs /rfe_artifacts"]
+    volumes:
+      - backend-uploads:/uploads
+      - kg-cache:/kg_cache
+      - kg-logs:/kg_logs
+      - rfe-artifacts:/rfe_artifacts
+    restart: "no"
+
+  # ── GraphRAG microservice ─────────────────────────────────────────────────────
+  # Built from backend/Dockerfile.graphrag (context = repo root).
+  # The backend talks to it via http://graphrag:8001 inside the Docker network.
+  graphrag:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.graphrag
+    container_name: midas-graphrag
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./backend/.env
+    environment:
+      - GRAPHRAG_SERVICE_PORT=8001
+    volumes:
+      - kg-cache:/app/kg_cache
+      - kg-logs:/app/kg_logs
+      - ./backend/knowledge_repo_kg:/app/knowledge_repo_kg:ro
+    networks:
+      - midas-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: midas-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - WEB_CONCURRENCY=1
+      # GraphRAG runs as a sibling container - use service name on Docker network
+      - GRAPHRAG_SERVICE_URL=http://graphrag:8001
+      - GRAPHRAG_AUTOSTART=false
+      # ── DB (local Docker by default; override in .env for AWS) ──────────────
+      # Local:  postgres:5432 / redis:6379  (containers in this compose file)
+      # AWS:    uncomment RDS/ElastiCache lines in backend/.env
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SESSION_REDIS_URL=${SESSION_REDIS_URL:-redis://redis:6379/0}
+      # ── S3 (always AWS) ─────────────────────────────────────────────────────
+      - S3_BUCKET_NAME=midas-dev-us-east-1-test-20260404180513813900000001
+      - S3_REGION=us-east-1
+      - S3_UPLOAD_KEY_PREFIX=uploads
+      # ── RFE (Model Training Step 3/4) ───────────────────────────────────────
+      # Default: local scaling (in-memory job state/queue/event bus, filesystem
+      # storage). Switch to RFE_SCALING_MODE=distributed for multi-worker setups
+      # (requires Redis + a shared RWX volume for rfe_artifacts).
+      - RFE_SCALING_MODE=${RFE_SCALING_MODE:-local}
+      - RFE_STORAGE_BACKEND=${RFE_STORAGE_BACKEND:-filesystem}
+      - RFE_ARTIFACTS_DIR=/app/rfe_artifacts
+    volumes:
+      - ./backend/logs:/app/logs
+      - backend-uploads:/app/uploads
+      - ./backend/vector_store:/app/vector_store
+      - kg-cache:/app/kg_cache
+      - kg-logs:/app/kg_logs
+      - rfe-artifacts:/app/rfe_artifacts
+      - ./backend/knowledge_base.json:/app/knowledge_base.json:ro
+    networks:
+      - midas-network
+    depends_on:
+      backend-volume-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      graphrag:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: midas-frontend
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_UPSTREAM=http://backend:8000
+      - PORT=8080
+    networks:
+      - midas-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/kube-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  midas-network:
+    driver: bridge
+
+volumes:
+  backend-logs:
+    driver: local
+  backend-uploads:
+    driver: local
+  postgres-data:
+    driver: local
+  kg-cache:
+    driver: local
+  kg-logs:
+    driver: local
+  # Shared artifact volume used by Step 3 (RFE) and Step 4 (Feature Review).
+  # In distributed mode this must be an RWX-capable volume (EFS on AWS,
+  # Azure Files on Azure, or a ReadWriteMany PVC on K8s) so multiple worker
+  # pods can read/write the same job directory.
+  rfe-artifacts:
+    driver: local

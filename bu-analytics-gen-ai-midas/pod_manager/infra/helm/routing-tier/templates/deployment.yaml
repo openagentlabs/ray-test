@@ -1,0 +1,168 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "routing-tier.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "routing-tier.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "routing-tier.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "routing-tier.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "routing-tier.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.topologySpreadConstraints.maxSkew }}
+          topologyKey: {{ .Values.topologySpreadConstraints.topologyKey }}
+          whenUnsatisfiable: {{ .Values.topologySpreadConstraints.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              {{- include "routing-tier.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: envoy
+          image: "{{ required "envoy.image.repository is required" .Values.envoy.image.repository }}:{{ .Values.envoy.image.tag }}"
+          imagePullPolicy: {{ .Values.envoy.image.pullPolicy }}
+          ports:
+            - name: traffic
+              containerPort: 10000
+            - name: health
+              containerPort: 8080
+            - name: admin
+              containerPort: 9901
+          env:
+            - name: ENVOY_EXT_AUTHZ_PORT
+              value: {{ .Values.podManager.extAuthzPort | quote }}
+            {{- range $key, $value := .Values.envoy.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9901
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 9901
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]
+          resources:
+            {{- toYaml .Values.envoy.resources | nindent 12 }}
+
+        - name: pod-manager
+          image: "{{ required "podManager.image.repository is required" .Values.podManager.image.repository }}:{{ .Values.podManager.image.tag }}"
+          imagePullPolicy: {{ .Values.podManager.image.pullPolicy }}
+          ports:
+            - name: ext-authz
+              containerPort: {{ .Values.podManager.extAuthzPort }}
+            - name: grpc
+              containerPort: {{ .Values.podManager.grpcPort }}
+          env:
+            - name: POD_MANAGER_APP_SERVICE_NAME
+              value: {{ .Values.serviceName | quote }}
+            - name: POD_MANAGER_APP_LOG_LEVEL
+              value: {{ .Values.podManager.logLevel | quote }}
+            - name: POD_MANAGER_API_SERVICE_HOST
+              value: "0.0.0.0"
+            - name: POD_MANAGER_API_SERVICE_PORT
+              value: {{ .Values.podManager.grpcPort | quote }}
+            - name: POD_MANAGER_EXT_AUTHZ_GRPC_HOST
+              value: "127.0.0.1"
+            - name: POD_MANAGER_EXT_AUTHZ_GRPC_PORT
+              value: {{ .Values.podManager.extAuthzPort | quote }}
+            - name: POD_MANAGER_KUBERNETES_ENABLED
+              value: "true"
+            - name: POD_MANAGER_KUBERNETES_NAMESPACE
+              value: {{ .Values.namespace | quote }}
+            - name: POD_MANAGER_KUBERNETES_POD_LABEL_SELECTOR
+              value: {{ .Values.podManager.kubernetes.podLabelSelector | quote }}
+            - name: POD_MANAGER_KUBERNETES_HEADLESS_SERVICE_NAME
+              value: {{ .Values.podManager.kubernetes.headlessServiceName | quote }}
+            - name: POD_MANAGER_KUBERNETES_BACKEND_PORT
+              value: {{ .Values.podManager.kubernetes.backendPort | quote }}
+            - name: POD_MANAGER_RECONCILIATION_ENABLED
+              value: {{ .Values.podManager.reconciliation.enabled | quote }}
+            - name: POD_MANAGER_RECONCILIATION_INTERVAL_SEC
+              value: {{ .Values.podManager.reconciliation.intervalSec | quote }}
+            - name: POD_MANAGER_AUTH_DEV_MODE
+              value: {{ .Values.podManager.auth.devMode | quote }}
+            - name: POD_MANAGER_AUTH_DEV_SUB_HEADER
+              value: {{ .Values.podManager.auth.devSubHeader | quote }}
+            - name: POD_MANAGER_AUTH_SESSION_COOKIE_NAME
+              value: {{ .Values.podManager.auth.sessionCookieName | quote }}
+            - name: POD_MANAGER_LOGIN_POD_POOL_ROUTING_UPSTREAM
+              value: {{ .Values.podManager.loginPodPool.routingUpstream | quote }}
+            - name: POD_MANAGER_REAPER_ENABLED
+              value: {{ .Values.podManager.reaper.enabled | quote }}
+            - name: POD_MANAGER_REAPER_INTERVAL_SEC
+              value: {{ .Values.podManager.reaper.intervalSec | quote }}
+            - name: POD_MANAGER_REAPER_IDLE_TTL_SEC
+              value: {{ .Values.podManager.reaper.idleTtlSec | quote }}
+            - name: POD_MANAGER_COGNITO_ENABLED
+              value: {{ .Values.podManager.cognito.enabled | quote }}
+            - name: POD_MANAGER_COGNITO_ISSUER
+              value: {{ .Values.podManager.cognito.issuer | quote }}
+            - name: POD_MANAGER_COGNITO_AUDIENCE
+              value: {{ .Values.podManager.cognito.audience | quote }}
+            - name: POD_MANAGER_COGNITO_JWKS_URI
+              value: {{ .Values.podManager.cognito.jwksUri | quote }}
+            - name: AWS_REGION
+              value: {{ .Values.global.awsRegion | quote }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.global.awsRegion | quote }}
+            - name: POD_MANAGER_POSTGRES_SCHEMA_NAME
+              value: {{ .Values.podManager.postgres.schemaName | quote }}
+            - name: POD_MANAGER_POSTGRES_TABLE_PREFIX
+              value: {{ .Values.podManager.postgres.tablePrefix | quote }}
+            - name: POD_MANAGER_POSTGRES_POOL_MIN
+              value: {{ .Values.podManager.postgres.poolMin | quote }}
+            - name: POD_MANAGER_POSTGRES_POOL_MAX
+              value: {{ .Values.podManager.postgres.poolMax | quote }}
+            - name: POD_MANAGER_POSTGRES_COMMAND_TIMEOUT_SEC
+              value: {{ .Values.podManager.postgres.commandTimeoutSec | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.podManager.databaseUrlSecret.name | quote }}
+                  key: {{ .Values.podManager.databaseUrlSecret.key | quote }}
+            {{- range $key, $value := .Values.podManager.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.podManager.grpcPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.podManager.grpcPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.podManager.resources | nindent 12 }}

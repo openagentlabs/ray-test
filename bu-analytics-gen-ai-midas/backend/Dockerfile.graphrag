@@ -1,0 +1,36 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    GRAPHRAG_SERVICE_PORT=8001
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/graphrag_service/requirements.txt /tmp/graphrag_service_requirements.txt
+
+RUN pip install --upgrade pip \
+    && pip install -r /tmp/graphrag_service_requirements.txt \
+    && pip install graphrag==2.7.0
+
+COPY backend/graphrag_service /app/graphrag_service
+COPY backend/graphrag_query_runner.py /app/graphrag_query_runner.py
+COPY backend/knowledge_repo_kg /app/knowledge_repo_kg
+
+RUN mkdir -p /app/kg_logs /app/kg_cache \
+    && useradd --no-create-home --shell /bin/bash --uid 1001 graphrag \
+    && chown -R graphrag:graphrag /app
+
+USER graphrag
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -fsS http://localhost:${GRAPHRAG_SERVICE_PORT}/health || exit 1
+
+# start_service.py uses if __name__ == "__main__" so uvicorn never runs when
+# invoked with python -m. Launch uvicorn directly so the process actually listens.
+CMD ["sh", "-c", "uvicorn graphrag_service.server:app --host 0.0.0.0 --port ${GRAPHRAG_SERVICE_PORT}"]

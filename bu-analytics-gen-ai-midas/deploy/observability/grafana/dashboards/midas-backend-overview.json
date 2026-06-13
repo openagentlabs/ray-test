@@ -1,0 +1,156 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_AMP",
+      "label": "Amazon Managed Prometheus",
+      "description": "AMP workspace — set this to the AMG data source for your AMP workspace.",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "gauge", "name": "Gauge", "version": "" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" }
+  ],
+  "title": "MIDAS Backend Overview",
+  "uid": "midas-backend-overview-v1",
+  "description": "HTTP metrics from midas-backend (source: Amazon Managed Prometheus via ADOT Collector). See docs/observability-metric-catalog.md.",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["midas", "backend", "amp"],
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+        "query": "label_values(http_server_request_count_total, deployment_environment)",
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "route",
+        "label": "Route",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+        "query": "label_values(http_server_request_count_total{deployment_environment=\"$environment\"}, http_route)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Request Rate (rpm)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "sum(rate(http_server_request_count_total{deployment_environment=\"$environment\"}[5m])) * 60",
+          "legendFormat": "rpm"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" }
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate %",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "sum(rate(http_server_request_count_total{deployment_environment=\"$environment\",midas_outcome=\"server_error\"}[5m])) / sum(rate(http_server_request_count_total{deployment_environment=\"$environment\"}[5m])) * 100",
+          "legendFormat": "5xx %"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } } }
+    },
+    {
+      "type": "stat",
+      "title": "P99 Latency (ms)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_duration_seconds_bucket{deployment_environment=\"$environment\"}[5m])) by (le)) * 1000",
+          "legendFormat": "P99 ms"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "type": "stat",
+      "title": "P50 Latency (ms)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_request_duration_seconds_bucket{deployment_environment=\"$environment\"}[5m])) by (le)) * 1000",
+          "legendFormat": "P50 ms"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Rate by Outcome",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "sum(rate(http_server_request_count_total{deployment_environment=\"$environment\"}[1m])) by (midas_outcome)",
+          "legendFormat": "{{ midas_outcome }}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency Percentiles (all routes)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_duration_seconds_bucket{deployment_environment=\"$environment\",http_route=~\"$route\"}[5m])) by (le)) * 1000",
+          "legendFormat": "P99"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "histogram_quantile(0.90, sum(rate(http_server_request_duration_seconds_bucket{deployment_environment=\"$environment\",http_route=~\"$route\"}[5m])) by (le)) * 1000",
+          "legendFormat": "P90"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_request_duration_seconds_bucket{deployment_environment=\"$environment\",http_route=~\"$route\"}[5m])) by (le)) * 1000",
+          "legendFormat": "P50"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "P90 Latency by Route",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_AMP}" },
+          "expr": "histogram_quantile(0.90, sum(rate(http_server_request_duration_seconds_bucket{deployment_environment=\"$environment\",http_route=~\"$route\"}[5m])) by (le, http_route)) * 1000",
+          "legendFormat": "{{ http_route }}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{{- if .Values.loginPod.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-pod
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: login-pod
+    {{- include "routing-tier.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: login-pod
+  ports:
+    - name: http
+      port: {{ .Values.loginPod.servicePort }}
+      targetPort: http
+{{- end }}

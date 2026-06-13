@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "_comment": "896130034724 is the EXL Jenkins CICD master account. DevOpsJenkinsCICDNodeRole is the IAM role assumed by Jenkins build nodes to obtain cross-account deployer credentials via OIDC.",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::896130034724:role/DevOpsJenkinsCICDNodeRole"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}

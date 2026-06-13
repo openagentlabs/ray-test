@@ -1,0 +1,23 @@
+# At most one pod (see templates/deployment.yaml strategy.maxSurge 0; values.schema.json caps replicaCount).
+replicaCount: 1
+# Keep rollout progress window longer than the Kubernetes default (600s) so
+# image pull + startup latency does not fail otherwise healthy updates.
+progressDeadlineSeconds: 1800
+image:
+  repository: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8080
+# Node production-server listens here (see frontend/Dockerfile production stage)
+containerPort: 8080
+# Same-origin /api proxy target (in-cluster DNS)
+# Fortify "Insecure Transport": false positive.
+# Cluster-internal URL (*.svc.cluster.local). No external exposure.
+# Accepted risk per ADR 0010.
+backendUpstream: "http://midas-api-backend-svc.midas-apps.svc.cluster.local:8000"
+rollout:
+  # CI sets this to BUILD_NUMBER so each deploy gets a new pod template (new ReplicaSet)
+  suffix: ""
+resources: {}

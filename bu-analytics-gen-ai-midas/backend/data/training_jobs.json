@@ -1,0 +1,12 @@
+{
+  "auto_train_6ad24ca7-07af-4740-976f-6519167677ff_1774445558_9da013aa": {
+    "status": "completed",
+    "progress": 100,
+    "message": "Training completed successfully",
+    "created_at": 1774445558.1247401,
+    "training_type": "auto",
+    "dataset_id": "6ad24ca7-07af-4740-976f-6519167677ff",
+    "error": null,
+    "model_id": null
+  }
+}

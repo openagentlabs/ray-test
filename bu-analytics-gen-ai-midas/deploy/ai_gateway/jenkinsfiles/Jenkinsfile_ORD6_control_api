@@ -1,0 +1,253 @@
+// midas-ai-gateway-control-api-ORD6
+//
+// Builds and deploys the control-api (c1-api) to midas-eks-aigtw-dev using a
+// zero-JFrog Dockerfile (`deploy/ai_gateway/CI/Dockerfile.c1-api-midas`) and
+// MIDAS shims for `exlerate_logging` and `exlerate_database` (see
+// `deploy/ai_gateway/vendored-shims/`). Nothing in `ai_gateway/` is modified.
+//
+// Pipeline flow:
+//   1. Checkout (with in-tree submodule update).
+//   2. Assume cross-account role + configure kubectl against dedicated EKS.
+//   3. Build the container image from the repo root.
+//   4. Push to MIDAS ECR (creates the repo on first run — idempotent).
+//   5. helm upgrade --install the `control-api` chart into the `c1-api`
+//      namespace, passing the freshly-built image.
+//
+// Reads:
+//   ai_gateway/helm/control-api/values.yaml            (upstream baseline)
+//   deploy/ai_gateway/helm/control-api/values-midas-${ENVIRONMENT}.yaml (MIDAS overrides)
+//   deploy/ai_gateway/CI/Dockerfile.c1-api-midas       (MIDAS-only build)
+//   deploy/ai_gateway/CI/requirements-c1-api-midas.txt (explicit PyPI deps)
+//   deploy/ai_gateway/vendored-shims/                  (exlerate_* shims)
+//
+// Depends on:
+//   ORD1 (RDS, langfuse-org-keys secret, litellm-api-key secret, c1-api IRSA,
+//         c1-alb-config ConfigMap, `c1-api` namespace),
+//   ORD4 (Langfuse reachable for observability),
+//   ORD5 (LiteLLM reachable for proxy orchestration).
+//
+// Bootstrap-mode shortcuts (mirrors ORD3/ORD4/ORD5):
+//   * Uses EXLJenkinsCrossAccountRole-BU instead of the dedicated AI-GW role (M-14 pending).
+//   * No HTTPS_PROXY credential — `cicd` agent has corporate egress configured at the host.
+// SOP: .cursor/scratch/sop-capture-2026-04-19_1529.md (Step 36)
+
+pipeline {
+    agent { label 'cicd' }
+
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev'], description: 'Target environment.')
+        choice(name: 'ACTION',      choices: ['install', 'uninstall'], description: 'Helm action.')
+        booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Render without applying.')
+        string(name: 'IMAGE_REPO', defaultValue: '811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-control-api', description: 'control-api image repo (MIDAS ECR).')
+        string(name: 'IMAGE_TAG',  defaultValue: '', description: 'Image tag; defaults to 1.0.0-midas-<BUILD_NUMBER> if blank.')
+    }
+
+    environment {
+        AWS_REGION       = 'us-east-1'
+        AWS_ACCOUNT_ID   = '811391286931'
+        // TODO(isolation): swap to EXLJenkinsAIGatewayCrossAccountRole-BU after M-14.
+        AWS_ROLE_ARN     = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/EXLJenkinsCrossAccountRole-BU"
+        EKS_CLUSTER      = "midas-eks-aigtw-${params.ENVIRONMENT}"
+        NAMESPACE        = 'c1-api'
+        RELEASE          = 'control-api'
+        UPSTREAM_VALUES  = 'ai_gateway/helm/control-api/values.yaml'
+        MIDAS_VALUES     = "deploy/ai_gateway/helm/control-api/values-midas-${params.ENVIRONMENT}.yaml"
+        DOCKERFILE       = 'deploy/ai_gateway/CI/Dockerfile.c1-api-midas'
+        ECR_REPO_NAME    = 'midas-aigtw-dev-control-api'
+        IMAGE_REPO       = "${params.IMAGE_REPO}"
+        DRY_FLAG         = "${params.DRY_RUN ? '--dry-run' : ''}"
+    }
+
+    stages {
+        stage('Checkout (with in-tree fork submodule)') {
+            steps {
+                checkout scm
+                sh 'git submodule update --init --recursive'
+            }
+        }
+
+        stage('Configure kubectl + helm against dedicated EKS') {
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+                        kubectl get nodes
+                        helm version
+                    '''
+                }
+            }
+        }
+
+        stage('Resolve image tag') {
+            steps {
+                script {
+                    env.RESOLVED_IMAGE_TAG = params.IMAGE_TAG?.trim() ?: "1.0.0-midas-${env.BUILD_NUMBER}"
+                    echo "Using image tag: ${env.RESOLVED_IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Build control-api container (MIDAS Dockerfile, zero-JFrog)') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        # Ensure the target ECR repo exists (first-run idempotency).
+                        aws ecr describe-repositories \
+                            --region "$AWS_REGION" \
+                            --repository-names "$ECR_REPO_NAME" >/dev/null 2>&1 || \
+                        aws ecr create-repository \
+                            --region "$AWS_REGION" \
+                            --repository-name "$ECR_REPO_NAME" \
+                            --image-scanning-configuration scanOnPush=true \
+                            --encryption-configuration encryptionType=AES256 >/dev/null
+
+                        # Login once for the build/push.
+                        aws ecr get-login-password --region "$AWS_REGION" | \
+                            docker login --username AWS --password-stdin \
+                            "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+                        # Build from repo root so both `ai_gateway/` and `deploy/ai_gateway/`
+                        # are visible to the Dockerfile's COPY directives.
+                        docker build \
+                            --file "$DOCKERFILE" \
+                            --tag "${IMAGE_REPO}:${RESOLVED_IMAGE_TAG}" \
+                            --tag "${IMAGE_REPO}:latest" \
+                            .
+                    '''
+                }
+            }
+        }
+
+        stage('Push control-api image to MIDAS ECR') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        docker push "${IMAGE_REPO}:${RESOLVED_IMAGE_TAG}"
+                        docker push "${IMAGE_REPO}:latest"
+                    '''
+                }
+            }
+        }
+
+        stage('Verify langfuse-org-keys secret (owned by ORD1 Terraform)') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    // Before 2026-04-20 this pipeline imperatively created a combined
+                    // `langfuse-org-keys` Secret (public_key + secret_key) inside the
+                    // c1-api namespace to satisfy the upstream control-api chart's hard-coded
+                    // volume mount.  Ownership has now moved to ORD1 Terraform
+                    // (modules-midas/c1_api_app_deps.tf -> kubernetes_secret_v1.langfuse_org_keys).
+                    // ORD6 only VERIFIES the secret exists — it is no longer responsible for
+                    // creating or updating it, so rotations flow through Terraform and the
+                    // secret's state is tracked in the TF state file.
+                    sh '''
+                        set -e
+                        if ! kubectl -n "$NAMESPACE" get secret langfuse-org-keys >/dev/null 2>&1; then
+                            echo "ERROR: secret $NAMESPACE/langfuse-org-keys is missing." >&2
+                            echo "It is owned by ORD1 (modules-midas/c1_api_app_deps.tf). Re-run ORD1 before ORD6." >&2
+                            exit 1
+                        fi
+                        kubectl -n "$NAMESPACE" get secret langfuse-org-keys -o name
+                    '''
+                }
+            }
+        }
+
+        stage('Helm install/upgrade control-api') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        # Build the ALB ingress overlay from the c1-alb-config ConfigMap
+                        # that ORD1 publishes (mirrors the ORD4/ORD5 pattern).
+                        ACM_CERT_ARN=$(kubectl -n "$NAMESPACE" get cm c1-alb-config -o jsonpath='{.data.ACM_CERT_ARN}' 2>/dev/null || echo "")
+                        SUBNETS=$(kubectl -n "$NAMESPACE" get cm c1-alb-config -o jsonpath='{.data.SUBNETS}' 2>/dev/null || echo "")
+                        AWS_ALB_SG=$(kubectl -n "$NAMESPACE" get cm c1-alb-config -o jsonpath='{.data.AWS_ALB_SG}' 2>/dev/null || echo "")
+
+                        cat > /tmp/alb-values.yaml <<EOF
+ingress:
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: "$ACM_CERT_ARN"
+    alb.ingress.kubernetes.io/subnets: "$SUBNETS"
+    alb.ingress.kubernetes.io/security-groups: "$AWS_ALB_SG"
+EOF
+
+                        # Note: config.createLocalSecret is left at the overlay's default
+                        # (false) because we already created langfuse-org-keys ourselves in
+                        # the previous stage from the real values in the langfuse namespace.
+                        # --wait + --atomic: block until every resource is Ready; roll back
+                        # automatically on any failure (Helm would otherwise report success
+                        # as soon as the Deployment object was created, even if the Pod was
+                        # CrashLoopBackOff). --atomic includes auto-rollback on timeout so a
+                        # bad image tag never leaves the cluster in a half-upgraded state.
+                        TS=$(date +%s)
+                        helm upgrade --install "$RELEASE" ai_gateway/helm/control-api \
+                            --namespace "$NAMESPACE" --create-namespace \
+                            --values "$UPSTREAM_VALUES" \
+                            --values "$MIDAS_VALUES" \
+                            --values /tmp/alb-values.yaml \
+                            --set image.repository="$IMAGE_REPO" \
+                            --set image.tag="$RESOLVED_IMAGE_TAG" \
+                            --set-string podAnnotations.deploy-timestamp="$TS" \
+                            --wait --atomic --timeout 10m \
+                            ${DRY_FLAG:-}
+                    '''
+                }
+            }
+        }
+
+        stage('Post-deploy sanity: confirm every image comes from MIDAS ECR') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        echo "=== All container + initContainer images in $NAMESPACE ==="
+                        kubectl -n "$NAMESPACE" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\\n"}{range .spec.containers[*]}  container={.image}{"\\n"}{end}{range .spec.initContainers[*]}  init={.image}{"\\n"}{end}{end}' \
+                          | tee /tmp/c1-images.txt
+
+                        BAD=$(grep -oE "(container|init)=[^ ]+" /tmp/c1-images.txt | awk -F= '{print $2}' \
+                              | grep -vE '^811391286931\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/' || true)
+                        if [ -n "$BAD" ]; then
+                            echo "FAIL: non-MIDAS-ECR images detected:" >&2
+                            echo "$BAD" >&2
+                            exit 1
+                        fi
+                        echo "PASS: every running image is MIDAS ECR."
+                    '''
+                }
+            }
+        }
+
+        stage('Helm uninstall control-api') {
+            when { expression { params.ACTION == 'uninstall' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        helm uninstall "$RELEASE" --namespace "$NAMESPACE" ${DRY_FLAG:-} || true
+                    '''
+                }
+            }
+        }
+
+        stage('Health check') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        kubectl -n "$NAMESPACE" rollout status deployment/"$RELEASE" --timeout=10m
+                    '''
+                }
+            }
+        }
+    }
+}

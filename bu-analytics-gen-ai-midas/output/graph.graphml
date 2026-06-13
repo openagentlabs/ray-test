@@ -1,0 +1,1502 @@
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d0" for="edge" attr.name="weight" attr.type="double" />
+  <graph edgedefault="undirected">
+    <node id="BUREAU DATA" />
+    <node id="EXTERNAL MACRO" />
+    <node id="INTERNAL BEHAVIORAL" />
+    <node id="BUREAU SCORE CHANGE 6M" />
+    <node id="NEW ACCOUNTS OPENED 3M" />
+    <node id="TOTAL CREDIT INQUIRIES 6M" />
+    <node id="UNEMPLOYMENT RATE STATE" />
+    <node id="GDP GROWTH RATE" />
+    <node id="PAYMENT CONSISTENCY SCORE" />
+    <node id="UTILIZATION TREND" />
+    <node id="TRANSACTION VELOCITY" />
+    <node id="CUSTOMER ID" />
+    <node id="ACCOUNT ID" />
+    <node id="AS OF DATE" />
+    <node id="SNAPSHOT DATE" />
+    <node id="CHARGEOFF DATE" />
+    <node id="RECOVERY DATE" />
+    <node id="PD LABELING POLICY" />
+    <node id="ACCOUNT" />
+    <node id="EARLY DEFAULT INDICATORS" />
+    <node id="TECHNICAL DEFAULTS" />
+    <node id="DISPUTED TRANSACTIONS" />
+    <node id="NATURAL DISASTERS" />
+    <node id="EVER 30+ DPD" />
+    <node id="FPD 30" />
+    <node id="FPD 60" />
+    <node id="CHARGEOFF DEFAULT" />
+    <node id="BANKRUPTCY DEFAULT" />
+    <node id="FRAUD DESIGNATION" />
+    <node id="DECEASED STATUS" />
+    <node id="AGENT RUNBOOK PREP ONLY" />
+    <node id="01_PROFILE_AND_SCHEMA" />
+    <node id="02_SNAPSHOT_AND_LEAKAGE_GUARD" />
+    <node id="03_DQ_CHECKS" />
+    <node id="04_SEGMENT_SELECTION" />
+    <node id="05_IMPUTATION_SELECTION" />
+    <node id="06_FEATURE_DERIVATION" />
+    <node id="08_BINNING_AND_ENCODING" />
+    <node id="09_EDA_AND_DRIFT" />
+    <node id="10_FINAL_VALIDATION" />
+    <node id="ARTIFACTS TO PRODUCE" />
+    <node id="KERNEL" />
+    <node id="AGENT" />
+    <node id="DATA INTEGRITY" />
+    <node id="FEATURES" />
+    <node id="TRANSFORMATION PIPELINE" />
+    <node id="ACCEPTANCE GATES" />
+    <node id="HYPOTHESIS TESTS" />
+    <node id="PLOTS/TABLES" />
+    <node id="OUT_DIR" />
+    <node id="DATASETS" />
+    <node id="DICTIONARIES" />
+    <node id="REPORTS" />
+    <node id="DATA QUALITY MONITORING" />
+    <node id="MODEL BIAS MONITORING" />
+    <node id="DISTRIBUTION SHIFTS" />
+    <node id="FEATURE DRIFT" />
+    <node id="KOLMOGOROV_SMIRNOV" />
+    <node id="WASSERSTEIN" />
+    <node id="JENSEN_SHANNON" />
+    <node id="PSI" />
+    <node id="PERFORMANCE DEGRADATION" />
+    <node id="FAIRNESS METRICS" />
+    <node id="PROTECTED ATTRIBUTES" />
+    <node id="AGENT DECISION TREES" />
+    <node id="FEATURE ENGINEERING PRIORITY" />
+    <node id="MISSING DATA HANDLING" />
+    <node id="MODEL SELECTION" />
+    <node id="OUTLIER HANDLING" />
+    <node id="SEGMENT SELECTION" />
+    <node id="DOMAIN EXPERT FEATURES" />
+    <node id="SIMPLE RATIOS" />
+    <node id="UNIVARIATE TRANSFORMS" />
+    <node id="BIVARIATE INTERACTIONS" />
+    <node id="COMPLEX AGGREGATIONS" />
+    <node id="DEEP FEATURE SYNTHESIS" />
+    <node id="SEGMENT DISCOVERY POLICY" />
+    <node id="GLOBAL STATS" />
+    <node id="PANDAS" />
+    <node id="K-FOLDS" />
+    <node id="COMPUTE SEGMENT AUC" />
+    <node id="SCORE WEIGHTS" />
+    <node id="EXCLUDE PATTERNS" />
+    <node id="CANDIDATE NAME PATTERNS" />
+    <node id="INCLUDE PATTERNS" />
+    <node id="DEPLOYMENT" />
+    <node id="DERIVED SEGMENTS" />
+    <node id="KNN IMPUTE" />
+    <node id="MICE" />
+    <node id="DECISION TREE" />
+    <node id="IMPUTATION SELECTOR" />
+    <node id="AUC" />
+    <node id="CV" />
+    <node id="KS" />
+    <node id="ADVANCED IMPUTATION" />
+    <node id="SIMPLE IMPUTATION" />
+    <node id="CATEGORICAL" />
+    <node id="NUMERIC" />
+    <node id="EVALUATION" />
+    <node id="UTILITY WEIGHTS" />
+    <node id="RESOURCE LIMITS" />
+    <node id="KERNEL BASED" />
+    <node id="HYPERLOGLOG FOR CARDINALITY" />
+    <node id="RESERVOIR SAMPLING" />
+    <node id="QUANTILE SKETCHES" />
+    <node id="BLOOM FILTERS" />
+    <node id="CACHING" />
+    <node id="EXPENSIVE OPERATIONS" />
+    <node id="CHUNK ROWS" />
+    <node id="MAX RAM GB" />
+    <node id="MAX RUNTIME MINUTES" />
+    <node id="PERFORMANCE OPTIMIZATION" />
+    <node id="REDIS" />
+    <node id="SAMPLING" />
+    <node id="EDA" />
+    <node id="APPROXIMATIONS" />
+    <node id="PARALLELIZATION" />
+    <node id="CHUNK SIZE" />
+    <node id="DASK" />
+    <node id="RAY" />
+    <node id="MULTIPROCESSING" />
+    <node id="JOBLIB" />
+    <node id="ERROR RECOVERY" />
+    <node id="COMPUTATION FAILURES" />
+    <node id="CONVERGENCE ISSUES" />
+    <node id="OOM ERRORS" />
+    <node id="TIMEOUT ERRORS" />
+    <node id="DATA ISSUES" />
+    <node id="MISSING CRITICAL COLUMNS" />
+    <node id="SHAPE MISMATCHES" />
+    <node id="UNEXPECTED DTYPES" />
+    <node id="QUALITY ISSUES" />
+    <node id="EXTREME OUTLIERS" />
+    <node id="HIGH MISSING RATE" />
+    <node id="KBP" />
+    <node id="DATA PROFILING" />
+    <node id="FEATURE IMPORTANCE STABILITY" />
+    <node id="LEAKAGE DETECTION" />
+    <node id="PSI CALCULATION" />
+    <node id="DF" />
+    <node id="NUMPY" />
+    <node id="SCIPY" />
+    <node id="SCHEMA CONTRACT" />
+    <node id="BALANCE" />
+    <node id="PAYMENT AMOUNT" />
+    <node id="OUTSTANDING BALANCE" />
+    <node id="CURRENT BALANCE" />
+    <node id="CLIENT ID" />
+    <node id="BORROWER ID" />
+    <node id="PAYMENT" />
+    <node id="KERNEL BASE" />
+    <node id="SURROGATE KEY STRATEGY" />
+    <node id="HASH FUNCTION" />
+    <node id="CUSTOMER" />
+    <node id="ROW NUMBER" />
+    <node id="UNIQUENESS POLICY" />
+    <node id="DQ ACTIONS" />
+    <node id="EXCLUDE NAME PATTERNS" />
+    <node id="ID NAME PATTERNS" />
+    <node id="MAX NEAR UNIQUE DUPS" />
+    <node id="NEAR UNIQUE THRESHOLD" />
+    <node id="PREP ACCEPTANCE GATES" />
+    <node id="VALID KEY" />
+    <node id="MISSING RATE" />
+    <node id="BINNING SAFETY" />
+    <node id="SEGMENT BUCKETS" />
+    <node id="CORRELATION MATRIX" />
+    <node id="DATA DICTIONARY" />
+    <node id="OUTLIERS" />
+    <node id="MISSING VALUES" />
+    <node id="BUSINESS LOGIC" />
+    <node id="FEATURE SET" />
+    <node id="LEAKAGE FIELDS" />
+    <node id="MIN_BIN_SIZE_PCT" />
+    <node id="MIN_BAD_PER_BIN" />
+    <node id="TRAIN/VALID/TEST SPLIT" />
+    <node id="FEATURE IMPORTANCE" />
+    <node id="LINEAGE DOCUMENTATION" />
+    <node id="EXTREME CLASS IMBALANCE" />
+    <node id="KBBINNINGENCODING" />
+    <node id="COMPUTE_WOE" />
+    <node id="BINNING_ENCODING" />
+    <node id="MONOTONICITY_DETECTION" />
+    <node id="SELECTION" />
+    <node id="ADAPTIVE_BINNING" />
+    <node id="LIGHTGBM" />
+    <node id="LOGISTIC REGRESSION" />
+    <node id="SCALING" />
+    <node id="EARLY STOPPING ROUNDS" />
+    <node id="POLYNOMIAL FEATURES" />
+    <node id="ENCODING" />
+    <node id="NEURAL NETWORKS" />
+    <node id="DROPOUT RATE" />
+    <node id="BATCH NORMALIZATION" />
+    <node id="RANDOM FOREST" />
+    <node id="XGBOOST" />
+    <node id="MISSING VALUE HANDLING" />
+    <node id="MONOTONIC CONSTRAINTS" />
+    <node id="MAX CARDINALITY" />
+    <node id="UNIT TESTS PREP" />
+    <node id="NO_POST_ASOF_FEATURES" />
+    <node id="ID_UNIQUENESS_OR_SURROGATE" />
+    <node id="IMPULATION_METHODS_RECORDED" />
+    <node id="BINS_MEET_MIN_SIZE" />
+    <node id="LINEAGE_COMPLETE" />
+    <node id="NO_CONSTANT_FEATURES" />
+    <node id="TARGET_LEAKAGE_CHECK" />
+    <node id="KB" />
+    <node id="ID_COLUMNS" />
+    <node id="IMPUTATION_LOG" />
+    <node id="COL" />
+    <node id="TARGET_CORRELATIONS" />
+    <node id="FEATURE_DATE" />
+    <node id="AS_OF_DATE" />
+    <node id="BIN_SIZE" />
+    <node id="MIN_BIN_SIZE" />
+    <node id="LINEAGE_DICT" />
+    <node id="FINAL_FEATURES" />
+    <node id="COMPLETENESS" />
+    <node id="MAX MISSING RATE PER FEATURE" />
+    <node id="REQUIRED NOT NULL PATTERNS" />
+    <node id="APPLICATION DATE" />
+    <node id="AGE" />
+    <node id="LOAN AMOUNT" />
+    <node id="CREDIT LIMIT" />
+    <node id="INTEREST RATE" />
+    <node id="TERM" />
+    <node id="INCOME" />
+    <node id="DTI" />
+    <node id="SCORE" />
+    <node id="LIMIT" />
+    <node id="PAID TO DATE" />
+    <node id="ORIGINAL AMOUNT" />
+    <node id="IMPUTATION PLAYBOOK" />
+    <node id="DEEP LEARNING" />
+    <node id="COMPUTATION SCOPE" />
+    <node id="AUTOENCODER" />
+    <node id="GAN IMPUTE" />
+    <node id="BAYESIAN RIDGE" />
+    <node id="MISSFOREST" />
+    <node id="TARGET ENCODING" />
+    <node id="ONE HOT ENCODING" />
+    <node id="WINSORIZE" />
+    <node id="LOG1P" />
+    <node id="BACKOFF" />
+    <node id="DATES" />
+    <node id="BASEL REQUIREMENTS" />
+    <node id="FAIR LENDING" />
+    <node id="SR 11 7 COMPLIANCE" />
+    <node id="MARGIN OF CONSERVATISM" />
+    <node id="DOWNTURN ADJUSTMENT" />
+    <node id="PD FLOOR" />
+    <node id="GDPR COMPLIANCE" />
+    <node id="DOCUMENTATION REQUIRED" />
+    <node id="BIASED MITIGATION" />
+    <node id="DISPARATE IMPACT THRESHOLD" />
+    <node id="K ANONYMITY" />
+    <node id="DIFFERENTIAL PRIVACY" />
+    <node id="DATA RETENTION DAYS" />
+    <node id="CONCEPTUAL SOUNDNESS" />
+    <node id="OUTCOMES ANALYSIS" />
+    <node id="BENCHMARKING" />
+    <node id="SENSITIVITY ANALYSIS" />
+    <node id="REWEIGHTING" />
+    <node id="PREPROCESSING" />
+    <node id="IN PROCESSING" />
+    <node id="POST PROCESSING" />
+    <node id="LEAKAGE PREVENTION" />
+    <node id="ADVANCED DETECTION" />
+    <node id="AUDITS" />
+    <node id="SNAPSHOTTING" />
+    <node id="EMBARGO DAYS" />
+    <node id="GAP DAYS" />
+    <node id="CROSS VALIDATION PURGE" />
+    <node id="FUTURE INFORMATION SCAN" />
+    <node id="TIMESTAMP COMPARISON" />
+    <node id="CAUSALITY CHECK" />
+    <node id="BUSINESS LOGIC VALIDATION" />
+    <node id="PURGED CV RECOMMENDATION" />
+    <node id="TIME LEAK CHECK" />
+    <node id="DROP FIELDS PATTERNS" />
+    <node id="FORBID TEMPORAL" />
+    <node id="ISOTONIC REGRESSION" />
+    <node id="ADJACENT VIOLATORS" />
+    <node id="SPLINE SMOOTHING" />
+    <node id="WOE SMOOTHING" />
+    <node id="MONOTONICITY ENFORCEMENT" />
+    <node id="IV_TOO_HIGH" />
+    <node id="NON_MONOTONIC_BAD_RATE" />
+    <node id="PSI_BY_BIN_GT" />
+    <node id="CONFIG DEFAULTS" />
+    <node id="CURRENCY" />
+    <node id="DPD THRESH" />
+    <node id="GRACE DAYS" />
+    <node id="HI CARD THRESH" />
+    <node id="INTERACTION GAIN" />
+    <node id="KFOLDS" />
+    <node id="MAX MISS" />
+    <node id="MIN BIN" />
+    <node id="MIN MI" />
+    <node id="MIN VARIANCE" />
+    <node id="PAIR CUT" />
+    <node id="PERF WIN" />
+    <node id="PSI FAIL" />
+    <node id="PSI WARN" />
+    <node id="RARE FLOOR" />
+    <node id="SEED" />
+    <node id="SEG1" />
+    <node id="SEG2" />
+    <node id="STRICT MODE" />
+    <node id="TIMEZONE" />
+    <node id="VIF" />
+    <node id="DPD_THRESH" />
+    <node id="GRACE_DAYS" />
+    <node id="HI_CARD_THRESH" />
+    <node id="INTERACTION_GAIN" />
+    <node id="MAX_MISS" />
+    <node id="MIN_BIN" />
+    <node id="MIN_MI" />
+    <node id="MIN_VARIANCE" />
+    <node id="PAIR_CUT" />
+    <node id="PERF_WIN" />
+    <node id="PSI_FAIL" />
+    <node id="PSI_WARN" />
+    <node id="RARE_FLOOR" />
+    <node id="STRICT_MODE" />
+    <node id="SKLEARN" />
+    <node id="LASSOCV" />
+    <node id="ALPHA RANGE" />
+    <node id="L1 RATIO" />
+    <node id="PERMUTATION" />
+    <node id="GAIN" />
+    <node id="SHAP" />
+    <node id="MULTI COLLINEARITY REMOVAL" />
+    <node id="VARIANCE THRESHOLD" />
+    <node id="MUTUAL INFO THRESHOLD" />
+    <node id="CHI2 TEST" />
+    <node id="ANOVA F" />
+    <node id="RFE" />
+    <node id="FORWARD SELECTION" />
+    <node id="BACKWARD ELIMINATION" />
+    <node id="IMPORTANCE TRACKING" />
+    <node id="FEATURE SELECTION" />
+    <node id="MULTI COLLINEARITY" />
+    <node id="CORRELATION THRESHOLD" />
+    <node id="KBS" />
+    <node id="EMPLOYMENT START DATE" />
+    <node id="ADDRESS START DATE" />
+    <node id="INQUIRY DATE" />
+    <node id="ACCOUNT OPEN DATE" />
+    <node id="FEATURE DERIVATION" />
+    <node id="MAX PSI TRAIN VALID" />
+    <node id="MIN COVERAGE" />
+    <node id="MIN DELTA AUC PROBE" />
+    <node id="CATEGORICAL GROUPINGS" />
+    <node id="COUNTS INDICATORS" />
+    <node id="FORBIDDEN PATTERNS" />
+    <node id="RATIOS" />
+    <node id="TRANSFORMS" />
+    <node id="FEATURE INTERACTIONS" />
+    <node id="GUARDRAILS" />
+    <node id="TIME SERIES FEATURES" />
+    <node id="HYPOTHESIS TESTING" />
+    <node id="MULTIVARIATE ANALYSIS" />
+    <node id="VISUALIZATION GALLERY" />
+    <node id="BIVARIATE WITH TARGET" />
+    <node id="DEPENDENCY AND RISK" />
+    <node id="DRIFT CHECKS" />
+    <node id="MISSINGNESS MECHANISMS" />
+    <node id="OUTPUTS" />
+    <node id="UNIVARIATE" />
+    <node id="AI AGENT" />
+    <node id="RISK ANALYTICS" />
+    <node id="DATA ENGINEERING" />
+    <node id="MODEL RISK" />
+    <node id="COMPLIANCE" />
+    <node id="BINNING AND ENCODING" />
+    <node id="FEATURE ENGINEERING PRINCIPLES" />
+    <node id="CENSORING AND OBSERVATION" />
+    <node id="DATA QUALITY AND VALIDITY" />
+    <node id="CROSS VALIDATION AND FOLDS" />
+    <node id="EDA OBJECTIVES" />
+    <node id="ACCEPTANCE GATES FOR PREP" />
+    <node id="RISK" />
+    <node id="FINANCE" />
+    <node id="PRICING" />
+    <node id="COLLECTIONS" />
+    <node id="AUDIT" />
+    <node id="PRODUCT" />
+    <node id="EXPECTED LOSS" />
+    <node id="PROBABILITY OF DEFAULT" />
+    <node id="LOSS GIVEN DEFAULT" />
+    <node id="EXPOSURE AT DEFAULT" />
+    <edge source="BUREAU DATA" target="EXTERNAL MACRO">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="BUREAU DATA" target="INTERNAL BEHAVIORAL">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="BUREAU DATA" target="BUREAU SCORE CHANGE 6M">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="BUREAU DATA" target="NEW ACCOUNTS OPENED 3M">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="BUREAU DATA" target="TOTAL CREDIT INQUIRIES 6M">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="EXTERNAL MACRO" target="INTERNAL BEHAVIORAL">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="EXTERNAL MACRO" target="UNEMPLOYMENT RATE STATE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="EXTERNAL MACRO" target="GDP GROWTH RATE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="INTERNAL BEHAVIORAL" target="PAYMENT CONSISTENCY SCORE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="INTERNAL BEHAVIORAL" target="UTILIZATION TREND">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="INTERNAL BEHAVIORAL" target="TRANSACTION VELOCITY">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="CUSTOMER ID" target="ACCOUNT ID">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CUSTOMER ID" target="DECISION TREE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="CUSTOMER ID" target="SCHEMA CONTRACT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CUSTOMER ID" target="CLIENT ID">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="CUSTOMER ID" target="BORROWER ID">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT ID" target="SCHEMA CONTRACT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="AS OF DATE" target="SNAPSHOT DATE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="AS OF DATE" target="KERNEL BASE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="AS OF DATE" target="APPLICATION DATE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AS OF DATE" target="SNAPSHOTTING">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="AS OF DATE" target="CONFIG DEFAULTS">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="AS OF DATE" target="KBS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="CHARGEOFF DATE" target="RECOVERY DATE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="PD LABELING POLICY" target="ACCOUNT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PD LABELING POLICY" target="EARLY DEFAULT INDICATORS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="TECHNICAL DEFAULTS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="DISPUTED TRANSACTIONS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="NATURAL DISASTERS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="EVER 30+ DPD">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="FPD 30">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="FPD 60">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="CHARGEOFF DEFAULT">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="BANKRUPTCY DEFAULT">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="FRAUD DESIGNATION">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="ACCOUNT" target="DECEASED STATUS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="01_PROFILE_AND_SCHEMA">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="02_SNAPSHOT_AND_LEAKAGE_GUARD">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="03_DQ_CHECKS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="04_SEGMENT_SELECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="05_IMPUTATION_SELECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="06_FEATURE_DERIVATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="08_BINNING_AND_ENCODING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="09_EDA_AND_DRIFT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="10_FINAL_VALIDATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="ARTIFACTS TO PRODUCE">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="KERNEL">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="AGENT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="DATA INTEGRITY">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="FEATURES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="TRANSFORMATION PIPELINE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="ACCEPTANCE GATES">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="HYPOTHESIS TESTS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="PLOTS/TABLES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT RUNBOOK PREP ONLY" target="OUT_DIR">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="ARTIFACTS TO PRODUCE" target="DATASETS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="ARTIFACTS TO PRODUCE" target="DICTIONARIES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="ARTIFACTS TO PRODUCE" target="REPORTS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="DATA QUALITY MONITORING" target="MODEL BIAS MONITORING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="MODEL BIAS MONITORING" target="PERFORMANCE DEGRADATION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="MODEL BIAS MONITORING" target="FAIRNESS METRICS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="MODEL BIAS MONITORING" target="PROTECTED ATTRIBUTES">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="DISTRIBUTION SHIFTS" target="FEATURE DRIFT">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DISTRIBUTION SHIFTS" target="KOLMOGOROV_SMIRNOV">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DISTRIBUTION SHIFTS" target="WASSERSTEIN">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DISTRIBUTION SHIFTS" target="JENSEN_SHANNON">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DISTRIBUTION SHIFTS" target="PSI">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="FEATURE DRIFT" target="PERFORMANCE DEGRADATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PSI" target="CV">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PROTECTED ATTRIBUTES" target="FAIR LENDING">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="FEATURE ENGINEERING PRIORITY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="MISSING DATA HANDLING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="MODEL SELECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="OUTLIER HANDLING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="SEGMENT SELECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="DOMAIN EXPERT FEATURES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="SIMPLE RATIOS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="UNIVARIATE TRANSFORMS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="BIVARIATE INTERACTIONS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="COMPLEX AGGREGATIONS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="AGENT DECISION TREES" target="DEEP FEATURE SYNTHESIS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRIORITY" target="MISSING DATA HANDLING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRIORITY" target="SIMPLE RATIOS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRIORITY" target="UNIVARIATE TRANSFORMS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRIORITY" target="BIVARIATE INTERACTIONS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRIORITY" target="COMPLEX AGGREGATIONS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRIORITY" target="DEEP FEATURE SYNTHESIS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="MISSING DATA HANDLING" target="MODEL SELECTION">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="MODEL SELECTION" target="OUTLIER HANDLING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="MODEL SELECTION" target="SEGMENT SELECTION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="OUTLIER HANDLING" target="PREP ACCEPTANCE GATES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SEGMENT DISCOVERY POLICY" target="GLOBAL STATS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="SEGMENT DISCOVERY POLICY" target="PANDAS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SEGMENT DISCOVERY POLICY" target="K-FOLDS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="SEGMENT DISCOVERY POLICY" target="COMPUTE SEGMENT AUC">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="SEGMENT DISCOVERY POLICY" target="SCORE WEIGHTS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="PANDAS" target="KBP">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="PANDAS" target="COMPUTE_WOE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="EXCLUDE PATTERNS" target="CANDIDATE NAME PATTERNS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="CANDIDATE NAME PATTERNS" target="INCLUDE PATTERNS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="CANDIDATE NAME PATTERNS" target="DEPLOYMENT">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DEPLOYMENT" target="DERIVED SEGMENTS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="KNN IMPUTE" target="MICE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="MICE" target="BAYESIAN RIDGE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="MICE" target="MISSFOREST">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="DECISION TREE" target="IMPUTATION SELECTOR">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="AUC" target="CV">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="CV" target="KS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="ADVANCED IMPUTATION" target="SIMPLE IMPUTATION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="CATEGORICAL" target="NUMERIC">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="CATEGORICAL" target="BINNING_ENCODING">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="NUMERIC" target="BINNING_ENCODING">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="NUMERIC" target="DATES">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="EVALUATION" target="UTILITY WEIGHTS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="KERNEL BASED">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="HYPERLOGLOG FOR CARDINALITY">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="RESERVOIR SAMPLING">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="QUANTILE SKETCHES">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="BLOOM FILTERS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="CACHING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="EXPENSIVE OPERATIONS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="CHUNK ROWS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="MAX RAM GB">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="MAX RUNTIME MINUTES">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RESOURCE LIMITS" target="PERFORMANCE OPTIMIZATION">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="CACHING" target="REDIS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PERFORMANCE OPTIMIZATION" target="APPROXIMATIONS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="PERFORMANCE OPTIMIZATION" target="PARALLELIZATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SAMPLING" target="EDA">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="PARALLELIZATION" target="CHUNK SIZE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="PARALLELIZATION" target="DASK">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PARALLELIZATION" target="RAY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PARALLELIZATION" target="MULTIPROCESSING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="PARALLELIZATION" target="JOBLIB">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="ERROR RECOVERY" target="COMPUTATION FAILURES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="COMPUTATION FAILURES" target="CONVERGENCE ISSUES">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="COMPUTATION FAILURES" target="OOM ERRORS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="COMPUTATION FAILURES" target="TIMEOUT ERRORS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="COMPUTATION FAILURES" target="DATA ISSUES">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DATA ISSUES" target="MISSING CRITICAL COLUMNS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="DATA ISSUES" target="SHAPE MISMATCHES">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DATA ISSUES" target="UNEXPECTED DTYPES">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="DATA ISSUES" target="QUALITY ISSUES">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="QUALITY ISSUES" target="EXTREME OUTLIERS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="QUALITY ISSUES" target="HIGH MISSING RATE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="KBP" target="DATA PROFILING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KBP" target="FEATURE IMPORTANCE STABILITY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KBP" target="LEAKAGE DETECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KBP" target="PSI CALCULATION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="KBP" target="DF">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KBP" target="NUMPY">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBP" target="SCIPY">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DF" target="UNIT TESTS PREP">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="DF" target="ID_COLUMNS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="DF" target="IMPUTATION_LOG">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="DF" target="COL">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="DF" target="TARGET_CORRELATIONS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="NUMPY" target="COMPUTE_WOE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="SCHEMA CONTRACT" target="BALANCE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="SCHEMA CONTRACT" target="PAYMENT AMOUNT">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="BALANCE" target="OUTSTANDING BALANCE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BALANCE" target="CURRENT BALANCE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BALANCE" target="LIMIT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PAYMENT AMOUNT" target="PAYMENT">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="SURROGATE KEY STRATEGY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="HASH FUNCTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="CUSTOMER">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="ROW NUMBER">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="UNIQUENESS POLICY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="DQ ACTIONS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="EXCLUDE NAME PATTERNS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="ID NAME PATTERNS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="MAX NEAR UNIQUE DUPS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="KERNEL BASE" target="NEAR UNIQUE THRESHOLD">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="VALID KEY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="MISSING RATE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="BINNING SAFETY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="SEGMENT BUCKETS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="CORRELATION MATRIX">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="DATA DICTIONARY">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="OUTLIERS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="MISSING VALUES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="BUSINESS LOGIC">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="FEATURE SET">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="LEAKAGE FIELDS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="MIN_BIN_SIZE_PCT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="MIN_BAD_PER_BIN">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="TRAIN/VALID/TEST SPLIT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="FEATURE IMPORTANCE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="LINEAGE DOCUMENTATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="PREP ACCEPTANCE GATES" target="EXTREME CLASS IMBALANCE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="ISOTONIC REGRESSION">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="ADJACENT VIOLATORS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="SPLINE SMOOTHING">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="WOE SMOOTHING">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="MIN_BAD_PER_BIN">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="MIN_BIN_SIZE_PCT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="MONOTONICITY ENFORCEMENT">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="IV_TOO_HIGH">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="NON_MONOTONIC_BAD_RATE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="BINNING SAFETY" target="PSI_BY_BIN_GT">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="KBBINNINGENCODING" target="COMPUTE_WOE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KBBINNINGENCODING" target="BINNING_ENCODING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KBBINNINGENCODING" target="MONOTONICITY_DETECTION">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBBINNINGENCODING" target="SELECTION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="BINNING_ENCODING" target="ADAPTIVE_BINNING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="LIGHTGBM" target="LOGISTIC REGRESSION">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="LIGHTGBM" target="SCALING">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="LIGHTGBM" target="EARLY STOPPING ROUNDS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="LOGISTIC REGRESSION" target="POLYNOMIAL FEATURES">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="LOGISTIC REGRESSION" target="ENCODING">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="SCALING" target="MAX CARDINALITY">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="NEURAL NETWORKS" target="DROPOUT RATE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="NEURAL NETWORKS" target="BATCH NORMALIZATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="RANDOM FOREST" target="XGBOOST">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="RANDOM FOREST" target="MISSING VALUE HANDLING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="XGBOOST" target="MONOTONIC CONSTRAINTS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="NO_POST_ASOF_FEATURES">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="ID_UNIQUENESS_OR_SURROGATE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="IMPULATION_METHODS_RECORDED">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="BINS_MEET_MIN_SIZE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="LINEAGE_COMPLETE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="NO_CONSTANT_FEATURES">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="TARGET_LEAKAGE_CHECK">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="UNIT TESTS PREP" target="KB">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="RISK">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="FINANCE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="PRICING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="COLLECTIONS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="COMPLIANCE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="AUDIT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KB" target="PRODUCT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE_DATE" target="AS_OF_DATE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="BIN_SIZE" target="MIN_BIN_SIZE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="LINEAGE_DICT" target="FINAL_FEATURES">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="COMPLETENESS" target="MAX MISSING RATE PER FEATURE">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="COMPLETENESS" target="REQUIRED NOT NULL PATTERNS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="APPLICATION DATE" target="AGE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="LOAN AMOUNT" target="CREDIT LIMIT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="INTEREST RATE" target="TERM">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="INCOME" target="DTI">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="INCOME" target="SCORE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="PAID TO DATE" target="ORIGINAL AMOUNT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="IMPUTATION PLAYBOOK" target="DEEP LEARNING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="IMPUTATION PLAYBOOK" target="COMPUTATION SCOPE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="DEEP LEARNING" target="AUTOENCODER">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="DEEP LEARNING" target="GAN IMPUTE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="COMPUTATION SCOPE" target="BACKOFF">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="TARGET ENCODING" target="ONE HOT ENCODING">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="WINSORIZE" target="LOG1P">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="BASEL REQUIREMENTS" target="FAIR LENDING">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="BASEL REQUIREMENTS" target="SR 11 7 COMPLIANCE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="BASEL REQUIREMENTS" target="MARGIN OF CONSERVATISM">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BASEL REQUIREMENTS" target="DOWNTURN ADJUSTMENT">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BASEL REQUIREMENTS" target="PD FLOOR">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="FAIR LENDING" target="GDPR COMPLIANCE">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="FAIR LENDING" target="DOCUMENTATION REQUIRED">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="FAIR LENDING" target="BIASED MITIGATION">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="FAIR LENDING" target="DISPARATE IMPACT THRESHOLD">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SR 11 7 COMPLIANCE" target="CONCEPTUAL SOUNDNESS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SR 11 7 COMPLIANCE" target="OUTCOMES ANALYSIS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SR 11 7 COMPLIANCE" target="BENCHMARKING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="SR 11 7 COMPLIANCE" target="SENSITIVITY ANALYSIS">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="GDPR COMPLIANCE" target="K ANONYMITY">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="GDPR COMPLIANCE" target="DIFFERENTIAL PRIVACY">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="GDPR COMPLIANCE" target="DATA RETENTION DAYS">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BIASED MITIGATION" target="REWEIGHTING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="BIASED MITIGATION" target="PREPROCESSING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="BIASED MITIGATION" target="IN PROCESSING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="BIASED MITIGATION" target="POST PROCESSING">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="LEAKAGE PREVENTION" target="ADVANCED DETECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="LEAKAGE PREVENTION" target="AUDITS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="LEAKAGE PREVENTION" target="SNAPSHOTTING">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="LEAKAGE PREVENTION" target="EMBARGO DAYS">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="LEAKAGE PREVENTION" target="GAP DAYS">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="ADVANCED DETECTION" target="CROSS VALIDATION PURGE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="ADVANCED DETECTION" target="FUTURE INFORMATION SCAN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="AUDITS" target="PURGED CV RECOMMENDATION">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="AUDITS" target="TIME LEAK CHECK">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="SNAPSHOTTING" target="DROP FIELDS PATTERNS">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="SNAPSHOTTING" target="FORBID TEMPORAL">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="FUTURE INFORMATION SCAN" target="TIMESTAMP COMPARISON">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="FUTURE INFORMATION SCAN" target="CAUSALITY CHECK">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="FUTURE INFORMATION SCAN" target="BUSINESS LOGIC VALIDATION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="CURRENCY">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="DPD THRESH">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="GRACE DAYS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="HI CARD THRESH">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="INTERACTION GAIN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="KFOLDS">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MAX MISS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MIN BIN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MIN MI">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MIN VARIANCE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PAIR CUT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PERF WIN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PSI FAIL">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PSI WARN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="RARE FLOOR">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="SEED">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="SEG1">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="SEG2">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="STRICT MODE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="TIMEZONE">
+      <data key="d0">14.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="VIF">
+      <data key="d0">2.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="DPD_THRESH">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="GRACE_DAYS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="HI_CARD_THRESH">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="INTERACTION_GAIN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MAX_MISS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MIN_BIN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MIN_MI">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="MIN_VARIANCE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PAIR_CUT">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PERF_WIN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PSI_FAIL">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="PSI_WARN">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="RARE_FLOOR">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="CONFIG DEFAULTS" target="STRICT_MODE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="VIF" target="MULTI COLLINEARITY">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="SKLEARN" target="LASSOCV">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="LASSOCV" target="ALPHA RANGE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="LASSOCV" target="L1 RATIO">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="PERMUTATION" target="GAIN">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="GAIN" target="SHAP">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="MULTI COLLINEARITY REMOVAL" target="VARIANCE THRESHOLD">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="MULTI COLLINEARITY REMOVAL" target="MUTUAL INFO THRESHOLD">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="MULTI COLLINEARITY REMOVAL" target="CHI2 TEST">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="MULTI COLLINEARITY REMOVAL" target="ANOVA F">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="RFE" target="FORWARD SELECTION">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RFE" target="BACKWARD ELIMINATION">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FORWARD SELECTION" target="BACKWARD ELIMINATION">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="IMPORTANCE TRACKING" target="FEATURE SELECTION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="MULTI COLLINEARITY" target="CORRELATION THRESHOLD">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="EMPLOYMENT START DATE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KBS" target="ADDRESS START DATE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KBS" target="INQUIRY DATE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="ACCOUNT OPEN DATE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="KBS" target="FEATURE DERIVATION">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="KBS" target="MAX PSI TRAIN VALID">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KBS" target="MIN COVERAGE">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KBS" target="MIN DELTA AUC PROBE">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="CATEGORICAL GROUPINGS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="COUNTS INDICATORS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="FORBIDDEN PATTERNS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="KBS" target="RATIOS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="TRANSFORMS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="KBS" target="FEATURE INTERACTIONS">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="KBS" target="GUARDRAILS">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="KBS" target="TIME SERIES FEATURES">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="HYPOTHESIS TESTING" target="MULTIVARIATE ANALYSIS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="MULTIVARIATE ANALYSIS" target="VISUALIZATION GALLERY">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="BIVARIATE WITH TARGET" target="DEPENDENCY AND RISK">
+      <data key="d0">5.0</data>
+    </edge>
+    <edge source="DRIFT CHECKS" target="MISSINGNESS MECHANISMS">
+      <data key="d0">4.0</data>
+    </edge>
+    <edge source="OUTPUTS" target="UNIVARIATE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="AI AGENT" target="RISK ANALYTICS">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="RISK ANALYTICS" target="DATA ENGINEERING">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="RISK ANALYTICS" target="MODEL RISK">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="DATA ENGINEERING" target="COMPLIANCE">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="MODEL RISK" target="COMPLIANCE">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="BINNING AND ENCODING" target="FEATURE ENGINEERING PRINCIPLES">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="FEATURE ENGINEERING PRINCIPLES" target="DATA QUALITY AND VALIDITY">
+      <data key="d0">1.0</data>
+    </edge>
+    <edge source="CENSORING AND OBSERVATION" target="DATA QUALITY AND VALIDITY">
+      <data key="d0">7.0</data>
+    </edge>
+    <edge source="DATA QUALITY AND VALIDITY" target="ACCEPTANCE GATES FOR PREP">
+      <data key="d0">6.0</data>
+    </edge>
+    <edge source="CROSS VALIDATION AND FOLDS" target="EDA OBJECTIVES">
+      <data key="d0">8.0</data>
+    </edge>
+    <edge source="EXPECTED LOSS" target="PROBABILITY OF DEFAULT">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="EXPECTED LOSS" target="LOSS GIVEN DEFAULT">
+      <data key="d0">9.0</data>
+    </edge>
+    <edge source="EXPECTED LOSS" target="EXPOSURE AT DEFAULT">
+      <data key="d0">1.0</data>
+    </edge>
+  </graph>
+</graphml>

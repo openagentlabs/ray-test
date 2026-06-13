@@ -1,0 +1,46 @@
+{{- if .Values.loginPool.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: login-pod
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: login-pod
+    {{- include "routing-tier.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.loginPool.replicaCount }}
+  selector:
+    matchLabels:
+      app: login-pod
+  template:
+    metadata:
+      labels:
+        app: login-pod
+    spec:
+      containers:
+        - name: login-pod
+          image: "{{ required "loginPool.image.repository is required when loginPool.enabled" .Values.loginPool.image.repository }}:{{ .Values.loginPool.image.tag }}"
+          imagePullPolicy: {{ .Values.loginPool.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.loginPool.servicePort }}
+          env:
+            - name: PORT
+              value: {{ .Values.loginPool.servicePort | quote }}
+            - name: SESSION_COOKIE_NAME
+              value: {{ .Values.loginPool.sessionCookieName | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.loginPool.resources | nindent 12 }}
+{{- end }}

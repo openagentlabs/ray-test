@@ -1,0 +1,64 @@
+### Knowledge/Feature Graph (Objectives > Config)
+
+
+
+- **Purpose & Scenarios**  
+
+  Use a knowledge/feature graph when multiple teams need a shared view of how raw data, engineered variables, model inputs, and downstream metrics relate. Typical scenarios include (1) feature-store governance: track lineage from source tables to deployed model features; (2) bias audits: visualize sensitive attributes and their derived proxies; (3) troubleshooting drift: inspect which upstream sensor feeds influence spiking KPIs; (4) experimentation planning: highlight unused feature families that could be tested.
+
+
+
+- **Modeling Best Practices**  
+
+  - **Node taxonomy**: encode at least four classes-`source_dataset`, `transformation`, `feature`, `model_metric`. Attach attributes (owner, refresh cadence, sensitivity, data domain).  
+
+  - **Edge semantics**: differentiate lineage (`produces`), semantic similarity (`similar_to`), and operational links (`used_by`). Store weights, direction, and timestamps so you can filter stale edges.  
+
+  - **Granularity**: cap neighborhood size by grouping repetitive transformations (e.g., multiple one-hot encodings) under a meta node; otherwise graphs become unreadable.  
+
+  - **Versioning**: keep per-release snapshots plus a “latest” overlay; this allows rollback comparisons.
+
+
+
+- **Technical Implementation Patterns**  
+
+  - **Extraction**: parse DAG metadata from orchestrators (Airflow, Dagster) and feature-store registries (Feast, Tecton) to auto-build edges. Supplement with manual annotations for business context.  
+
+  - **Storage**: a property graph (Neo4j, TigerGraph) or RDF triple store (Neptune, Blazegraph) works; choose based on query patterns. For large-scale lineage, consider graph-parquet hybrids (e.g., storing nodes/edges in columnar files and loading into Memgraph on demand).  
+
+  - **APIs & Config**: expose GraphQL/REST endpoints that accept filters like `?feature=credit_score&relationship=similar_to`. Maintain configuration in `Objectives > Config`, e.g., set max hops, display themes, auto-refresh cadence.  
+
+
+
+- **Visualization & Interaction Techniques**  
+
+  - Use force-directed layouts for exploration, but lock critical subgraphs (like “Credit Risk Features”) into custom geometry to prevent drift.  
+
+  - Provide layered views: high-level domain map, mid-level lineage, micro view on a single feature.  
+
+  - Offer dependency-impact simulators: selecting a node should highlight all downstream models and metrics for quick blast-radius analysis.  
+
+  - Support tagging (e.g., `segment=Data Treatment`, `risk=High`) so analysts can filter for compliance or performance diagnostics.
+
+
+
+- **Operational Workflows**  
+
+  - **Change reviews**: enforce pull-request style approvals that require graph updates whenever new features enter production.  
+
+  - **Quality gates**: integrate data-quality monitors; when a check fails, mark the affected nodes/edges and propagate alerts to downstream owners.  
+
+  - **Knowledge capture**: allow SMEs to append notes (rationales, caveats) on nodes. For example, “Feature `log_income` should not be used for marketing models due to privacy policy 4.2.”
+
+
+
+- **Advanced Techniques**  
+
+  - **Embedding & similarity search**: compute embeddings for feature descriptions to suggest related nodes or detect duplicates automatically.  
+
+  - **Explainability overlays**: attach SHAP/feature-importance summaries directly to feature nodes so you can see which transformations truly matter.  
+
+  - **What-if routing**: simulate removal or modification of features by temporarily deactivating nodes and recomputing reachable components.  
+
+  - **Security segmentation**: restrict sensitive subgraphs via role-based access; tag edges with sensitivity levels and enforce policies in the graph engine.
+

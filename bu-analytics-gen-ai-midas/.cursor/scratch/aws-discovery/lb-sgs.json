@@ -1,0 +1,177 @@
+{
+    "SecurityGroups": [
+        {
+            "GroupId": "sg-008dace1a0d54dcba",
+            "IpPermissionsEgress": [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 8001,
+                    "ToPort": 8001,
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "Description": "HTTP 8001 to EKS pods (graph) via VPC CIDR",
+                            "CidrIp": "10.72.134.0/23"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 8080,
+                    "ToPort": 8080,
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "Description": "HTTP 8080 to EKS pods (frontend) via VPC CIDR",
+                            "CidrIp": "10.72.134.0/23"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 8000,
+                    "ToPort": 8000,
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "Description": "HTTP 8000 to EKS pods (backend) via VPC CIDR",
+                            "CidrIp": "10.72.134.0/23"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ],
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "midas-dev-alb-sg"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "midas-alb-nlb"
+                },
+                {
+                    "Key": "ManagedBy",
+                    "Value": "Terraform"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "dev"
+                },
+                {
+                    "Key": "AccountId",
+                    "Value": "811391286931"
+                }
+            ],
+            "VpcId": "vpc-0c4d673f3e95a93eb",
+            "SecurityGroupArn": "arn:aws:ec2:us-east-1:811391286931:security-group/sg-008dace1a0d54dcba",
+            "OwnerId": "811391286931",
+            "GroupName": "midas-dev-alb-sg-20260417221634004200000002",
+            "Description": "MIDAS private ALB - TCP 443 from NLB and jumpbox; egress HTTP to EKS pods (8080/8000/8001)",
+            "IpPermissions": [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 443,
+                    "ToPort": 443,
+                    "UserIdGroupPairs": [
+                        {
+                            "Description": "TCP 443 from SSM jumpbox for direct ALB HTTPS testing",
+                            "UserId": "811391286931",
+                            "GroupId": "sg-03dcb7c6935dc717f"
+                        },
+                        {
+                            "Description": "TCP 443 from NLB (forwarded HTTPS corporate traffic)",
+                            "UserId": "811391286931",
+                            "GroupId": "sg-025b186fbbabbde30"
+                        }
+                    ],
+                    "IpRanges": [],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ]
+        },
+        {
+            "GroupId": "sg-025b186fbbabbde30",
+            "IpPermissionsEgress": [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 443,
+                    "ToPort": 443,
+                    "UserIdGroupPairs": [
+                        {
+                            "Description": "TCP 443 to ALB (NLB target_type=alb HTTPS forwarding)",
+                            "UserId": "811391286931",
+                            "GroupId": "sg-008dace1a0d54dcba"
+                        }
+                    ],
+                    "IpRanges": [],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ],
+            "Tags": [
+                {
+                    "Key": "ManagedBy",
+                    "Value": "Terraform"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "dev"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "midas-dev-nlb-sg"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "midas-alb-nlb"
+                },
+                {
+                    "Key": "AccountId",
+                    "Value": "811391286931"
+                }
+            ],
+            "VpcId": "vpc-0c4d673f3e95a93eb",
+            "SecurityGroupArn": "arn:aws:ec2:us-east-1:811391286931:security-group/sg-025b186fbbabbde30",
+            "OwnerId": "811391286931",
+            "GroupName": "midas-dev-nlb-sg-20260417221630957200000001",
+            "Description": "MIDAS private NLB - TCP 443 from corporate CIDRs and jumpbox; egress TCP 443 to ALB only",
+            "IpPermissions": [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 443,
+                    "ToPort": 443,
+                    "UserIdGroupPairs": [
+                        {
+                            "Description": "TCP 443 from SSM jumpbox for HTTPS testing",
+                            "UserId": "811391286931",
+                            "GroupId": "sg-03dcb7c6935dc717f"
+                        }
+                    ],
+                    "IpRanges": [
+                        {
+                            "Description": "TCP 443 from corporate/TGW CIDR 10.54.74.117/32",
+                            "CidrIp": "10.54.74.117/32"
+                        },
+                        {
+                            "Description": "TCP 443 from corporate/TGW CIDR 10.90.12.0/22",
+                            "CidrIp": "10.90.12.0/22"
+                        },
+                        {
+                            "Description": "TCP 443 from corporate/TGW CIDR 10.54.67.114/32",
+                            "CidrIp": "10.54.67.114/32"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ]
+        }
+    ]
+}

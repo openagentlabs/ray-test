@@ -1,0 +1,48 @@
+## Quality Check & Treatment Playbook
+
+**Purpose**  
+Ensure data pipelines surface and remediate missing values, outliers, and duplicates in a consistent, auditable way before downstream modeling.
+
+---
+
+- **Profiling & Diagnostics**
+  - Run column-level completeness, cardinality, and distribution checks on raw ingest and after each major transformation. Track results in a profiling catalog (Great Expectations, Soda Core, Pandera).
+  - Maintain rule tiers: blocking rules (e.g., >10% missing in target) trigger pipeline failure; warning rules log issues but allow flow.
+  - Implement drift monitors that compare current batch statistics to trusted baselines; use KS-test or PSI to detect silent data quality drift.
+
+- **Missing Values**
+  - Classify missingness (MCAR, MAR, MNAR) by correlating null flags with other features; log the inferred mechanism.
+  - Treatment matrix:
+    - Numeric: mean/median imputation for narrow distributions; model-based (KNN, iterative imputer) when relationships exist; use domain defaults for physically bounded metrics.
+    - Categorical: introduce explicit `UNKNOWN_<feature>` bucket; consider frequency-based or target-aware imputation (WOE, likelihood encoding).
+    - Time series: forward/backward fill with window constraints; Kalman smoothing for sensor data; zero-impute only when absence denotes zero.
+  - Always add indicator features flagging imputed records to preserve signal about data quality issues.
+
+- **Outliers**
+  - Detect with multiple techniques per feature family: Z-score/IQR for roughly Gaussian metrics, Median Absolute Deviation for skewed features, Isolation Forest/LOF/Autoencoders for multivariate anomalies, business-rule thresholds for KPIs.
+  - Contextualize: differentiate global anomalies (across whole dataset) vs local anomalies (within customer/segment/time bucket).
+  - Treatments:
+    - Cap/floor (winsorization) using quantile bands tuned per use case.
+    - Transform (log, Box-Cox) when heavy tails cause instability.
+    - Segment-specific rules (e.g., separate caps for enterprise vs SMB clients).
+    - For true data errors, route records to a correction queue instead of silent truncation.
+
+- **Duplicates**
+  - Implement deterministic keys + fuzzy matching (Jaro-Winkler, cosine similarity over TF-IDF) to catch both exact and near duplicates.
+  - Use survivorship rules (trust hierarchy of sources, latest update timestamp) to merge duplicates consistently.
+  - Keep lineage: store original record IDs and merge decisions for auditability.
+
+- **Automation & Governance**
+  - Codify checks as version-controlled rules; expose metadata (rule owner, SLA, escalation).
+  - Integrate alerting (Slack/Teams) with severity thresholds; auto-create tickets when blocking checks fail.
+  - Persist all QC outcomes to your knowledge graph so downstream explainability references the data treatments applied.
+
+- **Testing & Monitoring**
+  - Unit-test QC functions with synthetic edge cases (extreme outliers, all-missing columns, duplicate bursts).
+  - In production, track remediation volumes (percent rows imputed/capped/deduped). Spikes indicate upstream breakage.
+
+- **Documentation**
+  - For each dataset, maintain a “Data Treatment Card” summarizing:
+    - Checks applied, thresholds, and rationales.
+    - Treatment algorithms, parameters, and fallback strategies.
+    - Known failure modes and escalation paths.

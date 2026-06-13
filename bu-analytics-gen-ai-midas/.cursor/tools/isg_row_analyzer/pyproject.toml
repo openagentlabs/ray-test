@@ -1,0 +1,16 @@
+[project]
+name = "isg-row-analyzer"
+version = "0.1.0"
+description = "Single-row context fetch and write-result patch for agent-driven Fortify row analysis"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+isg-row-analyzer = "isg_row_analyzer.run:main"
+
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["isg_row_analyzer"]

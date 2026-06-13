@@ -1,0 +1,60 @@
+## Data Insights Knowledge Note
+
+
+
+- **Scope**  
+
+  Data Insights covers exploratory diagnostics that explain how predictors behave alone and in combination, how they relate to the target, and whether they introduce leakage or redundancy. Core tools include univariate/bivariate profiling, correlation diagnostics, IV/VIF checks, and structured matrices (correlation/covariance) that summarize pairwise behavior.
+
+
+
+- **Scenario Playbook**
+
+  - **Bivariate Analysis**: Compare feature vs. target (numeric target → scatter, smoothing fits; categorical target → violin/box plots, group statistics). Useful for spotting non-linearities or threshold effects that guide feature engineering.
+
+  - **Correlation Analysis**: Pearson/Spearman matrices reveal redundant predictors, proxy leakage, or collinear instrument groups. High absolute correlations (>0.85) usually signal need for dimensionality reduction or domain justification.
+
+  - **Information Value (IV)**: For binary targets, IV ranks predictors by discriminatory power. Scenarios: (1) screening raw variables to build a champion set, (2) measuring drift when IV deteriorates out of time. Treat IV < 0.02 as noise, 0.02-0.1 as weak, 0.1-0.3 medium, >0.3 strong; >0.5 can mean leakage.
+
+  - **Variance Inflation Factor (VIF)**: Calculates how much multicollinearity inflates regression variance. Use when preparing generalized linear models or when tree-based explanations suggest redundant splits. Drop or combine features with VIF > 5 (strict) or > 10 (liberal); for categorical expansions (OHE), evaluate VIF on principal components or grouped dummies.
+
+  - **Correlation Matrix Heatmaps**: Visual map for feature redundancy; overlay masking for highly sparse or low-variance variables to avoid misinterpretation. Provide both Pearson (linear) and Spearman (rank) to catch monotonic but non-linear associations.
+
+  - **Segment-Level Insights**: For segmented datasets, compute IV, correlation, and summary stats per segment to ensure patterns persist and to highlight segment-specific drivers. Compare with global stats to detect heterogeneity requiring segment-specific models.
+
+
+
+- **Technical Handling**
+
+  - **Automated Pipelines**: Build notebook or pipeline routines that:
+
+    1. Profile data types, missingness, and cardinality.
+
+    2. Compute pairwise metrics (correlation, mutual information, IV) and flag thresholds.
+
+    3. Generate visual artifacts (heatmaps, pairplots) saved to `reports/data_insights/`.
+
+    4. Log summary tables with metadata (time window, filter criteria) for auditability.
+
+  - **Treatment Actions**:
+
+    - High correlation clusters → apply PCA/autoencoder compression or select the most interpretable feature; document rationale.
+
+    - Low IV features → deprioritize in feature store unless strong business justification; monitor if future data improves separation.
+
+    - High VIF → drop features, combine via averaging, or apply ridge/LASSO regularization.
+
+    - Non-linear patterns spotted in bivariate plots → add spline/WOE/binning transformations or create interaction terms.
+
+  - **Quality Gates**: Before modeling, require sign-off that:
+
+    - No variable pair flagged as >0.9 correlation enters linear models without mitigation.
+
+    - IV report is reviewed to ensure target leakage is absent (excessively high IV).
+
+    - VIF diagnostics were run on the final feature matrix.
+
+  - **Documentation**: Store narrative summaries for each insight (e.g., “Feature X positively correlated with churn only above threshold Y; implemented two-piece spline”) alongside plots. This becomes reusable evidence for regulators, auditors, or future modeling teams.
+
+  - **Monitoring Extension**: Recompute key metrics post-deployment to detect drift; compare new correlation/IV matrices with baseline using distance metrics (e.g., Frobenius norm) and trigger alerts when deviation exceeds tolerance.
+

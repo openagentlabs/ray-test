@@ -1,0 +1,69 @@
+---
+description: MIDAS midas-deployer-role IAM policy structure. Exactly ten customer-managed policy files with strict AWS limits.
+globs:
+  - deploy/deploy_role/iam-policy/**
+  - deploy/deploy_role/main.tf
+alwaysApply: false
+---
+
+# Deployer IAM policies (`solution_policy.mdc`)
+
+## What this file is for
+
+This file is the **authoritative structure rule for the MIDAS `midas-deployer-role` IAM policy set**. It enforces that the role attaches exactly ten customer-managed policies (`midas-deployer-policy-001` through `midas-deployer-policy-010`), defines the AWS hard limits each policy must respect, and prescribes the workflow to follow whenever permissions change. Applies when editing `deploy/deploy_role/iam-policy/**` or `deploy/deploy_role/main.tf`.
+
+## Instructions for the Cursor AI agent
+
+1. This file is a set of cursor ai agent rules to be observed and strictly adhered to by the cursor ai agent when their filter makes the rules in scope.
+2. When editing files in scope, follow the workflow in the Rules section step by step. Do not skip steps and do not reorder them.
+3. If any rule would be violated by a proposed change (an eleventh policy file, a file overflowing the size limit, an em dash in any text, etc.), stop and tell the user instead of working around the rule.
+
+## Scope
+
+- Applies to: `deploy/deploy_role/iam-policy/**` (the ten customer-managed policy JSON files) and `deploy/deploy_role/main.tf` (the role and policy-attachment definitions).
+- Does not apply to: IAM policies outside `deploy/deploy_role/`, inline policies on other roles, or service-linked roles. Those follow the policy rules of their owning module or project.
+
+## Rules
+
+### Solution-wide writing rule: no em dash
+
+Never use the Unicode em dash (U+2014) anywhere in the repo: Cursor rules, Markdown, code comments, Terraform descriptions, IAM JSON, Jenkinsfiles, handoff text. Use commas, colons, semicolons, parentheses, or hyphens.
+
+### Structure (non-negotiable)
+
+- `midas-deployer-role` attaches **exactly ten** customer-managed policies, one per file: `midas-deployer-policy-001` through `midas-deployer-policy-010`.
+- `deploy/deploy_role/main.tf` loads only files matching `midas-deployer-policy-*` via `fileset`. Do not add other JSON blobs to `iam-policy/`.
+- Distribute statements evenly across all ten files, by statement count and by compact-JSON size. Rebalance when adding permissions.
+
+### AWS limits (hard stops)
+
+| Limit | Value | Action if at risk |
+|---|---|---|
+| Managed policies attached to one role | 10 (default quota) | All ten slots are used. Do not add an 11th policy without a quota increase or redesign. If a change would require an 11th, stop and tell the user. |
+| Size of one customer-managed policy | 6,144 chars (compact JSON) | After edits, confirm each file is `<= 6,144` (target `<= 6,100` for margin). If any file overflows, move statements to a lighter file or stop and tell the user. |
+
+### Workflow when changing permissions
+
+1. Identify the `Sid` (or new statement) that must change.
+2. Pick the file: prefer the file that already holds related `Sid`s; otherwise the least full by compact-JSON length.
+3. Edit valid IAM JSON only: `"Version": "2012-10-17"`, `"Statement": [ ... ]`. `Sid` must be unique within its own file. Avoid duplicate `Sid`s across files.
+4. After edits, compute compact-JSON length for each of `midas-deployer-policy-001` through `010`. If any is `> 6,144`, split or warn the user.
+5. Confirm the file count is exactly 10. If not, warn the user.
+6. If the change would require an 11th policy, stop and ask the user (quota increase or architecture change).
+7. Apply order: Jenkins runs the **Create deploy role** stage before **`ecs-app`**. Note this in handoff text when relevant.
+
+### Validation
+
+From the repo root:
+
+```bash
+python3 deploy/scripts/util/validate-deploy-role-iam.py
+```
+
+With AWS credentials, add `--aws --role-name midas-deployer-role --account-id <id>` to compare live attached policies against the ten expected names.
+
+## Related rules
+
+- `.cursor/rules/solution/solution_const.mdc` - authoritative MIDAS identifiers.
+- `.cursor/rules/architecture.mdc` §3 - private-by-default and least-privilege principles.
+- `.cursor/rules/jkenkins/jenkins.mdc` - pipeline-first release path.

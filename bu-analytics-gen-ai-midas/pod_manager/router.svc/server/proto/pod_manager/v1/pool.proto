@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package pod_manager.v1;
+
+// Control-plane RPCs for pod pool, assignments, and operator config (PM-2).
+service PodManagerService {
+  rpc AcquireLease(AcquireLeaseRequest) returns (AcquireLeaseResponse);
+  rpc ReleaseLease(ReleaseLeaseRequest) returns (ReleaseLeaseResponse);
+  rpc GetLease(GetLeaseRequest) returns (GetLeaseResponse);
+  rpc GetBackendPoolAvailability(GetBackendPoolAvailabilityRequest)
+      returns (GetBackendPoolAvailabilityResponse);
+
+  rpc GetPoolStatus(GetPoolStatusRequest) returns (GetPoolStatusResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  rpc GetRuntimeEnvironment(GetRuntimeEnvironmentRequest) returns (GetRuntimeEnvironmentResponse);
+  rpc ListServiceConfig(ListServiceConfigRequest) returns (ListServiceConfigResponse);
+  rpc GetServiceConfig(GetServiceConfigRequest) returns (ServiceConfigEntry);
+  rpc PutServiceConfig(PutServiceConfigRequest) returns (ServiceConfigEntry);
+  rpc DeleteServiceConfig(DeleteServiceConfigRequest) returns (DeleteServiceConfigResponse);
+}
+
+message AcquireLeaseRequest {
+  string sub = 1;
+}
+
+message AcquireLeaseResponse {
+  string pod_id = 1;
+  string pod_dns = 2;
+  int64 assignment_epoch = 3;
+  // True when returning an existing assignment; false when a new pod was claimed.
+  bool already_leased = 4;
+}
+
+message GetLeaseRequest {
+  string sub = 1;
+}
+
+message GetLeaseResponse {
+  string pod_id = 1;
+  string pod_dns = 2;
+  int64 assignment_epoch = 3;
+}
+
+message ReleaseLeaseRequest {
+  string sub = 1;
+}
+
+message ReleaseLeaseResponse {}
+
+message GetBackendPoolAvailabilityRequest {}
+
+message GetBackendPoolAvailabilityResponse {
+  int32 free_count = 1;
+  int32 total_count = 2;
+  bool has_capacity = 3;
+}
+
+message GetPoolStatusRequest {
+  // Empty = both pools. Otherwise backend_pool | login_pod_pool.
+  string pool = 1;
+}
+
+message PodSummary {
+  string pod_id = 1;
+  string pod_dns = 2;
+  string state = 3;
+  string assigned_sub = 4;
+  string pool = 5;
+}
+
+message GetPoolStatusResponse {
+  repeated PodSummary pods = 1;
+  int32 free_count = 2;
+  int32 claimed_count = 3;
+}
+
+message HeartbeatRequest {
+  string sub = 1;
+  int64 assignment_epoch = 2;
+}
+
+message HeartbeatResponse {
+  int64 assignment_epoch = 1;
+}
+
+message GetRuntimeEnvironmentRequest {}
+
+message ConfigEntry {
+  string key = 1;
+  string value = 2;
+}
+
+message GetRuntimeEnvironmentResponse {
+  repeated ConfigEntry entries = 1;
+}
+
+message ListServiceConfigRequest {}
+
+message ServiceConfigEntry {
+  string config_key = 1;
+  string value = 2;
+  string updated_at = 3;
+  string description = 4;
+}
+
+message ListServiceConfigResponse {
+  repeated ServiceConfigEntry entries = 1;
+}
+
+message GetServiceConfigRequest {
+  string config_key = 1;
+}
+
+message PutServiceConfigRequest {
+  string config_key = 1;
+  string value = 2;
+  string description = 3;
+}
+
+message DeleteServiceConfigRequest {
+  string config_key = 1;
+}
+
+message DeleteServiceConfigResponse {}

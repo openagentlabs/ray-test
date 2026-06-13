@@ -1,0 +1,205 @@
+// midas-ai-gateway-clickhouse-ORD3
+//
+// Pipeline: helm install/upgrade ClickHouse into the dedicated EKS cluster `midas-eks-aigtw-dev`.
+// Reads:    deploy/ai_gateway/helm/clickhouse/values-midas-${ENVIRONMENT}.yaml
+// Image:    811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-clickhouse-server (loaded by ORD2 / Step 31 skopeo bootstrap).
+// Chart:    Altinity ClickHouse — same chart family the upstream pipeline uses
+//           (ai_gateway/deploy/Jenkins_clickhousedeploy line 345). Bitnami was a misconfiguration
+//           in the original ORD3 Jenkinsfile (its values overlay is Altinity-shaped, see
+//           keeper.* + clickhouse.persistence.* keys), kept us from running until SOP Step 33.
+//
+// Bootstrap-mode shortcuts (active until M-3 + M-14 are provisioned):
+//   * Uses the existing OIDC role EXLJenkinsCrossAccountRole-BU (NOT the dedicated
+//     EXLJenkinsAIGatewayCrossAccountRole-BU from M-14, which doesn't exist yet).
+//   * Does NOT pull HTTPS_PROXY from a Jenkins credential. The `cicd` agent already has
+//     corporate network egress, and `helm repo add altinity` reaches helm.altinity.com directly.
+//     When M-3 (Netskope cred) lands, restore the credentials() block.
+// All bootstrap shortcuts are flagged `// TODO(isolation):`.
+//
+// SOP: .cursor/scratch/sop-capture-2026-04-19_1529.md (Step 33 onward)
+
+pipeline {
+    agent { label 'cicd' }
+
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev'], description: 'Target environment.')
+        choice(name: 'ACTION', choices: ['install', 'uninstall'], description: 'Helm action.')
+        booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Render without applying.')
+        // Keep image/tag overridable so a future hot-fix (e.g. CVE patch) can re-deploy without
+        // editing the values file.  `IMAGE_TAG_OVERRIDE`, if non-blank, is pushed into the
+        // Helm install via `--set clickhouse.image.tag=...` (matches the chart's helper path).
+        // Empty string = take whatever the values-midas-<env>.yaml says.
+        string(name: 'IMAGE_REPO_OVERRIDE', defaultValue: '', description: 'Optional override for clickhouse.image.repository (leave blank to use values file).')
+        string(name: 'IMAGE_TAG_OVERRIDE',  defaultValue: '', description: 'Optional override for clickhouse.image.tag (leave blank to use values file).')
+    }
+
+    environment {
+        AWS_REGION       = 'us-east-1'
+        AWS_ACCOUNT_ID   = '811391286931'
+        // TODO(isolation): swap to EXLJenkinsAIGatewayCrossAccountRole-BU after M-14.
+        AWS_ROLE_ARN     = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/EXLJenkinsCrossAccountRole-BU"
+        EKS_CLUSTER      = "midas-eks-aigtw-${params.ENVIRONMENT}"
+        NAMESPACE        = 'clickhouse'
+        RELEASE          = 'clickhouse'
+        VALUES_FILE      = "deploy/ai_gateway/helm/clickhouse/values-midas-${params.ENVIRONMENT}.yaml"
+        DRY_FLAG         = "${params.DRY_RUN ? '--dry-run' : ''}"
+        IMAGE_REPO_OVERRIDE = "${params.IMAGE_REPO_OVERRIDE}"
+        IMAGE_TAG_OVERRIDE  = "${params.IMAGE_TAG_OVERRIDE}"
+    }
+
+    stages {
+        stage('Checkout') { steps { checkout scm } }
+
+        stage('Configure kubectl + helm against dedicated EKS') {
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -eu
+                        aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+                        kubectl get nodes
+                        helm version
+                    '''
+                }
+            }
+        }
+
+        stage('Helm install/upgrade ClickHouse') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        helm repo add altinity https://helm.altinity.com >/dev/null 2>&1 || true
+                        helm repo update >/dev/null
+
+                        # Build --set overrides only when the user actually supplied a value.
+                        # The correct Helm path is `clickhouse.image.*` (NOT `image.*`, which is
+                        # where this pipeline was writing before 2026-04-20 — that override never
+                        # fired, and the CHI pod pulled `altinity/clickhouse-server:...` from
+                        # Docker Hub. See the long comment in values-midas-dev.yaml.
+                        EXTRA_SETS=""
+                        if [ -n "${IMAGE_REPO_OVERRIDE:-}" ]; then
+                            EXTRA_SETS="$EXTRA_SETS --set clickhouse.image.repository=${IMAGE_REPO_OVERRIDE}"
+                        fi
+                        if [ -n "${IMAGE_TAG_OVERRIDE:-}" ]; then
+                            EXTRA_SETS="$EXTRA_SETS --set clickhouse.image.tag=${IMAGE_TAG_OVERRIDE}"
+                        fi
+
+                        # --wait + --atomic: block until every resource becomes Ready; roll back
+                        # automatically on any failure. Catches "deploy reported success but pods
+                        # crash-loop" regressions. 15 min covers first-ever PVC provisioning on a
+                        # cold cluster.
+                        helm upgrade --install "$RELEASE" altinity/clickhouse \
+                            --namespace "$NAMESPACE" --create-namespace \
+                            --values "$VALUES_FILE" \
+                            $EXTRA_SETS \
+                            --wait --atomic --timeout 15m \
+                            ${DRY_FLAG:-}
+                    '''
+                }
+            }
+        }
+
+        stage('Recycle stale keeper/CHI pods that kept the old image') {
+            // WHY THIS STAGE EXISTS
+            //   The Altinity chart + clickhouse-operator manage their keeper and CHI pods via
+            //   StatefulSets that use `updateStrategy.type: OnDelete` (or are reconciled by the
+            //   operator on demand, not on template bump). That means `helm upgrade --wait
+            //   --atomic` can report SUCCESS even though one of the old-image pods is still
+            //   happily running — helm only waits for pod READY, and an old-image pod is READY.
+            //
+            //   First evidence: build #9 — `keeper-clickhouse-0-0` stayed on
+            //   `altinity/clickhouse-keeper:*` after the Helm upgrade bumped the keeper image
+            //   to MIDAS ECR.  Pods `keeper-clickhouse-1-0` and `keeper-clickhouse-2-0` DID
+            //   roll (they were apparently deleted by a prior operation).  The post-deploy
+            //   sanity stage correctly detected the stale pod, but the whole build went red.
+            //
+            //   This stage fixes that idempotently: after the Helm upgrade, scan every pod in
+            //   the release namespace, identify any image ref that is not in MIDAS ECR, and
+            //   delete those pods.  Their parent StatefulSet / CHI controller will recreate
+            //   them at the CURRENT spec — which (post-Helm) uses MIDAS ECR.  If there are no
+            //   stale pods, the loop is a no-op.  Safe to re-run.
+            //
+            //   We only delete pods with the exact `altinity/*` or other non-MIDAS-ECR image
+            //   prefix — NOT pods pulling from MIDAS ECR.  This keeps the stage surgical even
+            //   if the sanity check below is relaxed in future.
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        echo "=== Inspecting all pod images in namespace $NAMESPACE ==="
+                        kubectl -n "$NAMESPACE" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\\t"}{range .spec.containers[*]}{.image}{" "}{end}{"\\n"}{end}' | tee /tmp/ch-images-before.txt
+
+                        # List every pod whose container image DOES NOT start with MIDAS ECR.
+                        STALE=$(awk '{
+                            pod=$1
+                            for(i=2;i<=NF;i++) if ($i !~ /^811391286931\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com\\//) {print pod; break}
+                        }' /tmp/ch-images-before.txt | sort -u)
+
+                        if [ -z "$STALE" ]; then
+                            echo "PASS(early): every pod already runs a MIDAS ECR image — nothing to recycle."
+                            exit 0
+                        fi
+
+                        echo "=== Deleting stale pods so parent controllers respawn them with the current spec ==="
+                        echo "$STALE" | while read -r pod; do
+                            [ -z "$pod" ] && continue
+                            echo "--> kubectl delete pod $pod -n $NAMESPACE"
+                            kubectl -n "$NAMESPACE" delete pod "$pod" --ignore-not-found=true --wait=false || true
+                        done
+
+                        echo "=== Waiting up to 5 min for respawned pods to become Ready ==="
+                        # kubectl wait can't target pods-by-name that don't yet exist, so wait on
+                        # every pod in the namespace. --for=condition=Ready naturally excludes
+                        # Completed hook pods (Succeeded is a terminal phase, not Ready=True).
+                        kubectl -n "$NAMESPACE" wait --for=condition=Ready pod --all --timeout=5m || {
+                            echo "WARN: some pods did not reach Ready — the post-deploy sanity stage will print the residual state."
+                        }
+                    '''
+                }
+            }
+        }
+
+        stage('Post-deploy sanity: confirm every image comes from MIDAS ECR') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        # Dump every container image the release now runs and fail fast if any
+                        # reference falls outside `*.dkr.ecr.us-east-1.amazonaws.com/*`. This is
+                        # the irrefutable post-deploy proof that Q15.2 is upheld, not a trust-me
+                        # review of values files. Includes CHI-managed chi-* pods that the
+                        # operator spawned after Helm finished.
+                        echo "=== All container images in release namespace ==="
+                        kubectl -n "$NAMESPACE" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\\t"}{range .spec.containers[*]}{.image}{" "}{end}{"\\n"}{end}' \
+                          | tee /tmp/ch-images.txt
+
+                        echo "=== Checking every image ref is MIDAS ECR ==="
+                        BAD=$(awk '{for(i=2;i<=NF;i++) print $i}' /tmp/ch-images.txt \
+                              | grep -vE '^811391286931\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/' || true)
+                        if [ -n "$BAD" ]; then
+                            echo "FAIL: non-MIDAS-ECR images detected:" >&2
+                            echo "$BAD" >&2
+                            exit 1
+                        fi
+                        echo "PASS: every running image is MIDAS ECR."
+                    '''
+                }
+            }
+        }
+
+        stage('Helm uninstall ClickHouse') {
+            when { expression { params.ACTION == 'uninstall' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        helm uninstall "$RELEASE" --namespace "$NAMESPACE" ${DRY_FLAG:-} || true
+                    '''
+                }
+            }
+        }
+    }
+}

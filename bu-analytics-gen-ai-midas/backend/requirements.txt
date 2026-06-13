@@ -1,0 +1,76 @@
+fastapi
+uvicorn[standard]
+gunicorn
+python-multipart
+python-dotenv
+pandas>=2.2,<3
+pyarrow
+numpy
+openai
+langchain
+langgraph
+langchain-core
+faiss-cpu
+scikit-learn==1.6.0
+scipy
+matplotlib
+seaborn
+opencv-python
+Pillow
+pydantic
+typing-extensions
+pathlib2
+# passlib[bcrypt]==4.3.0
+bcrypt==3.2.2
+passlib[bcrypt]
+python-jose[cryptography]
+redis>=5.0.0
+boto3>=1.34.0
+botocore>=1.34.0
+httpx>=0.27.0
+imbalanced-learn
+flaml
+tpot
+optuna
+hyperopt
+joblib
+websockets
+category-encoders
+feature-engine
+xgboost
+lightgbm
+catboost
+mlxtend
+openpyxl>=3.0.0
+statsmodels 
+#graphrag==2.7.0
+polars
+shap>=0.42.0
+python-docx
+PyPDF2
+litellm==1.81.3
+psycopg2-binary>=2.9.9
+pywin32>=306; sys_platform == 'win32'  # Optional: For Excel OLE embedding in Word docs (Windows only)
+
+# OpenTelemetry metrics (gold-standard SDK).
+# Metrics are pushed directly to CloudWatch via boto3 PutMetricData
+# through the CloudWatch VPC interface endpoint (PrivateLink) - no EMF,
+# no log-based metric filters, no collector sidecar required.
+# boto3/botocore are already listed above.
+opentelemetry-api>=1.24.0
+opentelemetry-sdk>=1.24.0
+
+# Prometheus instrumentation for the FastAPI app (app/core/metrics.py).
+# Required by main.py -> app.api.chunked_upload -> app.core.metrics.
+# Without these the gunicorn worker fails to import main and the pod
+# enters CrashLoopBackOff (manifests as `Bad gateway: ECONNREFUSED
+# 172.20.153.10:8000` from the in-cluster frontend reverse proxy).
+prometheus-client>=0.20.0
+prometheus-fastapi-instrumentator>=7.0.0
+
+# Routing-tier gRPC client (local monorepo package `pod_manager/router.svc/client_py`).
+# NOT installed here: an editable path (`-e ../pod_manager/...`) escapes the backend/
+# Docker build context and breaks the image build in CI. Instead:
+#   - CI/image: deploy/scripts/ci/docker-build-matrix.sh builds it into a wheel under
+#     backend/vendor/, which backend/Dockerfile installs.
+#   - Local dev: install via backend/requirements-local.txt (editable).

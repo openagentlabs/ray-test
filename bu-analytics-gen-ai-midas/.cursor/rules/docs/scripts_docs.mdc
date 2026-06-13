@@ -1,0 +1,22 @@
+---
+description: Script folders under deploy/scripts and .cursor/scripts. Self-documenting scripts, no mandatory READMEs.
+globs:
+  - deploy/scripts/**
+  - .cursor/scripts/**
+alwaysApply: false
+---
+
+# Script folders (`scripts_docs.mdc`)
+
+Applies when editing shell, Python, or other runnable helpers under `deploy/scripts/` or `.cursor/scripts/`.
+
+## Rules
+
+- Make scripts self-documenting: `--help`, clear `argparse` or `usage()`, and a short file header (purpose, prerequisites, key env vars).
+- `deploy/scripts/` is used by Jenkins and operators. `.cursor/scripts/` holds Cursor-adjacent helpers. Keep the two separate unless a change explicitly bridges them.
+- Do not create `README.md` files for script changes unless the user asks.
+
+## Related rules
+
+- `.cursor/rules/doc.mdc` - broader doc and scope rule.
+- `.cursor/rules/solution_const.mdc` - MIDAS identifiers when scripts touch AWS.

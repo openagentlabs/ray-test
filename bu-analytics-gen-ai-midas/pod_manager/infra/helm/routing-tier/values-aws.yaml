@@ -1,0 +1,55 @@
+# AWS overlay — HTTP :80 on, HTTPS :443 off until certificateArn is set.
+global:
+  awsRegion: us-east-1
+  deployTarget: aws
+
+createNamespace: false
+
+serviceName: router-svc
+
+serviceAccount:
+  roleArn: "" # terraform output pod_manager_irsa_role_arn
+
+envoy:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/envoy-router"
+    tag: "0.1.0"
+
+podManager:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/router-svc"
+    tag: "0.1.0"
+  logLevel: DEBUG
+  auth:
+    devMode: true
+
+loginPod:
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/login-pod"
+    tag: "0.1.0"
+
+backendPool:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/backend-pool-node"
+    tag: "0.1.0"
+
+ingress:
+  enabled: true
+  scheme: internet-facing
+  listeners:
+    http:
+      enabled: true
+      port: 80
+    https:
+      enabled: false
+      port: 443
+      certificateArn: ""
+      sslRedirect: false
+
+grpcIngress:
+  enabled: true
+  type: nlb
+  port: 8804
+  scheme: internet-facing

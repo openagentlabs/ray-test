@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EXL Decision — Current Architecture (Simplified)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root{
+      --bg:#e8eef5; --card:#fff; --border:#cbd5e1; --accent:#2563eb;
+      --text:#1e293b; --muted:#64748b; --font:'Segoe UI','Inter',system-ui,sans-serif;
+      --warn:#f59e0b; --bad:#dc2626; --ok:#059669;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+    .page-wrap{display:flex;min-height:100vh}
+
+    /* sidebar */
+    .sidebar{width:230px;min-width:230px;background:#1a1d27;border-right:1px solid #2e3350;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0}
+    .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid #2e3350;margin-bottom:16px}
+    .sidebar-logo h1{font-size:15px;font-weight:800;color:#4f8ef7}
+    .sidebar-logo p{font-size:10px;color:#94a3b8;margin-top:3px}
+    .nav-section{padding:6px 20px 2px;font-size:9px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
+    .nav-item{display:block;padding:6px 20px;color:#94a3b8;text-decoration:none;font-size:12px;border-left:2px solid transparent;transition:all .15s}
+    .nav-item:hover{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.07)}
+    .nav-item.active{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.1);font-weight:700}
+
+    /* main */
+    .main{flex:1;overflow-x:hidden;background:var(--bg)}
+    .hero{background:#1e293b;border-bottom:3px solid var(--accent);padding:26px 44px 20px}
+    .hero h1{font-size:22px;font-weight:900;color:#fff;letter-spacing:1px;text-transform:uppercase}
+    .hero p{color:#94a3b8;margin-top:7px;max-width:980px;font-size:12px}
+    .content{padding:26px 44px 70px;max-width:1200px}
+    section{margin-top:22px}
+    h2{font-size:16px;font-weight:900;border-bottom:2px solid var(--border);padding-bottom:10px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+
+    /* simple diagram */
+    .diag{display:grid;gap:10px;margin-top:10px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+    .box{background:#fff;border:2px solid var(--border);border-radius:12px;padding:12px 14px;min-width:250px;flex:1}
+    .box h3{font-size:12px;font-weight:900;color:#0f172a}
+    .box p{font-size:12px;color:#475569;margin-top:6px}
+    .tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 10px;border-radius:999px;margin-top:10px}
+    .tag.warn{background:#fff7ed;border:1px solid #fdba74;color:#9a3412}
+    .tag.bad{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+    .tag.ok{background:#d1fae5;border:1px solid #6ee7b7;color:#065f46}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono',monospace;font-size:11px;background:#f1f5f9;border:1px solid #cbd5e1;padding:1px 6px;border-radius:6px;color:#334155}
+    ul{padding-left:18px}
+    li{margin:4px 0;color:#334155;font-size:12px}
+    a.link{color:#2563eb;text-decoration:none;font-weight:800}
+    a.link:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <nav class="sidebar">
+  <div class="sidebar-logo">
+        <h1>EXL Decision</h1>
+        <p>Architecture Explorer</p>
+      </div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item active" href="../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../future/developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="../future/requirements/index.html">📜 Requirements</a>
+      <a class="nav-item" href="../future/decisions/index.html">⚖️ Architectural decisions</a>
+
+<div class="nav-section">On this page</div>
+      <a class="nav-item" href="#diag">Current architecture diagram</a>
+      <a class="nav-item" href="#pain">Current pain points</a>
+      <a class="nav-item" href="#why">Why microservices</a>
+</nav>
+
+    <main class="main">
+      <div class="hero">
+        <h1>Current Architecture (Simplified)</h1>
+        <p>
+          A simplified developer view of the current backend. This page intentionally avoids deep detail — it exists to clarify
+          what is running today and why it must be refactored into the future-state microservice architecture.
+        </p>
+      </div>
+
+      <div class="content">
+        <section id="diag">
+          <h2>🧱 Current architecture diagram</h2>
+          <div class="card">
+            <div class="diag">
+              <div class="row">
+                <div class="box">
+                  <h3>Client</h3>
+                  <p>Web UI and users call a single backend API.</p>
+                  <div class="tag ok">WORKS</div>
+                </div>
+                <div class="box">
+                  <h3>Ingress</h3>
+                  <p>Direct HTTP traffic to the monolith (limited gateway/mesh policy).</p>
+                  <div class="tag warn">LIMITED CONTROLS</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="box" style="border-color:#f59e0b">
+                  <h3>FastAPI Monolith</h3>
+                  <p>
+                    One codebase owns everything: upload, datasets, QC/DQS, chat, training, GraphRAG, documentation, evaluation.
+                    Routing concentrated in <span class="mono">routes.py</span>.
+                  </p>
+                  <div class="tag warn">SCALING BOTTLENECK</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="box" style="border-color:#dc2626">
+                  <h3>Process memory state</h3>
+                  <p>In-memory DataFrames and session selections live inside the pod/process.</p>
+                  <div class="tag bad">NOT HORIZONTALLY SCALABLE</div>
+                </div>
+                <div class="box" style="border-color:#dc2626">
+                  <h3>Background threads</h3>
+                  <p>Long-running ML work is executed via threads without durable job state or retries.</p>
+                  <div class="tag bad">FRAGILE</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="box">
+                  <h3>State stores (mixed)</h3>
+                  <p>SQLite/Postgres fallback, some S3/local filesystem usage, partial Redis usage.</p>
+                  <div class="tag warn">INCONSISTENT</div>
+                </div>
+                <div class="box" style="border-color:#dc2626">
+                  <h3>Vector store on disk</h3>
+                  <p>FAISS index stored on local disk → replicas diverge and restart loses index.</p>
+                  <div class="tag bad">DURABILITY RISK</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="pain">
+          <h2>⚠️ Current pain points (developer impact)</h2>
+          <div class="grid">
+            <div class="card">
+              <strong>In-memory DataFrames</strong>
+              <ul style="margin-top:8px">
+                <li>Singleton state prevents safe horizontal scaling.</li>
+                <li>Restarts lose “current dataset state”.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <strong>In-memory session LLM selection</strong>
+              <ul style="margin-top:8px">
+                <li>Lost on pod restart.</li>
+                <li>Forces sticky sessions to keep behavior stable.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <strong>BackgroundJobManager threads</strong>
+              <ul style="margin-top:8px">
+                <li>No distributed visibility.</li>
+                <li>No robust retry semantics.</li>
+                <li>Long-running ML blocks request threads.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <strong>FAISS on local disk</strong>
+              <ul style="margin-top:8px">
+                <li>Not shared across replicas.</li>
+                <li>Index diverges and is lost on restart.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="why">
+          <h2>➡️ Why the future state is microservices</h2>
+          <div class="card">
+            <ul>
+              <li><strong>Stateless compute + managed state</strong>: move all durable state to DynamoDB/Redis/S3/S3 Files.</li>
+              <li><strong>Clear ownership</strong>: one service owns each data domain; other services use APIs.</li>
+              <li><strong>Robust ML execution</strong>: move training to Kubeflow Pipelines (step pods with retry/logging).</li>
+              <li><strong>Security and governance</strong>: Istio mTLS, identity/authz split, WAF+ALB ingress, Secrets Manager.</li>
+              <li><strong>Cloud portability</strong>: ports/adapters pattern (no direct AWS SDK imports in domain code).</li>
+            </ul>
+            <p style="margin-top:10px;color:#64748b;font-size:12px">
+              Next: go to the <a class="link" href="../index.html">System Layer Diagram</a> to see the full future-state decomposition.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
+

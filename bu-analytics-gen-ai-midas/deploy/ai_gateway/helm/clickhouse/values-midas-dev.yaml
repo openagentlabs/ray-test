@@ -1,0 +1,136 @@
+# MIDAS overlay for ClickHouse Helm chart (upstream: ai_gateway/helm/clickhouse/values.yaml).
+# Account: 811391286931, region: us-east-1, cluster: midas-eks-aigtw-dev.
+# Image: MIDAS ECR.
+
+nameOverride: "clickhouse"
+fullnameOverride: "clickhouse"
+
+clickhouse:
+  # ---------------------------------------------------------------------------
+  # clickhouse.image
+  #
+  # Until 2026-04-20 we set `image:` at the top level of this values file (and
+  # the ORD3 Jenkinsfile passed `--set image.repository=...`), which is the
+  # WRONG Helm path.  The chart's helper template reads `.Values.clickhouse.image.*`
+  # (`charts/altinity-clickhouse-operator/templates/_helpers.tpl` in the pulled
+  # chart), so the override never fired and the CHI pod pulled
+  # `altinity/clickhouse-server:25.3.6.10034.altinitystable` directly from Docker
+  # Hub — violating the zero-external-registry rule (Q15.2).
+  #
+  # Tag is the ONLY one the Altinity chart is officially tested against for
+  # chart 0.3.10 (appVersion 25.3.6.10034), see Chart.yaml.  Matches exactly the
+  # `clickhouse-server` entry in deploy/ai_gateway/image-bootstrap/images.yaml.
+  # ---------------------------------------------------------------------------
+  image:
+    repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-clickhouse-server
+    tag: "25.3.6.10034.altinitystable"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    # Dedicated EBS-CSI StorageClass provisioned by ORD1 Terraform
+    # (modules-midas/eks_storage.tf -> clickhouse-server-midas-eks-aigtw-dev).
+    # The earlier "gp3" guess does NOT exist on this cluster — only `gp2` (in-tree),
+    # the two `clickhouse-*-midas-eks-aigtw-dev` classes, and any future ones do.
+    # Confirmed via `kubectl get sc` after ORD3 build #3 deployed but pods stayed
+    # Pending with `pod has unbound immediate PersistentVolumeClaims`.
+    storageClass: "clickhouse-server-midas-eks-aigtw-dev"
+    accessModes: [ReadWriteOnce]
+    size: 50Gi
+  serviceAccount:
+    create: false
+    # Must match the SA created by ORD1 Terraform
+    # (clickhouse_app_deps.tf -> module.clickhouse_irsa_permissions_set,
+    #  irsa_account_name = "clickhouse-irsa-account"). The earlier
+    # "midas-aigtw-dev-clickhouse-irsa" guess didn't exist, which kept the
+    # CH server pod stuck in StatefulSet `FailedCreate -> serviceaccount not found`.
+    name: clickhouse-irsa-account
+  defaultUser:
+    # Secret REFERENCE (not a literal password). ORD1 Terraform provisions
+    # `clickhouse-credentials-dev` (see modules-midas/clickhouse_app_deps.tf);
+    # don't rename it on the helm side. The actual credential lives in AWS
+    # Secrets Manager and is materialised into the K8s secret at deploy time.
+    # Fortify "Password Management: Hardcoded Password" finding on this line
+    # is a false positive (string is a K8s secret NAME, not a credential value).
+    password_secret_name: clickhouse-credentials-dev
+    allowExternalAccess: true
+
+keeper:
+  enabled: true
+  replicaCount: 3
+  # Zero-external-registry (Q15.2): pull keeper from MIDAS ECR, not docker.io.
+  # Mirrored by ORD2 from docker.io/altinity/clickhouse-keeper:25.3.6.10034.altinitystable.
+  image: "811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-clickhouse-keeper"
+  tag: "25.3.6.10034.altinitystable"
+  localStorage:
+    size: 25Gi
+    storageClass: "clickhouse-keeper-midas-eks-aigtw-dev"   # ORD1 Terraform-managed EBS CSI SC
+  ports: { tcp: 2181, http: 9182 }
+  nodeSelector: { Workload: clickhouse }
+  tolerations: []
+  readinessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+  livenessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+  extraEnv:
+    - name: ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: admin-password   # ORD1 Terraform-managed K8s secret
+          key: admin-password
+
+# -----------------------------------------------------------------------------
+# operator
+#
+# `operator` is the umbrella chart's ALIAS (see Chart.yaml dependencies) for the
+# `altinity-clickhouse-operator` sub-chart. Everything under it flows straight
+# into that sub-chart's values.yaml.  We override all three images it pulls so
+# the zero-external-registry rule (Q15.2) is satisfied end-to-end — nothing
+# ever reaches Docker Hub at install or upgrade time.
+#
+#   operator.enabled        = install/skip the operator sub-chart (umbrella condition)
+#   operator.operator.image = `altinity/clickhouse-operator` → MIDAS ECR
+#   operator.metrics.image  = `altinity/metrics-exporter`    → MIDAS ECR
+#   operator.crdHook.image  = `bitnami/kubectl`              → MIDAS ECR
+#
+# Tags below match `deploy/ai_gateway/image-bootstrap/images.yaml` exactly — so
+# whatever ORD2 mirrored is what ORD3 installs.  If you bump tags there, bump
+# them here in the same commit.
+# -----------------------------------------------------------------------------
+operator:
+  enabled: true
+  operator:
+    image:
+      repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-clickhouse-operator
+      tag: "0.25.6"
+      pullPolicy: IfNotPresent
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits:   { cpu: 500m, memory: 1Gi }
+    env:
+      - name: LOG_LEVEL
+        value: info
+  metrics:
+    enabled: true
+    image:
+      repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-clickhouse-metrics-exporter
+      tag: "0.25.6"
+      pullPolicy: IfNotPresent
+  crdHook:
+    enabled: true
+    image:
+      repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-kubectl
+      # Tag bumped 2026-04-20 from "1.33.4-0" to "1.33.4" after Bitnami deprecated
+      # their Docker Hub catalog — the numbered `-N` suffix no longer exists upstream
+      # (see images.yaml `kubectl` entry for full context).
+      tag: "1.33.4"
+      pullPolicy: IfNotPresent
+
+# No JFrog imagePullSecrets
+global:
+  imagePullSecrets: []

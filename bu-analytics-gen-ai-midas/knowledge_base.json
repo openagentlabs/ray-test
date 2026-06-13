@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Data Analysis Basics",
+    "content": "Data analysis involves examining, cleaning, transforming, and modeling data to discover useful information, suggest conclusions, and support decision-making.",
+    "category": "general",
+    "features": ["data analysis", "statistics", "modeling"]
+  },
+  {
+    "title": "Correlation Analysis",
+    "content": "Correlation analysis measures the strength and direction of the linear relationship between two variables. Values range from -1 to 1, where 1 indicates perfect positive correlation, -1 indicates perfect negative correlation, and 0 indicates no correlation.",
+    "category": "statistics",
+    "features": ["correlation", "statistics", "linear relationship"]
+  },
+  {
+    "title": "Bivariate Analysis",
+    "content": "Bivariate analysis involves analyzing the relationship between two variables. It can include correlation analysis, scatter plots, and cross-tabulation to understand how variables relate to each other.",
+    "category": "statistics",
+    "features": ["bivariate analysis", "two variables", "relationship"]
+  },
+  {
+    "title": "Dataset Validation",
+    "content": "Dataset validation involves checking data quality, completeness, and consistency. This includes identifying missing values, outliers, duplicate records, and ensuring data follows expected formats.",
+    "category": "data_quality",
+    "features": ["validation", "data quality", "missing values", "outliers"]
+  },
+  {
+    "title": "Machine Learning Models",
+    "content": "Machine learning models are algorithms that can learn patterns from data to make predictions or classifications. Common types include linear regression, decision trees, random forests, and neural networks.",
+    "category": "machine_learning",
+    "features": ["machine learning", "models", "predictions", "algorithms"]
+  }
+]

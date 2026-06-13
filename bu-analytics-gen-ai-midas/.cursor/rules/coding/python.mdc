@@ -1,0 +1,265 @@
+---
+description: Python coding standards, patterns, and security rules for MIDAS
+globs: **/*.py,src/**/*.py,tests/**/*.py,**/requirements*.txt,**/pyproject.toml,**/setup.py,**/setup.cfg,**/Pipfile,**/Pipfile.lock,**/poetry.lock,**/tox.ini,**/.python-version
+alwaysApply: false
+---
+
+# Python standards (MIDAS)
+
+## Purpose & how to use this file
+
+This file is the **single source of truth** for how the Cursor AI agent writes, reviews, or refactors Python in this repo. Every Python file the agent touches must conform to the rules below.
+
+The agent must:
+
+1. **Read this file before authoring or modifying any `.py` file.** If a rule conflicts with what the user asks, surface the conflict and ask before deviating.
+2. **Apply rules cumulatively, not selectively.** Style + types + patterns + security all apply on every change — partial conformance is a defect.
+3. **Prefer the patterns in "Architectural patterns" over ad-hoc designs** even for small classes. Consistency is more valuable than micro-optimisation.
+4. **When generating new modules**, scaffold them so they already pass the checklist at the bottom.
+5. **When modifying existing code that does not yet conform**, leave a short note in the PR/commit and bring touched code into compliance — do not rewrite untouched code.
+6. **Stop and ask the user** if a rule cannot be satisfied (e.g. a third-party API forces a non-Pydantic shape, a legacy module forbids an ABC). Never silently bypass a rule.
+
+---
+
+## Runtime
+
+- **Minimum interpreter: Python 3.11.7** (locked to the developer's local toolchain). Do not author code that requires 3.12+ features.
+- Verify before running scripts: `python3 --version` must report `>= 3.11.7`.
+- If `python3` is missing or below 3.11.7, **stop work** and offer the user both options:
+  - **(A) User runs it** — copy/paste this single line, then confirm completion before the agent continues:
+    `brew install python@3.11 && /opt/homebrew/bin/python3.11 --version`
+  - **(B) Agent runs it** — agent executes the same command via the shell tool, waits for exit code 0, then continues.
+
+---
+
+## Architectural patterns (mandatory)
+
+These patterns make every class in this repo predictable. Apply them by default.
+
+### 1. Single constructor + `Options` dataclass + static `new()` factory
+
+- **One `__init__` per class.** Never overload constructors via class methods that build different shapes. Variation goes through an `Options` object with `Optional[...]` fields.
+- **Always provide a static `new(...)` factory** that returns a `Result[Self, Error]` (use the [`returns`](https://returns.readthedocs.io) library: `from returns.result import Result, Success, Failure`). The `new()` signature mirrors the `Options` fields so callers never have to construct `Options` themselves unless they want to.
+- **Constructors must not perform I/O or fallible work** — only assignment and trivial validation. All fallible setup (DB connect, file read, schema check) lives in `new()`.
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Optional, Self
+from returns.result import Result, Success, Failure
+
+@dataclass(frozen=True)
+class UserServiceOptions:
+    """Construction options for UserService. All optional fields default to None."""
+    db_url: str
+    cache_ttl_seconds: Optional[int] = None
+    feature_flag_overrides: Optional[dict[str, bool]] = None
+
+class UserService:
+    """Service that owns user lifecycle operations."""
+
+    def __init__(self, opts: UserServiceOptions) -> None:
+        self._opts = opts
+
+    @staticmethod
+    def new(
+        db_url: str,
+        cache_ttl_seconds: Optional[int] = None,
+        feature_flag_overrides: Optional[dict[str, bool]] = None,
+    ) -> Result["UserService", Exception]:
+        """Build a UserService, validating inputs and opening the DB pool.
+
+        Returns:
+            Success(UserService) on success, Failure(Exception) on any setup error.
+        """
+        try:
+            opts = UserServiceOptions(db_url, cache_ttl_seconds, feature_flag_overrides)
+            return Success(UserService(opts))
+        except Exception as exc:
+            return Failure(exc)
+```
+
+### 2. Abstract base classes for shared shapes
+
+- Use `abc.ABC` + `@abstractmethod` whenever two or more concrete classes must follow the same pattern. Mark the class explicitly: `class FooBase(ABC):`.
+- Concrete subclasses must implement every abstract method; never rely on `NotImplementedError` in a non-abstract base.
+
+### 3. `Protocol` for duck-typed interfaces
+
+- Use `typing.Protocol` (often `runtime_checkable`) when you need an *interface* without inheritance — e.g. injecting a fake into a service. Keep protocols in `interfaces.py` or `types.py`.
+
+### 4. Pydantic for data crossing a boundary
+
+- All request bodies, response payloads, config files, and external API DTOs must be **`pydantic.BaseModel` (v2)** — not plain dataclasses, dicts, or `TypedDict`.
+- Internal value objects (no validation, no I/O) may be `@dataclass(frozen=True)`.
+- Use `model_config = ConfigDict(frozen=True, extra="forbid")` on Pydantic models unless mutation is explicitly required.
+
+### 5. Inline documentation on every public interface
+
+- Every public class, method, and `Protocol` gets a Google-style docstring with `Args`, `Returns`, and `Raises` sections.
+- Private helpers (`_name`) get a one-line docstring only when intent isn't obvious.
+
+---
+
+## Code style
+
+- Modern syntax only (3.11): `match`, `|` unions in *runtime* code only when needed; **prefer `Optional[T]`** over `T | None` in public signatures (this repo's convention for clarity and `typing` compatibility).
+- Format with **Black** (line length 88). Sort imports with **isort** (or `ruff --select I`). Lint with **ruff**.
+- PEP 8 naming: `snake_case` functions/variables, `PascalCase` classes, `UPPER_CASE` constants.
+- **Absolute imports only.** No `from .foo import bar`.
+- `pathlib.Path` over `os.path`. `logging` over `print` (except one-shot CLI entry points).
+
+## Type hints
+
+- **Every** function parameter and return value is type-hinted, including `-> None`.
+- Import from `typing` (`Optional`, `TypeVar`, `Protocol`, `Self`, `Iterable`, `Callable`).
+- Use `Optional[T]` for nullable params; never default-mutable args (`def f(x: list = []):` is banned).
+- Declare generics with `TypeVar`. Centralise reusable aliases in `types.py`.
+
+## Project structure (src layout)
+
+```
+repo/
+  src/your_package/        # all importable code lives here
+    __init__.py
+    interfaces.py          # Protocols
+    types.py               # TypeVars, aliases, value objects
+    services/
+    api/                   # Flask blueprints, REST resources
+    db/                    # SQLAlchemy models, Alembic env
+  tests/                   # mirrors src/ layout
+  config/                  # YAML/TOML; secrets via env vars only
+  static/  templates/      # Flask assets
+  pyproject.toml
+  requirements.txt         # pinned, prod
+  requirements-dev.txt     # pinned, dev/test
+```
+
+## Flask
+
+- **App factory pattern** (`create_app(config) -> Flask`). No module-level `app = Flask(__name__)`.
+- Group routes into **Blueprints** by domain (`users_bp`, `auth_bp`).
+- Persistence via **Flask-SQLAlchemy**; auth via **Flask-Login**; REST via **Flask-RESTful**.
+- Centralised error handlers (`@app.errorhandler`) returning consistent JSON shapes.
+- Views are thin: parse → call service → serialise. Business logic lives in services.
+
+## Database
+
+- **SQLAlchemy ORM** with declarative models, one model per file under `db/models/`.
+- Migrations via **Alembic**; never edit live schema by hand.
+- Configure connection pooling explicitly (`pool_size`, `max_overflow`, `pool_pre_ping=True`).
+- Index every FK and every column used in a `WHERE` clause hit > 1× per request.
+- Use eager loading (`selectinload`, `joinedload`) to avoid N+1 — never lazy-load in hot paths.
+
+## Authentication
+
+- **Flask-Login** for session management; **Flask-OAuth** (or Authlib) for Google OAuth.
+- Hash passwords with **bcrypt** (`passlib[bcrypt]`), cost ≥ 12.
+- Sessions: `SESSION_COOKIE_SECURE=True`, `HTTPONLY=True`, `SAMESITE="Lax"`, `PERMANENT_SESSION_LIFETIME` set.
+- **CSRF protection on every state-changing route** (Flask-WTF or `flask-seasurf`).
+- Role-based access via decorator (`@require_role("admin")`); never inline `if current_user.role == ...`.
+
+## API design
+
+- REST resources via **Flask-RESTful**; validate every request body with **Pydantic**.
+- Correct HTTP semantics: `200/201/204/400/401/403/404/409/422/500`. Never return `200` for errors.
+- Consistent error envelope: `{"error": {"code": str, "message": str, "details": object|null}}`.
+- **Rate limiting** with `flask-limiter` on every public endpoint.
+- Version the API in the URL (`/v1/...`) from day one.
+
+## Testing
+
+- **pytest** + **pytest-cov** + **pytest-mock**. Target ≥ 85% line coverage on new code.
+- Mirror `src/` in `tests/`; name files `test_*.py`.
+- Use **fixtures**, not setup/teardown methods. Scope intentionally (`function`, `module`, `session`).
+- Mock AWS with **moto**, HTTP with **responses**/**respx**. Never hit real network in unit tests.
+- Test the unhappy path: every `Failure(...)` branch in a `new()` needs a test.
+
+## Security (OWASP-aligned, mandatory)
+
+- **HTTPS only** in any deployed environment; reject plain HTTP at the ALB.
+- **Sanitise/validate all input** at the boundary via Pydantic. Never trust `request.json` directly.
+- Parameterised queries only — no `f"SELECT ... {user_input}"`. SQLAlchemy ORM by default.
+- **Secrets** come from AWS Secrets Manager or env vars injected by IRSA. Never in code, repo, logs, or error messages.
+- Configure **CORS** explicitly (`flask-cors`) with an allowlist; never `*` in prod.
+- **Structured logging** (`structlog` or `logging` with JSON formatter). Redact PII and tokens.
+- Pin dependencies and run **`pip-audit`** in CI; fail on high/critical CVEs.
+- Set **security headers**: `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`.
+- Follow OWASP Top 10 — when adding a new endpoint, walk the list mentally before merging.
+
+## Performance
+
+- Cache reads with **Flask-Caching** backed by ElastiCache (Redis); choose key + TTL deliberately.
+- Paginate every list endpoint (default page size ≤ 50, hard max 200).
+- Push heavy work (>200 ms) to a background worker (Celery / RQ) via SQS.
+- Profile before optimising (`cProfile`, `py-spy`); never guess hot paths.
+
+## Error handling
+
+- Define a project exception hierarchy (`MidasError` → `MidasValidationError`, `MidasNotFoundError`, ...).
+- Catch the **narrowest** exception that makes sense; never bare `except:` or bare `except Exception:` outside top-level entry points.
+- Always `raise NewError(...) from exc` to preserve the cause.
+- Log with `logger.exception(...)` (includes traceback) at the boundary; let inner layers raise.
+
+```python
+# BAD
+try: do_work()
+except Exception: pass
+
+# GOOD
+try:
+    do_work()
+except SpecificError as exc:
+    logger.exception("do_work failed", extra={"context": ctx})
+    raise WorkflowError("do_work failed") from exc
+```
+
+## Documentation
+
+- **Google-style docstrings** on every public class/method/function.
+- Keep `README.md` and `docs/` current; document env vars in a single table.
+- Generate API docs from Pydantic models (e.g. `apispec`/`flask-smorest`) — don't hand-maintain.
+- Inline comments explain **why**, never **what**.
+
+## Dependencies
+
+- **Pin every version** in `requirements*.txt` (`package==X.Y.Z`). No `>=` in shared envs.
+- Split runtime (`requirements.txt`) and dev/test (`requirements-dev.txt`).
+- Add new deps via PR with a one-line justification.
+- Run `pip-audit` weekly; bump anything with a high/critical advisory.
+- Never `pip install` against a shared env from a laptop — use the Jenkins pipeline.
+
+## Development workflow
+
+- One **virtualenv** per project (`python -m venv .venv`). Never install into system Python.
+- **pre-commit** hooks: `black`, `ruff`, `isort`, `mypy --strict` (where adopted), `pip-audit`.
+- Conventional commits + semver tags. CI must be green before merge.
+
+---
+
+## MIDAS guardrails
+
+- AWS SDK calls use `boto3` against `us-east-1` only. Never hardcode credentials; rely on IRSA, instance profile, or `AWS_PROFILE`.
+- Code must run inside the private VPC (`vpc-0c4d673f3e95a93eb`). No public endpoints; route AWS calls through VPC interface endpoints.
+- Long-running services are stateless — persist to RDS/Aurora, ElastiCache, S3, or OpenSearch. Never durable local-disk state.
+- Async work goes to SQS/SNS/EventBridge, not in-process threads/queues.
+
+---
+
+## Agent checklist (run mentally before saving any `.py` file)
+
+- [ ] Type hints on every parameter and return (including `-> None`).
+- [ ] Public class/method has Google-style docstring.
+- [ ] Class follows the `Options` + single `__init__` + static `new() -> Result[...]` pattern.
+- [ ] Abstract bases use `ABC` + `@abstractmethod`; interfaces use `Protocol`.
+- [ ] Boundary data is Pydantic v2; internal value objects are frozen dataclasses.
+- [ ] No bare `except`; errors wrapped with `raise ... from exc`; logged via `logger.exception`.
+- [ ] No secrets, no `print`, no `f"SELECT ... {input}"`, no `*` CORS.
+- [ ] New deps pinned; security headers set; input validated at the boundary.
+- [ ] Tests cover both `Success` and `Failure` paths.
+
+## Related rules
+
+- `.cursor/rules/architecture.mdc` — private-by-default design.
+- `.cursor/rules/jenkins.mdc` — pipeline-first release path.
+- `.cursor/rules/solution_const.mdc` — VPC, region, jumpbox identifiers.

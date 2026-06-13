@@ -1,0 +1,22 @@
+{
+  "commands": [
+    "set -e",
+    "export AWS_DEFAULT_REGION=us-east-1",
+    "CLUSTER=midas-eks-dev",
+    "echo \"=== Using EKS cluster: $CLUSTER ===\"",
+    "aws eks update-kubeconfig --region us-east-1 --name \"$CLUSTER\"",
+    "echo ''",
+    "echo '=== Backend-related pods ==='",
+    "kubectl get pods -A -o wide 2>/dev/null | grep -iE 'backend|api-backend' || echo '(no name match — midas lines)'",
+    "kubectl get pods -A -o wide 2>/dev/null | grep -i midas | head -40 || true",
+    "echo ''",
+    "echo '=== kubectl top pods (memory/CPU) ==='",
+    "kubectl top pods -A 2>&1 | grep -iE 'backend|api-backend' || kubectl top pods -A 2>&1 | head -25",
+    "echo ''",
+    "echo '=== describe: OOM / limits / restarts (backend pods) ==='",
+    "kubectl get pods -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"backend|api-backend\"; \"i\")) | [.metadata.namespace,.metadata.name] | @tsv' | while IFS=$'\\t' read -r NS POD; do echo \"----- $NS/$POD -----\"; kubectl describe pod -n \"$NS\" \"$POD\" 2>/dev/null | grep -iE '^(Name:|Namespace:|    State:|    Last State:|      Reason:|      Exit Code:|    Restart|    Limits:|    Requests:|    memory:|    Memory:|Conditions:|  Normal|  Warning|OOM)' || true; done",
+    "echo ''",
+    "echo '=== Recent events ==='",
+    "kubectl get events -A --sort-by=.lastTimestamp 2>/dev/null | tail -200 | grep -iE 'OOM|Killed|backend|api-backend' | tail -25 || true"
+  ]
+}

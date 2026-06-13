@@ -1,0 +1,32 @@
+# MIDAS requirements for the control-api container.
+#
+# This is the explicit list of runtime deps required by
+# `ai_gateway/src/aigtw_c1_api/` (the upstream c1-api source), stripped of the
+# over-declared corporate JFrog packages that are NOT actually imported by
+# the source tree:
+#
+#   exlerate-ai-auth-sdk  - declared, never imported
+#   exlerate-cognito      - declared, never imported
+#   exlerate-environment  - declared, never imported
+#
+# The two private deps that ARE imported (`exlerate-logging`, `exlerate-database`)
+# come from local shims in `deploy/ai_gateway/vendored-shims/` and are installed
+# by the Dockerfile BEFORE this file is processed.
+#
+# See `deploy/ai_gateway/CI/Dockerfile.c1-api-midas` for the install order and
+# the SOP `.cursor/scratch/sop-capture-2026-04-19_1529.md` (Step 36) for the
+# rationale (zero JFrog at build or runtime).
+
+fastapi>=0.95
+uvicorn
+httpx
+python-dotenv
+psycopg[binary]
+fastapi-decorators>=1.0.19
+pydantic>=2.12.5
+pydantic-settings>=2.12.0
+sqlalchemy>=2.0.0
+greenlet>=3.0.0
+asyncpg
+presidio-analyzer
+presidio-anonymizer

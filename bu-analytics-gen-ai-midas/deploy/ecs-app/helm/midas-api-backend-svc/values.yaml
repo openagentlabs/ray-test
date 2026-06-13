@@ -1,0 +1,124 @@
+# Backend replica count. Default 1 for safety; raise (cap 5 via values.schema.json)
+# once the Phase 2 Redis cross-pod lock and ALB target-group stickiness are
+# both active. See docs/adr/0003-midas-redis-cross-pod-job-locks.md.
+# Capacity reminder: each pod requests 53Gi RAM (resources: below) — multiply
+# by replicaCount and confirm Karpenter / m6i.4xlarge node headroom before
+# bumping in shared envs.
+replicaCount: 3
+# Literal AWS region for boto3 Secrets Manager client (Helm env overrides envFrom from midas-app-secret).
+awsRegion: us-east-1
+# Gunicorn --workers (backend/Dockerfile). DataFrameStateManager is an in-process singleton;
+# each worker process holds its own copy of cached DataFrames. Pair with stickySession.enabled=true
+# so the ALB routes a given user to the same pod (same DataFrameStateManager instance).
+# Raising webConcurrency increases RAM per pod; keep requests/limits below the m6i.4xlarge
+# Allocatable slack documented under resources: below.
+webConcurrency: 3
+image:
+  repository: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8000
+containerPort: 8000
+# URL of the GraphRAG microservice within the cluster.
+# Fortify "Insecure Transport": false positive.
+# This is a Kubernetes cluster-internal DNS URL (*.svc.cluster.local).
+# Traffic stays within VPC vpc-0c4d673f3e95a93eb; no external exposure.
+# HTTPS requires service-mesh or per-service TLS — accepted risk per ADR 0010.
+graphragServiceUrl: "http://midas-graph-svc.midas-apps.svc.cluster.local:8001"
+# Pod-manager (routing-tier gRPC) integration. Backed by POD_MANAGER_* settings in
+# backend/app/core/config.py. When enabled, login/refresh/logout acquire and release
+# a routing lease via the routing-tier gRPC service. host points at the in-cluster
+# routing-tier gRPC Service (chart fullnameOverride "envoy-router", namespace "routing",
+# grpcIngress.port 8804) — cross-namespace cluster DNS keeps traffic private.
+# podManager:
+#   enabled: false
+#   host: "envoy-router-grpc.routing.svc.cluster.local"
+#   port: 8804
+#   timeoutSeconds: 2.0
+#   ensureRetries: 1
+# RDS logical database name (configuration, not secret). Must match Terraform module db_name / output rds_postgres_db_name.
+rdsPostgresDbName: midas_dev
+# RDS endpoint hostname. Set from Terraform output rds_postgres_endpoint (seeded in midas-app-secret).
+# When set, overrides AWS_RDS_POSTGRES_HOST from envFrom so pods resolve the endpoint even when
+# the RDS-managed secret (after rotation) contains only username/password.
+rdsPostgresHost: ""
+# RDS port (default 5432). Set when the instance uses a non-standard port.
+rdsPostgresPort: ""
+# Optional: set to require for TLS to AWS RDS (sslmode query on DATABASE_URL).
+rdsPostgresSslmode: ""
+appSecret:
+  # create: false means the secret must exist before helm deploy (created by populate-secrets.sh + kubectl)
+  # set create: true and populate data: {} only for local/testing overrides
+  create: false
+  secretName: midas-app-secret
+  data: {}
+# Corporate proxy for egress to external endpoints (e.g. Azure OpenAI).
+# NO_PROXY keeps AWS-internal VPC traffic (Secrets Manager, RDS, STS, IMDS) on
+# the direct path.  Set to "" to disable proxy injection entirely.
+#
+# Fortify "Insecure Transport": false positive.
+# HTTPS_PROXY / HTTP_PROXY intentionally use http://: the corporate proxy is
+# contacted via plain HTTP and opens a TLS CONNECT tunnel for https:// targets.
+# This is standard RFC proxy behaviour — changing to https:// breaks the proxy.
+# Accepted risk per ADR 0010.
+httpsProxy: "http://163.116.128.80:8080"
+httpProxy:  "http://163.116.128.80:8080"
+noProxy:    "169.254.169.254,localhost,127.0.0.1,.svc.cluster.local,.cluster.local,.amazonaws.com,10.0.0.0/8"
+rollout:
+  suffix: ""
+# Cross-pod per-dataset job lock (Phase 2). See
+# docs/adr/0003-midas-redis-cross-pod-job-locks.md and
+# backend/app/services/job_locks.py.
+# When enabled and the backend can resolve a Redis URL (via the same chain
+# the session store uses: ElastiCache Secrets Manager -> SESSION_REDIS_URL ->
+# REDIS_URL), heavy CPU jobs serialise across pods on a SETNX key. When
+# disabled or unreachable the backend transparently falls back to the
+# pod-local fcntl + thread lock (no behaviour change vs Phase 1).
+redisLock:
+  enabled: true
+  ttlMs: 1800000      # 30 min — bounds an OOM-killed pod's stale lock window
+
+# ALB sticky-session configuration.
+#
+# AUTHORITATIVE source: deploy/ecs-app/modules/alb-nlb/main.tf — the
+# "stickiness" block on aws_lb_target_group.backend, driven by Terraform
+# variable var.backend_target_group_stickiness_seconds. MIDAS wires the
+# backend via TargetGroupBinding (deploy/ecs-app/eks-tgb.tf), and the AWS LB
+# Controller does NOT read the alb.ingress.kubernetes.io/target-group-attributes
+# annotation in TGB mode — that annotation only takes effect when the Service
+# is referenced by an Ingress object.
+#
+# These Helm values still emit the annotation as belt-and-braces (and to keep
+# the chart self-documenting), but they have no effect on a live cluster
+# unless the wiring is ever migrated to an Ingress.
+# Set enabled: false in local/docker-compose environments where there is no ALB.
+stickySession:
+  enabled: true
+  durationSeconds: 86400   # 24 hours — adjust to match your expected session length
+# Guaranteed QoS: requests == limits (pod can use 100% of this CPU and RAM; kube enforces limits).
+# Node: m6i.4xlarge (16 vCPU, 64 GiB). EKS Allocatable is typically ~15890m CPU and ~58.5Gi memory.
+# Reserve slack for kube-system DaemonSets (VPC CNI, kube-proxy, EBS CSI, Fluent Bit, etc.) and
+# kubelet/eviction headroom: ~1300m CPU and ~4.5Gi memory combined target off Allocatable before the
+# backend pod. Pod requests below that floor avoid Pending and leave the node healthy under load.
+resources:
+  requests:
+    cpu: "14600m"
+    memory: "53Gi"
+  limits:
+    cpu: "14600m"
+    memory: "53Gi"
+# OpenTelemetry + CloudWatch observability.
+# Off by default; flip enabled / metricsEnabled in a per-env values file
+# (e.g. values-midas-dev.yaml) to activate. See docs/observability-configuration.md.
+observability:
+  enabled: false             # OTEL_ENABLED — master switch; also forces LOG_FORMAT=json
+  metricsEnabled: false      # OTEL_METRICS_ENABLED — emit CloudWatch Metrics via EMF
+  metricsNamespace: "MIDAS"  # OTEL_METRICS_NAMESPACE — CloudWatch custom metric namespace
+  serviceName: "midas-backend"  # OTEL_SERVICE_NAME — service dimension on every metric
+  logGroupName: ""           # LOG_CLOUDWATCH_LOG_GROUP — adds "@logGroupName" to JSON log lines, e.g. /midas/dev/backend
+  environment: ""            # OTEL_ENVIRONMENT — falls back to APP_ENV if blank
+  # Phase B — OTLP / Prometheus path (leave empty until OTel Collector is deployed)
+  otlpEndpoint: ""           # OTEL_EXPORTER_OTLP_ENDPOINT — gRPC endpoint of in-cluster OTel Collector
+  resourceAttributes: ""     # OTEL_RESOURCE_ATTRIBUTES — comma-separated OTel resource attributes

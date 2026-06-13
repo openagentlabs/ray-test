@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "midas-graph-svc",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "MIDAS enforces at most one pod per workload; Deployment strategy uses maxSurge 0."
+    }
+  }
+}

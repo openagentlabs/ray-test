@@ -1,0 +1,62 @@
+kb:
+  imputation_selector:
+    candidates:
+      categorical:
+      - missing_bucket_one_hot
+      - target_encoding_oof
+      - mode_by_segment
+      date:
+      - derive_relative_features + missing_flag
+      numeric:
+      - median_by_segment
+      - global_median
+      - constant_zero
+      - knn_impute
+      - mice
+    decision_tree:
+      if_feature_type:
+      - action: no_imputation
+        condition: id_like
+      - action: missing_as_category
+        condition: target_related
+      - action: special_value_impute
+        condition: external_score
+      if_missing_rate:
+      - action: drop_column
+        condition: '>0.5'
+      - action: advanced_imputation
+        condition: '>0.25'
+      - action: simple_imputation
+        condition: '>0.05'
+      - action: missing_indicator_only
+        condition: <=0.05
+    evaluation:
+      cv:
+        folds: <KFOLDS|5>
+        group_by: <CUSTOMER_ID|customer_id>
+        type: time_blocked
+      metrics:
+        predictive:
+        - AUC
+        - KS
+        stability:
+        - "PSI(train\u2192valid)"
+        variance:
+        - std_auc_over_folds
+      probe_model: logistic_woe_minimal
+      tie_breaker: prefer_simpler
+      utility_weights:
+        auc: 0.6
+        psi_pen: 0.2
+        var_pen: 0.2
+    rules_of_thumb:
+      drop_if_no_lift_after_impute: true
+      forbid_model_based_impute_for_patterns:
+      - '*score*'
+      - '*dti*'
+      - '*util*'
+      - '*balance*'
+      - '*payment*'
+      high_missing_threshold: 0.4
+      small_missing_threshold: 0.03
+    seed: <SEED|42>

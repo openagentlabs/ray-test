@@ -1,0 +1,78 @@
+{
+    "cluster": {
+        "name": "midas-eks-dev",
+        "arn": "arn:aws:eks:us-east-1:811391286931:cluster/midas-eks-dev",
+        "createdAt": "2026-04-06T16:22:19.464000+01:00",
+        "version": "1.30",
+        "endpoint": "https://D215BDB7961B3419B289036FAEC57DC8.gr7.us-east-1.eks.amazonaws.com",
+        "roleArn": "arn:aws:iam::811391286931:role/midas-eks-dev-cluster",
+        "resourcesVpcConfig": {
+            "subnetIds": [
+                "subnet-04d9f5b09b2dc9425",
+                "subnet-05c4fce53e16da9bc"
+            ],
+            "securityGroupIds": [],
+            "clusterSecurityGroupId": "sg-0bcffb89cba7c228f",
+            "vpcId": "vpc-0c4d673f3e95a93eb",
+            "endpointPublicAccess": false,
+            "endpointPrivateAccess": true,
+            "publicAccessCidrs": []
+        },
+        "kubernetesNetworkConfig": {
+            "serviceIpv4Cidr": "172.20.0.0/16",
+            "ipFamily": "ipv4",
+            "elasticLoadBalancing": {
+                "enabled": false
+            }
+        },
+        "logging": {
+            "clusterLogging": [
+                {
+                    "types": [
+                        "api",
+                        "audit",
+                        "authenticator",
+                        "controllerManager",
+                        "scheduler"
+                    ],
+                    "enabled": true
+                }
+            ]
+        },
+        "identity": {
+            "oidc": {
+                "issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/D215BDB7961B3419B289036FAEC57DC8"
+            }
+        },
+        "status": "ACTIVE",
+        "certificateAuthority": {
+            "data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJSWNQQ2xZb3YxUUF3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpBME1EWXhOVEl5TlRCYUZ3MHpOakEwTURNeE5USTNOVEJhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURnL2hSTkVzN1NYYmt0QU1NRnh1aVFiZXdFZGdHYit5REdNRHhWYUNJNWo1MWtmcFAvSXRsakl4UVUKOU9vQXkrcDdDSEJveFVXV1IzOWE3R3VBWVorK3RZZ3VIVm1uOS9sUzVBaTFsbE5uclhVQW1RN29WZVFDK0o3Mgp4WDFadjAvWk0ydmQrTDVQaUppVFlyU1FTNExNaGRmYnlWZWMyRml0VmxsNUNydCtoaEMySmduUzFhU1RaOUpXCk1mTXhJNFc4OHZRM3ZxTkpIL1hsaXZ1WW5weEpWWFJRVFl6TXZHV3hKSStVNjhKcXZtVWV3aHlxZFBLTC95QXAKeHNzZXNRNzFxeXFEQ0pKNUtzbTc4QTkzTkVaTUFINDREeHVveGtzWUV6QjZmS3g3T1ZOcFFSV1JHS0dlV0Y0aApkZjVKa1NzS0MwQnlENlVWZS9xdUZqUWh0QUh0QWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJTK3BwN0FqUTl3K0x4cnhQTnQzMEErUVY3S21qQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQXdTV2hYVHhNSgp0bHFGZW9rYXZQLzZzdkxRQ3ZDa01jUkpnUlB2SXVWOGpieVkrSXhzdTV2RE5RWEVpbEtuTUkrdkJ6OE1jb2hGCklCQ0tWM1B4L05IOWxrUGpHN1hrS0k0MmdaNzNsSnJCanRzOHZFSGp3a1ZkVThFYXA1R1huOW9odmpVaUFFb04Kc2Fxa2x4bCtCOWMwNFpuVkZMVjc3WGMwRlJVcVEwRkJhVWxEUHp5NUFxY05MVDNCU1hFLzFybVlOSGh4Z0hEbgpyS3NWRzRwbHd0YmV5NTR1WHdDNjZaeEx3SjR2SmNiYUJ4T28wRGwwdll2ZjBiL3JDREtKbTBkQmt4VGZGTm8yCngwajc4bC9lNVovSXIwcnFsZXhVNGJrS2Q5QlozR2dNdUhPOHlIRVBpalJLaEErMWdxMFhHS1Y3bERSRzg1TFAKUDdEZGhmY082RVZrCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+        },
+        "platformVersion": "eks.64",
+        "tags": {
+            "Project": "midas-eks",
+            "Environment": "dev",
+            "AccountId": "811391286931",
+            "ManagedBy": "terraform"
+        },
+        "accessConfig": {
+            "authenticationMode": "API_AND_CONFIG_MAP"
+        },
+        "upgradePolicy": {
+            "supportType": "EXTENDED"
+        },
+        "computeConfig": {
+            "enabled": false,
+            "nodePools": []
+        },
+        "storageConfig": {
+            "blockStorage": {
+                "enabled": false
+            }
+        },
+        "deletionProtection": false,
+        "controlPlaneScalingConfig": {
+            "tier": "standard"
+        }
+    }
+}

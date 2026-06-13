@@ -1,0 +1,64 @@
+{
+    "LoadBalancers": [
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:811391286931:loadbalancer/net/midas-dev-nlb/d290764c37bb4f68",
+            "DNSName": "midas-dev-nlb-d290764c37bb4f68.elb.us-east-1.amazonaws.com",
+            "CanonicalHostedZoneId": "Z26RNL4JYFTOTI",
+            "CreatedTime": "2026-04-15T14:13:03.195000+00:00",
+            "LoadBalancerName": "midas-dev-nlb",
+            "Scheme": "internal",
+            "VpcId": "vpc-0c4d673f3e95a93eb",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "network",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-1c",
+                    "SubnetId": "subnet-04f6c506a5098aa40",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-1a",
+                    "SubnetId": "subnet-0bc74e29f773eb7a4",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "SecurityGroups": [
+                "sg-025b186fbbabbde30"
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        },
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:811391286931:loadbalancer/app/midas-dev-alb/f34617a0b3c781ad",
+            "DNSName": "internal-midas-dev-alb-2046892741.us-east-1.elb.amazonaws.com",
+            "CanonicalHostedZoneId": "Z35SXDOTRQ7X7K",
+            "CreatedTime": "2026-04-15T14:13:03.181000+00:00",
+            "LoadBalancerName": "midas-dev-alb",
+            "Scheme": "internal",
+            "VpcId": "vpc-0c4d673f3e95a93eb",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "application",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-1c",
+                    "SubnetId": "subnet-04d9f5b09b2dc9425",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-1a",
+                    "SubnetId": "subnet-05c4fce53e16da9bc",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "SecurityGroups": [
+                "sg-008dace1a0d54dcba"
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        }
+    ]
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Data Analysis Basics",
+    "content": "Data analysis involves examining, cleaning, transforming, and modeling data to discover useful information, suggest conclusions, and support decision-making.",
+    "category": "general",
+    "features": ["data analysis", "statistics", "modeling"]
+  },
+  {
+    "title": "Correlation Analysis",
+    "content": "Correlation analysis measures the strength and direction of the linear relationship between two variables. Values range from -1 to 1, where 1 indicates perfect positive correlation, -1 indicates perfect negative correlation, and 0 indicates no correlation.",
+    "category": "statistics",
+    "features": ["correlation", "statistics", "linear relationship"]
+  },
+  {
+    "title": "Bivariate Analysis",
+    "content": "Bivariate analysis involves analyzing the relationship between two variables. It can include correlation analysis, scatter plots, and cross-tabulation to understand how variables relate to each other.",
+    "category": "statistics",
+    "features": ["bivariate analysis", "two variables", "relationship"]
+  },
+  {
+    "title": "Dataset Validation",
+    "content": "Dataset validation involves checking data quality, completeness, and consistency. This includes identifying missing values, outliers, duplicate records, and ensuring data follows expected formats.",
+    "category": "data_quality",
+    "features": ["validation", "data quality", "missing values", "outliers", "duplicates"]
+  },
+  {
+    "title": "Duplicate Row Detection",
+    "content": "Duplicate row detection identifies rows in the dataset that have identical values across all or specific columns. Duplicates can skew analysis results and model performance. Common approaches include: 1) Drop all duplicates keeping only first occurrence, 2) Drop all duplicates keeping only last occurrence, 3) Drop duplicates based on specific key columns. The detection shows the total count of duplicate rows and percentage of the dataset.",
+    "category": "data_quality",
+    "features": ["duplicates", "duplicate rows", "data quality", "deduplication"]
+  },
+  {
+    "title": "Outlier Detection and Treatment",
+    "content": "Outlier detection identifies extreme values in numeric columns that deviate significantly from the rest of the data. Common detection methods include IQR (Interquartile Range) method and Z-score method. IQR method identifies outliers as values below Q1-1.5*IQR or above Q3+1.5*IQR. Treatment approaches include: 1) Capping at percentiles (99th, 95th, 90th), 2) Removing outlier rows, 3) Transforming with log/sqrt, 4) Winsorizing. The detection shows the count of outliers per column and percentage of affected rows.",
+    "category": "data_quality",
+    "features": ["outliers", "outlier detection", "extreme values", "data quality", "IQR method"]
+  },
+  {
+    "title": "ML Problem Type Classification",
+    "content": "Machine learning problems are classified into two main types: Classification and Regression. Classification predicts categorical outcomes (binary or multiclass), while Regression predicts continuous numerical values. Binary classification has 2 classes (e.g., 0/1, Yes/No), multiclass has 3+ classes. The problem type is automatically detected based on the target variable characteristics: categorical/boolean targets → classification, numeric targets with many unique values → regression, numeric targets with few unique integer values → classification. Understanding the problem type helps select appropriate algorithms and evaluation metrics.",
+    "category": "machine_learning",
+    "features": ["problem type", "classification", "regression", "binary", "multiclass", "target variable"]
+  },
+  {
+    "title": "Machine Learning Models",
+    "content": "Machine learning models are algorithms that can learn patterns from data to make predictions or classifications. Common types include linear regression, decision trees, random forests, and neural networks.",
+    "category": "machine_learning",
+    "features": ["machine learning", "models", "predictions", "algorithms"]
+  }
+]

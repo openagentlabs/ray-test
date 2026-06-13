@@ -1,0 +1,19 @@
+{
+  "folders": [{ "path": "." }],
+  "settings": {
+    "files.exclude": {
+      ".agents": true,
+      "_bmad": true
+    },
+    "search.exclude": {
+      ".agents": true,
+      "_bmad": true,
+      "**/.agents/**": true,
+      "**/_bmad/**": true
+    },
+    "files.watcherExclude": {
+      "**/.agents/**": true,
+      "**/_bmad/**": true
+    }
+  }
+}

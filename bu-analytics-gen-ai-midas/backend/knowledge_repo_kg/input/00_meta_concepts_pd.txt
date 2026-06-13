@@ -1,0 +1,203 @@
+kb:
+  meta:
+    audience:
+    - AI_agent
+    - risk_analytics
+    - data_engineering
+    - model_risk
+    - compliance
+    currency: <CURRENCY|LOCAL>
+    name: credit_risk_pd_meta_concepts
+    purpose: Authoritative PD context for data preparation, EDA, and feature engineering,
+      with pointers to operative policies elsewhere.
+    timezone: <TIMEZONE|UTC>
+    unit_of_analysis: <UNIT|account_or_application>
+    version: 2.0.0
+  meta_concepts_pd:
+    acceptance_gates_for_prep:
+      gates_ref: '@kb.prep_acceptance_gates'
+      must_pass_examples:
+      - unique key discovered or surrogate created
+      - no forbidden leakage fields in features
+      - "feature missing_rate \u2264 @kb.data_quality_rules.completeness.max_missing_rate_per_feature\
+        \ OR documented rationale"
+    artifacts_and_lineage:
+      artifacts_ref: '@kb.artifacts_to_produce'
+      lineage_files:
+      - feature_lineage.yaml
+      - data_dictionary.csv
+      run_lockfile: resolved_kb_lock.json
+    binning_and_encoding:
+      maps_template_ref: '@binning_maps'
+      notes:
+      - Compute IV/WOE out-of-fold on train (time-blocked).
+      - Enforce @kb.binning_safety.min_bin_size_pct and @kb.binning_safety.min_bad_per_bin
+        when label is available.
+      - Relax monotonicity or merge adjacent bins if non-monotonic.
+      policy_ref: '@kb.binning_encoding'
+      safety_ref: '@kb.binning_safety'
+    censoring_and_observation:
+      censoring:
+        policy: Drop or down-weight in modeling; keep in counts for monitoring/EDA.
+        right_censor_flag: <PD_CENSORED|pd_label_censored>
+      left_truncation_note: "If account predates data start, features must represent\
+        \ state \u2264 as_of_date only."
+      observation_window_rule: '@kb.leakage_prevention.snapshotting.rule'
+      performance_window_ref: '@kb.assumptions.performance_window_months'
+    cross_validation_and_folds:
+      folds_ref: '@kb.imputation_selector.evaluation.cv.folds'
+      group_by_ref: '@kb.imputation_selector.evaluation.cv.group_by'
+      imputation_cv_ref: '@kb.imputation_selector.evaluation.cv'
+    data_quality_and_validity:
+      completeness_required_ref: '@kb.data_quality_rules.completeness.required_not_null_patterns'
+      high_cardinality_policy_ref: '@kb.data_quality_rules.high_cardinality'
+      max_missing_rate_ref: '@kb.data_quality_rules.completeness.max_missing_rate_per_feature'
+      numeric_bounds_policy_ref: '@kb.data_quality_rules.validity_ranges_policy'
+      outliers_ref: '@kb.data_quality_rules.outliers'
+      rules_ref: '@kb.data_quality_rules'
+    default_and_events:
+      competing_risks:
+        prepayment_flag: Mark as competing risk; not default.
+      cures_and_restructures:
+        cure_rule: Return to <30 DPD and remain current for 3+ consecutive months;
+          keep PD=1 but flag 'cured'.
+        restructure_forbearance: Flag; count as default only if terms meet regulatory
+          default.
+      definition_ref: '@kb.pd_labeling_policy.rule'
+      dpd_threshold_ref: '@kb.config_defaults.DPD_THRESH'
+      event_fields_ref: '@kb.schema.time_fields.event_fields'
+      precedence_order:
+      - chargeoff_date
+      - bankruptcy_date
+      - dpd_ever_>=@kb.config_defaults.DPD_THRESH
+    eda_objectives:
+      drift_checks:
+      - "PSI train\u2192valid on top features"
+      - bin stability across vintages
+      missingness_mechanisms:
+      - predict is_na(v) from controls (OOF)
+      - compare outcome rates NA vs non-NA (if label)
+      overview:
+      - row/column counts
+      - date range
+      - vintage distribution
+      - missingness table & heatmap
+      plan_ref: '@kb.eda_plan_pd'
+      univariate_categorical:
+      - top-N bars
+      - cardinality
+      - dominance_ratio
+      - missing_rate
+      univariate_numeric:
+      - histogram
+      - boxplot
+      - p1/p50/p99
+      - skewness
+      - missing_rate
+    feature_engineering_principles:
+      acceptance_criteria:
+        max_psi_train_valid_ref: '@kb.feature_derivation.acceptance.max_psi_train_valid'
+        min_coverage_ref: '@kb.feature_derivation.acceptance.min_coverage'
+        min_delta_auc_probe_ref: '@kb.feature_derivation.acceptance.min_delta_auc_probe'
+      derivation_families_examples:
+        ages_tenures:
+        - months_since_first_trade
+        - months_at_employer
+        categorical_groupings:
+        - rare-level merge to __OTHER__
+        - domain-informed buckets if available
+        counts_indicators:
+        - num_recent_inquiries_6m
+        - any_delinquency_12m
+        ratios:
+        - payment_to_income = installment/income (clip [0,2])
+        - balance_to_limit = balance/limit (clip [0,3])
+        transforms:
+        - log1p for skewed amounts/balances/income
+        - winsorize p1/p99 for amounts/ratios
+      guardrails:
+        max_pairwise_corr_ref: '@kb.feature_derivation.guardrails.max_pairwise_corr'
+        max_vif_ref: '@kb.feature_derivation.guardrails.max_vif'
+        min_rows_for_new_feature_ref: '@kb.feature_derivation.guardrails.min_rows_for_new_feature'
+        no_future_windows: true
+        time_safe: true
+      policy_ref: '@kb.feature_derivation'
+    glossary:
+      terms:
+        Censoring: Outcome unobserved because the window is incomplete.
+        DPD: Days Past Due.
+        EAD: Exposure at Default.
+        FPD: First Payment Default.
+        LGD: Loss Given Default.
+        MOB: Months on Book.
+        PD: Probability of Default within the performance window.
+        PSI: Population Stability Index.
+        Vintage: Cohort by observation/origination month/year.
+        WOE/IV: Weight of Evidence / Information Value.
+    imputation_philosophy:
+      always_add_missing_indicator: true
+      governance:
+        forbid_model_based_for_patterns_ref: '@kb.imputation_selector.rules_of_thumb.forbid_model_based_impute_for_patterns'
+      playbook_ref: '@kb.imputation_playbook_pd'
+      segmentation_scope_ref: '@kb.imputation_playbook_pd.computation_scope.by_segment'
+      selector_objective: Choose imputer by time-blocked OOF utility; see @kb.imputation_selector.evaluation.utility_weights.
+      selector_ref: '@kb.imputation_selector'
+    leakage_principles:
+      cv_guidance: Use time-blocked folds; apply purged CV if temporal contamination
+        is likely.
+      forbid_for_pd_patterns_ref: '@kb.schema.leakage_tags.forbid_for_pd_patterns'
+      temporal_rule: No feature may use data after @kb.assumptions.as_of_date_field
+        or future aggregates.
+    overview:
+      relationship_to_el: "Expected Loss = PD \xD7 LGD \xD7 EAD; PD is the forward-looking\
+        \ default likelihood."
+      stakeholders:
+      - risk
+      - finance
+      - pricing
+      - collections
+      - compliance
+      - audit
+      - product
+      what_is_pd: Probability that an obligor defaults within the performance window
+        after the observation date.
+      why_pd:
+      - Origination and line/limit decisions.
+      - "Provisioning/capital; EL = PD \xD7 LGD \xD7 EAD."
+      - Portfolio steering, stress testing, collections triage.
+    resolver_and_precedence:
+      precedence_order:
+      - runtime_overrides
+      - project_config
+      - auto_detect
+      - defaults
+      resolution_rules:
+      - "Values here are references; the agent must dereference @kb.\u2026 into a\
+        \ resolved KB before execution."
+      - If a referenced path is missing, fall back to @kb.config_defaults where applicable.
+      - On conflict, the first non-null in precedence_order wins and is written to
+        the run lockfile.
+    segmentation_principles:
+      acceptance_criteria:
+        max_cardinality: '@kb.segment_discovery_policy.viability_thresholds.max_cardinality'
+        min_segment_rows: '@kb.segment_discovery_policy.viability_thresholds.min_segment_rows'
+        min_segment_share: '@kb.segment_discovery_policy.viability_thresholds.min_segment_share'
+        parsimony: "\u2264 @kb.segment_discovery_policy.scoring.max_keys_to_keep keys;\
+          \ keep if score \u2265 keep_threshold."
+        stability_drift_psi_warn: '@kb.segment_discovery_policy.viability_thresholds.psi_warn_per_month'
+      backoff_policy: '@kb.segment_discovery_policy.deployment.backoff_on_missing_segment'
+      candidate_segments_hint:
+      - <SEG1|product_type>
+      - <SEG2|secured_flag>
+      - channel
+      - region/state
+      discovery_policy_ref: '@kb.segment_discovery_policy'
+      selected_segments_runtime: '@runtime.segment_selection.selected_keys'
+    time_and_scope:
+      as_of_date_field: '@kb.assumptions.as_of_date_field'
+      cohorting:
+      - vintage_month
+      - vintage_year
+      grace_period_days: <GRACE_DAYS|30>
+      performance_window_months: '@kb.assumptions.performance_window_months'
+      unit_of_analysis: '@kb.meta.unit_of_analysis'

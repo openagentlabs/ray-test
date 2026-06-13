@@ -1,0 +1,7 @@
+{
+  "name": "midas-frontend-runtime",
+  "private": true,
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}

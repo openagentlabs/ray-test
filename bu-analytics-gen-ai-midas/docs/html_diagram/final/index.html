@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EXLDecision — Future State Architecture</title>
+<style>
+  /* ─── Base ─────────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #e8eef5;
+    --surface:  #f0f4f8;
+    --card:     #ffffff;
+    --border:   #cbd5e1;
+    --accent:   #2563eb;
+    --accent2:  #7c3aed;
+    --green:    #059669;
+    --yellow:   #d97706;
+    --red:      #dc2626;
+    --teal:     #0891b2;
+    --orange:   #ea580c;
+    --pink:     #c026d3;
+    --text:     #1e293b;
+    --muted:    #64748b;
+    --tag-bg:   #f1f5f9;
+    --radius:   10px;
+    --font:     'Segoe UI', 'Inter', system-ui, sans-serif;
+    --mono:     'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ─── Layout ────────────────────────────────────────────────────────── */
+  .page-wrap { display: flex; min-height: 100vh; }
+
+  /* sidebar — keep dark for nav contrast */
+  .sidebar {
+    width: 230px;
+    min-width: 230px;
+    background: #1a1d27;
+    border-right: 1px solid #2e3350;
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid #2e3350;
+    margin-bottom: 16px;
+  }
+  .sidebar-logo h1 { font-size: 15px; font-weight: 700; color: #4f8ef7; letter-spacing: .3px; }
+  .sidebar-logo p  { font-size: 10px; color: #94a3b8; margin-top: 3px; }
+  .nav-section { padding: 6px 20px 2px; font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+  .nav-item {
+    display: block;
+    padding: 6px 20px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 12px;
+    border-left: 2px solid transparent;
+    transition: all .15s;
+  }
+  .nav-item:hover, .nav-item.active { color: #e2e8f0; border-left-color: #4f8ef7; background: rgba(79,142,247,.07); }
+
+  /* main */
+  .main { flex: 1; overflow-x: hidden; background: var(--bg); }
+
+  /* hero → light page-header style */
+  .hero {
+    background: #1e293b;
+    border-bottom: 3px solid var(--accent);
+    padding: 28px 48px 22px;
+  }
+  .hero h1 { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
+  .hero p  { color: #94a3b8; margin-top: 8px; max-width: 700px; font-size: 12px; }
+  .hero-meta { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #2e3350; border: 1px solid #3a4060;
+    padding: 3px 10px; border-radius: 12px; font-size: 10px; color: #94a3b8;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #34d399; }
+
+  .content { padding: 28px 40px 64px; max-width: 1400px; }
+  section { margin-bottom: 48px; }
+  section h2 {
+    font-size: 17px; font-weight: 800; color: var(--text);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 10px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section h2 .icon { font-size: 18px; }
+  section h3 { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; }
+
+  /* ─── Architecture Layer Canvas ─────────────────────────────────────── */
+  .arch-canvas {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .arch-layer {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  }
+  .layer-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px;
+    cursor: pointer; user-select: none;
+    transition: filter .15s;
+  }
+  .layer-header:hover { filter: brightness(1.05); }
+  .layer-header .layer-icon { font-size: 14px; }
+  .layer-header .layer-title { flex: 1; }
+  .layer-header .layer-hint { font-size: 10px; font-weight: 400; opacity: .7; text-transform: none; letter-spacing: 0; }
+  .layer-header .chevron { font-size: 10px; transition: transform .2s; }
+  .layer-header.collapsed .chevron { transform: rotate(-90deg); }
+  .layer-body { padding: 12px 16px 16px; display: flex; flex-wrap: wrap; gap: 10px; background: #fff; }
+  .layer-body.hidden { display: none; }
+
+  /* layer colour themes — light pastel headers */
+  .layer-client    .layer-header { background: #dce8f5; color: #1e4080; border-bottom: 2px solid #6ea8d4; }
+  .layer-ingress   .layer-header { background: #d5f0ea; color: #0e5048; border-bottom: 2px solid #4db8a8; }
+  .layer-mesh      .layer-header { background: #ede0f5; color: #5b21b6; border-bottom: 2px solid #a78bfa; }
+  .layer-identity  .layer-header { background: #fdf0d5; color: #7c3f00; border-bottom: 2px solid #d4a820; }
+  .layer-business  .layer-header { background: #d5ecd8; color: #14532d; border-bottom: 2px solid #50a060; }
+  .layer-agents    .layer-header { background: #f5d5f5; color: #701a75; border-bottom: 2px solid #c060b8; }
+  .layer-data      .layer-header { background: #fde8d5; color: #7c2d00; border-bottom: 2px solid #d47820; }
+  .layer-compute   .layer-header { background: #d5eeee; color: #0e4a4a; border-bottom: 2px solid #20a0a0; }
+  .layer-portability .layer-header { background: #eee8f8; color: #4c1d95; border-bottom: 2px solid #9060c0; }
+  .layer-stores    .layer-header { background: #ede0f5; color: #4a1060; border-bottom: 2px solid #9060c0; }
+
+  /* ─── Service Card ───────────────────────────────────────────────────── */
+  .svc-card {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    width: 200px;
+    min-width: 200px;
+    overflow: hidden;
+    transition: border-color .2s, transform .12s, box-shadow .2s;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .svc-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(37,99,235,.15);
+  }
+  .svc-card.wide { width: 240px; min-width: 240px; }
+  .svc-card.xwide { width: 320px; min-width: 320px; }
+  .svc-card-head {
+    padding: 8px 12px;
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  .svc-card-head .port { font-size: 9px; font-weight: 400; opacity: .7; margin-left: auto; font-family: var(--mono); }
+  .svc-card-body { padding: 8px 12px 10px; }
+
+  /* module row */
+  .module-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 5px; }
+  .module-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    background: #f1f5f9; border: 1px solid #cbd5e1;
+    padding: 1px 5px; border-radius: 3px; color: #64748b;
+    min-width: 36px; text-align: center; flex-shrink: 0; margin-top: 1px;
+  }
+  .module-files { font-family: var(--mono); font-size: 10px; color: #475569; line-height: 1.6; }
+  .module-files .filename { color: #1e293b; font-weight: 600; }
+  .module-files .rpc      { color: #7c3aed; }
+  .module-files .endpoint { color: #0891b2; }
+
+  /* endpoint pill tags */
+  .tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .tag {
+    font-size: 9px; font-family: var(--mono);
+    background: #f1f5f9; border: 1px solid #cbd5e1;
+    padding: 2px 6px; border-radius: 4px; color: #64748b;
+  }
+  .tag.rest  { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+  .tag.grpc  { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+  .tag.mcp   { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+  .tag.new   { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+  .tag.moved { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+
+  /* card colour heads — light saturated fills matching classic columns */
+  .head-blue   { background: #b8d4ee; color: #1e3a6e; }
+  .head-teal   { background: #a0d8ce; color: #0e4a40; }
+  .head-purple { background: #c8a8e8; color: #3b1070; }
+  .head-yellow { background: #f7dfa0; color: #6b3000; }
+  .head-green  { background: #a8d8b0; color: #14432a; }
+  .head-pink   { background: #e8b0e8; color: #700070; }
+  .head-orange { background: #f7c890; color: #6b2800; }
+  .head-cyan   { background: #90d4d4; color: #083030; }
+  .head-violet { background: #c8b8f0; color: #380880; }
+  .head-store  { background: #d0b8e8; color: #3a086a; }
+  .head-red    { background: #fca5a5; color: #7f1d1d; }
+  .head-gray   { background: #e2e8f0; color: #334155; }
+
+  /* ─── Flow arrows (connection legend) ───────────────────────────────── */
+  .conn-legend {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .conn-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); }
+  .conn-line { width: 28px; height: 2px; border-radius: 1px; }
+  .conn-line.rest  { background: #2563eb; }
+  .conn-line.grpc  { background: #7c3aed; }
+  .conn-line.mcp   { background: #059669; }
+  .conn-line.store { background: repeating-linear-gradient(90deg,#d97706 0,#d97706 4px,transparent 4px,transparent 8px); height: 1px; }
+  .conn-line.cache { background: repeating-linear-gradient(90deg,#0891b2 0,#0891b2 4px,transparent 4px,transparent 8px); height: 1px; }
+
+  /* hint bar */
+  .hint-bar {
+    background: #fff8e1; border-bottom: 1px solid #fbbf24;
+    padding: 7px 40px; font-size: 11px; color: #78350f;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .hint-bar strong { color: #b45309; }
+
+  /* ─── Flow Diagram (GBM transaction) ────────────────────────────────── */
+  .flow-wrap { overflow-x: auto; padding-bottom: 8px; }
+  .flow-table { border-collapse: collapse; min-width: 900px; width: 100%; }
+  .flow-table th {
+    background: #f1f5f9; border: 1px solid var(--border);
+    padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .6px; white-space: nowrap;
+  }
+  .flow-table td {
+    border: 1px solid var(--border); padding: 8px 12px;
+    font-size: 11px; vertical-align: top; background: #fff;
+  }
+  .flow-table tr:nth-child(even) td { background: #f8fafc; }
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; flex-shrink: 0;
+  }
+  .actor-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    font-size: 10px; font-weight: 600;
+  }
+  .actor-user    { background: #d1fae5; color: #065f46; }
+  .actor-ui      { background: #dbeafe; color: #1e40af; }
+  .actor-infra   { background: #ede9fe; color: #5b21b6; }
+  .actor-svc     { background: #ccfbf1; color: #0f766e; }
+  .actor-agent   { background: #fae8ff; color: #86198f; }
+  .actor-store   { background: #f3e8ff; color: #6b21a8; }
+  .call-tag { font-family: var(--mono); font-size: 10px; padding: 1px 5px; border-radius: 3px; display: inline-block; }
+  .call-rest  { background: #dbeafe; color: #1e40af; }
+  .call-grpc  { background: #ede9fe; color: #5b21b6; }
+  .call-store { background: #fef3c7; color: #92400e; }
+  .call-cache { background: #cffafe; color: #0e7490; }
+  .call-pub   { background: #fae8ff; color: #86198f; }
+  .data-type { font-family: var(--mono); font-size: 10px; color: var(--orange); }
+
+  /* ─── Data Handoff Table ─────────────────────────────────────────────── */
+  .handoff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .handoff-card { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  .handoff-head { padding: 9px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid var(--border); background: #f8fafc; }
+  .handoff-body { padding: 10px 14px; }
+  .handoff-row { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+  .handoff-row:last-child { border-bottom: none; }
+  .handoff-key { font-family: var(--mono); font-size: 10px; color: var(--accent2); min-width: 120px; flex-shrink: 0; }
+  .handoff-val { font-size: 10px; color: var(--muted); }
+
+  /* ─── Tool Catalogue ──────────────────────────────────────────────────── */
+  .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .tool-card {
+    background: #fff; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; transition: border-color .2s, box-shadow .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .tool-card:hover { border-color: var(--green); box-shadow: 0 3px 10px rgba(5,150,105,.12); }
+  .tool-name { font-family: var(--mono); font-size: 10px; color: var(--green); font-weight: 700; margin-bottom: 3px; }
+  .tool-svc  { font-size: 10px; color: var(--muted); }
+  .tool-transport { font-size: 9px; margin-top: 4px; }
+
+  /* ─── Requirement Check Table ────────────────────────────────────────── */
+  .req-table { width: 100%; border-collapse: collapse; }
+  .req-table th { background: #f1f5f9; border: 1px solid var(--border); padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--muted); text-align: left; }
+  .req-table td { border: 1px solid var(--border); padding: 7px 12px; font-size: 11px; vertical-align: top; background: #fff; }
+  .req-table tr:nth-child(even) td { background: #f8fafc; }
+  .check { color: var(--green); font-size: 13px; font-weight: 700; }
+
+  /* ─── Scrollbar ──────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+
+  /* ─── Utility ────────────────────────────────────────────────────────── */
+  .mono { font-family: var(--mono); }
+  .muted { color: var(--muted); }
+  .new-badge { background: #fee2e2; color: #991b1b; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+  .alert-box {
+    background: #fefce8; border: 1px solid #fde68a;
+    border-radius: var(--radius); padding: 12px 16px; margin-bottom: 20px;
+    font-size: 12px; color: #713f12;
+  }
+  hr.divider { border: none; border-top: 2px solid var(--border); margin: 32px 0; }
+
+  @media (max-width: 800px) {
+    .sidebar { display: none; }
+    .content { padding: 20px; }
+    .hero { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>EXL Decision</h1>
+    <p>Architecture Explorer</p>
+  </div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../future/developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="../future/requirements/index.html">📜 Requirements</a>
+      <a class="nav-item" href="../future/decisions/index.html">⚖️ Architectural decisions</a>
+
+      <div class="nav-section">This diagram</div>
+      <a class="nav-item active" href="index.html">📋 Final — System Layer Diagram</a>
+
+<div class="nav-section">On this page</div>
+  <a class="nav-item" href="#hero">Executive Summary</a>
+  <a class="nav-item" href="#principles">Design Principles</a>
+  <a class="nav-item" href="#layer-diagram">System Layer Diagram</a>
+  <a class="nav-item" href="#service-components">Service Components</a>
+  <a class="nav-item" href="#agent-platform">AI Agent Fabric</a>
+  <div class="nav-section">Data &amp; Flows</div>
+  <a class="nav-item" href="#gbm-flow">GBM Training Flow</a>
+  <a class="nav-item" href="#data-handoffs">Data Handoff Types</a>
+  <a class="nav-item" href="#storage">Storage Strategy</a>
+  <div class="nav-section">Developer</div>
+  <a class="nav-item" href="#code-map">Code Migration Map</a>
+  <a class="nav-item" href="#requirements">Requirements ✓</a>
+</nav>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <h1>EXLDecision — Future State Architecture</h1>
+  <p>Decomposition of the FastAPI monolith into <strong>14 independent microservices</strong> on AWS EKS + Istio, with an AI Agent Fabric built on AWS Bedrock AgentCore. This is the software developer view — every service, file, endpoint, and data handoff.</p>
+  <div class="hero-meta">
+    <span class="badge"><span class="dot"></span>Status: Proposed</span>
+    <span class="badge">Audience: Software Developers</span>
+    <span class="badge">Platform: AWS EKS us-east-1</span>
+    <span class="badge">Services: 14 microservices</span>
+    <span class="badge">Date: 2026-04-28</span>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ─── PRINCIPLES ──────────────────────────────────────────────────────── -->
+<section id="principles">
+  <h2><span class="icon">📐</span> Design Principles</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--accent)">1 — Stateless Pods</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">No pod holds durable state. A pod can die, be rescheduled, or replicated with zero data loss.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--green)">2 — One Service, One DB Namespace</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">Services never share DynamoDB tables or Redis keyspaces directly — always via the owning service's API.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--yellow)">3 — Event-Driven for Long Work</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">Any operation >3 s returns a job ID immediately. Kubeflow / SQS handles async execution.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--accent2)">4 — Cloud-Portable Abstractions</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">Code imports <span class="mono" style="color:var(--teal)">StoragePort, CachePort, NoSQLPort</span> — never boto3 directly. Swap AWS → Azure/GCP by changing the adapter.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--teal)">5 — Istio Owns Traffic Policy</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">mTLS between all services. Retry/circuit-breaker in VirtualService/DestinationRule — no per-service logic.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--red)">6 — Secrets Manager Only</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">No env vars for secrets. Pods receive a secret reference; abstraction layer fetches at startup.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--orange)">7 — DynamoDB First + Redis Cache</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">Postgres/SQLite replaced by DynamoDB. Hot reads cached in ElastiCache Redis with TTL.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--pink)">8 — ML Artefacts on S3 Files</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">No binary blobs in DynamoDB. Data layer writes parquet/pickle/models to S3 Files; metadata to DynamoDB.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:#67e8f9">9 — gRPC Inside / REST Outside</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">Service-to-service: gRPC (HTTP/2, Protobuf). External clients (browser, CLI): RESTful HTTP/1.1 JSON.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--pink)">10 — AI Agents as First-Class Citizens</div><div class="handoff-body" style="font-size:11px;color:var(--muted)">Every EXLDecision capability is a tool callable by an AI agent via MCP. Agents use the same REST/gRPC APIs as humans.</div></div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── CONNECTION LEGEND ─────────────────────────────────────────────── -->
+<div class="conn-legend">
+  <strong style="font-size:11px;color:var(--muted);margin-right:4px;">Connection types:</strong>
+  <div class="conn-item"><div class="conn-line rest"></div><span style="color:#93c5fd">REST HTTP/1.1 JSON</span></div>
+  <div class="conn-item"><div class="conn-line grpc"></div><span style="color:var(--accent2)">gRPC (Protobuf, HTTP/2)</span></div>
+  <div class="conn-item"><div class="conn-line mcp"></div><span style="color:var(--green)">MCP Tool (Agent → Service)</span></div>
+  <div class="conn-item"><div class="conn-line store"></div><span style="color:var(--yellow)">DynamoDB write/read</span></div>
+  <div class="conn-item"><div class="conn-line cache"></div><span style="color:var(--teal)">Redis cache/pub-sub</span></div>
+  <div class="conn-item"><div style="width:28px;height:2px;background:var(--accent2);border-top:1px dashed var(--accent2);opacity:.6"></div><span style="color:var(--muted)">imports (midas-common)</span></div>
+</div>
+
+<!-- ─── LAYER DIAGRAM ─────────────────────────────────────────────────── -->
+<section id="layer-diagram">
+  <h2><span class="icon">🏗️</span> System Layer Diagram</h2>
+  <div class="arch-canvas">
+
+    <!-- CLIENT LAYER -->
+    <div class="arch-layer layer-client">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">👤</span>
+        <span class="layer-title">Client Layer</span>
+        <span class="layer-hint">Browser SPA · Developer CLI · AI Agents (via agent-platform-service)</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <div class="svc-card">
+          <div class="svc-card-head head-blue">🌐 Web Browser <span class="port">React SPA</span></div>
+          <div class="svc-card-body">
+            <div class="tag-list">
+              <span class="tag rest">REST HTTPS :443</span>
+              <span class="tag">SSE stream</span>
+              <span class="tag">WebSocket</span>
+            </div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-blue">💻 Developer / CLI <span class="port">curl / SDK</span></div>
+          <div class="svc-card-body">
+            <div class="tag-list">
+              <span class="tag rest">REST HTTPS :443</span>
+              <span class="tag">Bearer JWT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INGRESS LAYER -->
+    <div class="arch-layer layer-ingress">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🛡️</span>
+        <span class="layer-title">Ingress Layer</span>
+        <span class="layer-hint">AWS VPC — no public IPs · NLB → WAF → ALB → Istio Gateway</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <div class="svc-card">
+          <div class="svc-card-head head-teal">🔒 AWS WAF</div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">Rules</div><div class="module-files">OWASP Core Rule Set<br/>Rate limit (req/IP/min)<br/>Header inspection<br/>Geo-block rules<br/>Logs → S3 midas-waf-logs/</div></div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-teal">⚖️ AWS ALB <span class="port">:443 → :80</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">Config</div><div class="module-files">TLS termination (ACM cert)<br/>Sticky sessions<br/>Health checks /health<br/>Routes → Istio NodePort</div></div>
+          </div>
+        </div>
+        <div class="svc-card wide">
+          <div class="svc-card-head head-teal">🕸️ Istio Ingress Gateway</div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">Policy</div><div class="module-files">JWT validation (JWKS from identity-service)<br/>VirtualService routing by path prefix<br/>HTTP/1.1 → cluster gRPC upgrade<br/>Rate limit filter via EnvoyFilter</div></div>
+            <div class="tag-list">
+              <span class="tag rest">/api/v1/identity/*</span>
+              <span class="tag rest">/api/v1/data/*</span>
+              <span class="tag rest">/api/v1/analytics/*</span>
+              <span class="tag rest">/api/v1/computation/*</span>
+              <span class="tag rest">/api/v1/agents/*</span>
+              <span class="tag rest">/api/v1/chat/*</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SERVICE MESH LAYER -->
+    <div class="arch-layer layer-mesh">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🕸️</span>
+        <span class="layer-title">Service Mesh — Istio (cross-cutting, applies to ALL pods)</span>
+        <span class="layer-hint">Not a pod — Envoy sidecar injected into every service pod automatically</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <div class="svc-card">
+          <div class="svc-card-head head-purple">🔐 mTLS</div>
+          <div class="svc-card-body"><div class="module-files muted">PeerAuthentication: STRICT<br/>All pod-to-pod traffic encrypted<br/>Certificates via Istio CA</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-purple">🔄 Traffic Policy</div>
+          <div class="svc-card-body"><div class="module-files muted">VirtualService: retry (3×, 2s)<br/>DestinationRule: circuit-breaker<br/>Timeouts per route<br/>Load balancing: ROUND_ROBIN</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-purple">✅ Authz Policy</div>
+          <div class="svc-card-body"><div class="module-files muted">AuthorizationPolicy: allow-list<br/>Service-to-service allow matrix<br/>Default: DENY ALL<br/>Explicit ALLOW per consumer</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-purple">📊 Observability</div>
+          <div class="svc-card-body"><div class="module-files muted">Distributed tracing (Jaeger)<br/>Metrics → CloudWatch<br/>Access logs → S3<br/>Kiali service graph</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IDENTITY & AUTHZ TIER -->
+    <div class="arch-layer layer-identity">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🔑</span>
+        <span class="layer-title">Identity &amp; Authorisation Services</span>
+        <span class="layer-hint">namespace: midas-services · Every request passes through identity validation</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <!-- identity-service -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-yellow">🪪 identity-service <span class="port">:8080 REST · :50051 gRPC</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">login_routes.py</span><br/><span class="endpoint">GET  /identity/login-url</span><br/><span class="endpoint">GET  /identity/callback</span> ← PKCE exchange<br/><span class="filename">session_routes.py</span><br/><span class="endpoint">POST /identity/refresh</span><br/><span class="endpoint">POST /identity/logout</span><br/><span class="endpoint">GET  /identity/me</span><br/><span class="filename">jwks_routes.py</span><br/><span class="endpoint">GET  /identity/jwks</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="filename">identity_servicer.py</span><br/><span class="rpc">VerifyToken(token) → UserContext</span><br/><span class="rpc">GetUser(user_id) → UserRecord</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files">cognito_service.py · session_service.py · user_service.py</div></div>
+            <div class="tag-list">
+              <span class="tag">Redis session:{jti} TTL=3600s</span>
+              <span class="tag">DynamoDB midas-users</span>
+              <span class="tag">Cognito PKCE</span>
+              <span class="tag moved">refactor: auth_service.py</span>
+            </div>
+          </div>
+        </div>
+        <!-- authz-service -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-yellow">🛂 authz-service <span class="port">:8080 REST · :50051 gRPC</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">roles_routes.py</span><br/><span class="endpoint">GET/POST /authz/roles</span><br/><span class="endpoint">PUT /authz/users/{id}/roles</span><br/><span class="endpoint">GET /authz/users/{id}/permissions</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="filename">authz_servicer.py</span><br/><span class="rpc">CheckPermission(user_id,action,resource) → {allowed}</span><br/><span class="rpc">GetUserPermissions(user_id) → PermissionList</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files">rbac_service.py · cache_service.py</div></div>
+            <div class="tag-list">
+              <span class="tag">Redis authz:{uid}:{res} TTL=300s</span>
+              <span class="tag">DynamoDB midas-roles, midas-permissions, midas-user-roles</span>
+              <span class="tag new">NEW — no monolith equivalent</span>
+            </div>
+          </div>
+        </div>
+        <!-- project-service -->
+        <div class="svc-card">
+          <div class="svc-card-head head-yellow">📁 project-service <span class="port">:8080 · :50051</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="endpoint">GET/POST /projects</span><br/><span class="endpoint">GET/PUT/DELETE /projects/{id}</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">GetProject(project_id) → ProjectRecord</span><br/><span class="rpc">ListProjectsForUser(user_id) → ProjectList</span></div></div>
+            <div class="tag-list">
+              <span class="tag">DynamoDB midas-projects</span>
+              <span class="tag moved">refactor: project_routes.py</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUSINESS SERVICES TIER -->
+    <div class="arch-layer layer-business">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">⚙️</span>
+        <span class="layer-title">Business Services</span>
+        <span class="layer-hint">namespace: midas-services · All stateless pods · Call authz-service on every protected operation</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <!-- analytics-service -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-green">📊 analytics-service <span class="port">:8080 · :50051</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">analytics_routes.py</span><br/><span class="endpoint">POST /analytics/qc</span> → {qc_run_id, issues[]}<br/><span class="endpoint">POST /analytics/dqs</span> → {score, profile}<br/><span class="endpoint">POST /analytics/correlations</span><br/><span class="endpoint">POST /analytics/vif</span><br/><span class="endpoint">POST /analytics/bivariate</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">RunQC(dataset_id, config) → job_id</span><br/><span class="rpc">GetResult(job_id) → AnalyticsResult</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files">qc_service.py · dqs_service.py · variable_review_service.py</div></div>
+            <div class="tag-list">
+              <span class="tag">calls data-fabric gRPC GetDataframe</span>
+              <span class="tag">DynamoDB midas-analytics-results</span>
+              <span class="tag moved">refactor: dqs_service.py, data_quality_detector.py</span>
+            </div>
+          </div>
+        </div>
+        <!-- llm-service -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-green">🤖 llm-service <span class="port">:8080 · :50051</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">chat_routes.py</span><br/><span class="endpoint">POST /chat/completions</span> → ChatCompletion / SSE<br/><span class="endpoint">POST /chat/execute-code</span><br/><span class="endpoint">GET  /chat/models</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">Chat(session_id, messages) → stream ChatChunk</span><br/><span class="muted">← consumed by doc-service &amp; agent-platform</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files">llm_routing.py · llm_registry.py</div></div>
+            <div class="tag-list">
+              <span class="tag">→ AI Gateway (LiteLLM) REST VPC PrivateLink</span>
+              <span class="tag">Redis llm-sel:{session_id}</span>
+              <span class="tag">DynamoDB midas-messages</span>
+              <span class="tag moved">refactor: llm_service.py, llm_routing.py</span>
+            </div>
+          </div>
+        </div>
+        <!-- documentation-service -->
+        <div class="svc-card">
+          <div class="svc-card-head head-green">📄 documentation-service <span class="port">:8080</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="endpoint">POST /documentation/generate</span> → 202 {job_id}<br/><span class="endpoint">GET  /documentation/{id}/status</span><br/><span class="endpoint">GET  /documentation/{id}/download</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files">doc_generator.py → gRPC Chat(llm-service)</div></div>
+            <div class="tag-list">
+              <span class="tag">S3 Files midas-documentation/</span>
+              <span class="tag">DynamoDB midas-doc-jobs</span>
+              <span class="tag moved">refactor: documentation_routes.py</span>
+            </div>
+          </div>
+        </div>
+        <!-- evaluation-service -->
+        <div class="svc-card">
+          <div class="svc-card-head head-green">📈 evaluation-service <span class="port">:8080 · :50051</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="endpoint">POST /evaluation</span><br/><span class="endpoint">GET  /evaluation/{model_id}</span><br/><span class="endpoint">GET  /evaluation/{id}/compare</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">StoreEvaluation(model_id, metrics) → EvalRef</span><br/><span class="muted">← called by meea-evaluator pipeline pod</span></div></div>
+            <div class="tag-list">
+              <span class="tag">DynamoDB midas-evaluations</span>
+              <span class="tag">S3 Files meea.json.gz</span>
+              <span class="tag moved">refactor: model_evaluation_service.py</span>
+            </div>
+          </div>
+        </div>
+        <!-- graphrag-service -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-green">🕸️ graphrag-service <span class="port">:8080 · :50051</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="endpoint">POST /graphrag/build</span><br/><span class="endpoint">POST /graphrag/query</span><br/><span class="endpoint">POST /vector/search</span><br/><span class="endpoint">POST /vector/index</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">Query(dataset_id, query_text) → KGQueryResult</span><br/><span class="rpc">VectorSearch(embedding, top_k) → SearchResults</span><br/><span class="muted">← consumed by llm-service for RAG context</span></div></div>
+            <div class="tag-list">
+              <span class="tag">OpenSearch Serverless (replaces FAISS)</span>
+              <span class="tag">S3 Files midas-knowledge-graphs/</span>
+              <span class="tag moved">refactor: graphrag_service.py → pod (no subprocess)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI AGENT FABRIC TIER -->
+    <div class="arch-layer layer-agents">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🧠</span>
+        <span class="layer-title">AI Agent Fabric — AWS Bedrock AgentCore</span>
+        <span class="layer-hint">namespace: midas-services + midas-agents · NEW SERVICE · Agents act as human users — RBAC enforced on every tool call</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <!-- agent-platform-service -->
+        <div class="svc-card xwide">
+          <div class="svc-card-head head-pink">🧠 agent-platform-service <span class="new-badge">NEW</span> <span class="port">:8080 · :50051</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">agent_routes.py</span><br/><span class="endpoint">GET/POST /agents</span> — list/register agents<br/><span class="endpoint">POST /agents/{id}/runs</span> → 202 {run_id}<br/><span class="endpoint">GET  /agents/runs/{id}/stream</span> SSE/WebSocket<br/><span class="filename">tool_routes.py</span><br/><span class="endpoint">GET  /agents/tools</span> — MCP tool catalogue<br/><span class="filename">memory_routes.py</span><br/><span class="endpoint">DELETE /agents/memory/{user_id}</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">InvokeAgent(agent_id, session_id, input) → stream AgentChunk</span><br/><span class="rpc">GetAgentStatus(run_id) → AgentRunStatus</span><br/><span class="rpc">ListAgentTools() → ToolList</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files"><span class="filename">agentcore_service.py</span> — AgentCore SDK: CreateRuntime, InvokeAgentRuntime, sessions<br/><span class="filename">tool_registry.py</span> — MCP ToolDefinitions for all 24 EXLDecision tools<br/><span class="filename">memory_service.py</span> — AgentCore Memory API (short + long-term)<br/><span class="filename">session_service.py</span> — microVM lifecycle (TTL 8h, idle 15min)<br/><span class="filename">agent_catalogue_service.py</span> — DynamoDB CRUD</div></div>
+            <div class="module-row"><div class="module-label">tools/</div><div class="module-files"><span class="filename">data_fabric_tool.py · analytics_tool.py · computation_tool.py</span><br/><span class="filename">llm_tool.py · graphrag_tool.py · evaluation_tool.py</span><br/><span class="filename">project_tool.py · authz_tool.py</span><br/><span class="muted">Each tool: MCP ToolDefinition + gRPC/REST adapter + RBAC gate</span></div></div>
+            <div class="tag-list">
+              <span class="tag new">AgentCore Runtime (PrivateLink us-east-1)</span>
+              <span class="tag new">AgentCore Memory (PrivateLink)</span>
+              <span class="tag">DynamoDB midas-agent-catalogue · midas-agent-runs</span>
+              <span class="tag">Redis agent:active:{sid} · agent:progress:{run_id}</span>
+              <span class="tag">S3 Files midas-agent-runs/</span>
+              <span class="tag moved">moved: agentic_system.py</span>
+            </div>
+          </div>
+        </div>
+        <!-- AgentCore sessions -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-pink">🔬 AgentCore microVM Sessions <span class="port">namespace: midas-agents</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">Runtime</div><div class="module-files">Isolated microVM per conversation<br/>Dedicated CPU, memory, filesystem<br/>Session max: 8 hours<br/>Idle timeout: 15 minutes<br/>Memory sanitised on terminate</div></div>
+            <div class="module-row"><div class="module-label">Protocol</div><div class="module-files">HTTP (request/response)<br/>MCP (tool calls)<br/>A2A (agent-to-agent)<br/>WebSocket (bidirectional streaming)</div></div>
+            <div class="tag-list">
+              <span class="tag">session_id = {user_id}:{agent_id}:{uuid4}</span>
+              <span class="tag">AgentCore Runtime ARN per agent type</span>
+              <span class="tag">ECR image per agent (midas-agents/*)</span>
+            </div>
+          </div>
+        </div>
+        <!-- OOB agents -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-pink">📦 Out-of-the-Box Agents</div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">data-qa</div><div class="module-files">data-qa-agent — QC, DQS, correlations, VIF</div></div>
+            <div class="module-row"><div class="module-label">train</div><div class="module-files">train-agent — upload → QC → pipeline → evaluate</div></div>
+            <div class="module-row"><div class="module-label">insight</div><div class="module-files">insight-agent — LLM + GraphRAG + analytics Q&amp;A</div></div>
+            <div class="module-row"><div class="module-label">doc</div><div class="module-files">doc-agent — generate model documentation</div></div>
+            <div class="module-row"><div class="module-label">pipeline</div><div class="module-files">pipeline-builder-agent — compose Kubeflow pipelines</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA FABRIC TIER -->
+    <div class="arch-layer layer-data">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🗄️</span>
+        <span class="layer-title">Data Fabric — Single Owner of ALL Data</span>
+        <span class="layer-hint">namespace: midas-services · No service writes to S3/S3-Files directly — all via data-fabric-service gRPC</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <div class="svc-card xwide">
+          <div class="svc-card-head head-orange">🗂️ data-fabric-service <span class="port">:8080 REST · :50051 gRPC</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">data_routes.py</span><br/><span class="endpoint">POST /data/upload</span> multipart → {dataset_id}<br/><span class="endpoint">GET  /data/datasets</span> → DatasetList<br/><span class="endpoint">GET  /data/datasets/{id}</span> → DatasetMeta<br/><span class="endpoint">POST /data/datasets/{id}/split</span> → {split_id}<br/><span class="endpoint">GET  /data/datasets/{id}/preview</span><br/><span class="endpoint">DELETE /data/datasets/{id}</span></div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="filename">data_fabric_servicer.py</span><br/><span class="rpc">GetDataset(dataset_id) → DatasetMeta</span><br/><span class="rpc">GetDataframe(dataset_id, scope) → ParquetBytes LZ4</span><br/><span class="rpc">ListDatasets(project_id) → DatasetList</span><br/><span class="rpc">GetRawFile(dataset_id, filename) → FileBytes</span><br/><span class="rpc">RegisterArtefact(job_id, key, type) → ArtefactRef</span><br/><span class="rpc">GetArtefact(artefact_ref) → FileBytes</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files">upload_service.py · split_service.py · catalogue_service.py</div></div>
+            <div class="tag-list">
+              <span class="tag">S3 midas-raw/ (raw CSV/Excel)</span>
+              <span class="tag">S3 Files midas-datasets/parquet/ · midas-artefacts/</span>
+              <span class="tag">DynamoDB midas-data-catalogue (PK: DATASET#{id})</span>
+              <span class="tag">Redis df:{dataset_id}:{scope} LZ4 TTL=1800s</span>
+              <span class="tag moved">refactor: dataset_service.py, dataframe_state_manager.py → DELETED</span>
+              <span class="tag new">NEW: S3 Files adapter, catalogue, lineage tracking</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPUTATION TIER -->
+    <div class="arch-layer layer-compute">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🤖</span>
+        <span class="layer-title">Computation Platform — Kubeflow Pipelines on EKS</span>
+        <span class="layer-hint">namespaces: midas-services (facade) + kubeflow + midas-pipelines (step pods) · Replaces BackgroundJobManager + SQS entirely</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <!-- computation-service -->
+        <div class="svc-card xwide">
+          <div class="svc-card-head head-cyan">⚡ computation-service <span class="port">:8080 REST · :50051 gRPC</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">api/</div><div class="module-files"><span class="filename">pipeline_routes.py</span> — GET/POST/PUT/DELETE /computation/pipelines/{id}<br/><span class="filename">component_routes.py</span> — GET/POST /computation/components<br/><span class="filename">run_routes.py</span><br/><span class="endpoint">POST /computation/pipelines/{id}/runs</span> → 202 {run_id}<br/><span class="endpoint">GET  /computation/runs/{id}</span> → RunRecord<br/><span class="endpoint">GET  /computation/runs/{id}/stream</span> SSE progress</div></div>
+            <div class="module-row"><div class="module-label">grpc/</div><div class="module-files"><span class="rpc">SubmitRun(pipeline_id, params) → RunRef</span><br/><span class="rpc">GetRunStatus(run_id) → RunStatus</span></div></div>
+            <div class="module-row"><div class="module-label">svc/</div><div class="module-files"><span class="filename">kubeflow_service.py</span> — kfp.Client.create_run() SDK wrapper<br/><span class="filename">pipeline_service.py</span> — DynamoDB pipeline-catalogue CRUD<br/><span class="filename">run_service.py</span> — Redis pub/sub → SSE bridge</div></div>
+            <div class="tag-list">
+              <span class="tag">DynamoDB midas-pipeline-catalogue · midas-pipeline-runs</span>
+              <span class="tag">Redis train:progress:{run_id} pub/sub</span>
+              <span class="tag moved">refactor: model_training*.py → pipeline components</span>
+              <span class="tag moved">DELETE: background_jobs.py, training_jobs_state.json</span>
+            </div>
+          </div>
+        </div>
+        <!-- Pipeline step pods -->
+        <div class="svc-card wide">
+          <div class="svc-card-head head-cyan">🔬 Pipeline Step Pods <span class="port">namespace: midas-pipelines</span></div>
+          <div class="svc-card-body">
+            <div class="module-row"><div class="module-label">fe</div><div class="module-files"><span class="filename">feature_engineer/component.py</span> @kfp.component<br/><span class="muted">encode · impute · log-transform · interactions</span></div></div>
+            <div class="module-row"><div class="module-label">gbm</div><div class="module-files"><span class="filename">gbm_trainer/component.py</span><br/><span class="muted">LightGBM / CatBoost / XGBoost</span></div></div>
+            <div class="module-row"><div class="module-label">rfe</div><div class="module-files"><span class="filename">rfe_selector/component.py</span><br/><span class="muted">Recursive Feature Elimination</span></div></div>
+            <div class="module-row"><div class="module-label">auto</div><div class="module-files"><span class="filename">auto_trainer/component.py</span><br/><span class="muted">FLAML / TPOT auto-ML</span></div></div>
+            <div class="module-row"><div class="module-label">meea</div><div class="module-files"><span class="filename">meea_evaluator/component.py</span><br/><span class="muted">AUC-ROC · F1 · confusion matrix · feature importance</span></div></div>
+            <div class="tag-list">
+              <span class="tag">Each pod: own ECR image, own Dockerfile</span>
+              <span class="tag">all call data-fabric gRPC GetDataframe / RegisterArtefact</span>
+            </div>
+          </div>
+        </div>
+        <!-- Kubeflow -->
+        <div class="svc-card">
+          <div class="svc-card-head head-cyan">☸️ Kubeflow + Argo <span class="port">namespace: kubeflow</span></div>
+          <div class="svc-card-body">
+            <div class="module-files muted">KFP API Server<br/>Argo Workflows Controller<br/>Pipelines compiled to YAML<br/>DAG scheduling<br/>Step-level retry &amp; logs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PORTABILITY LAYER -->
+    <div class="arch-layer layer-portability">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">🔌</span>
+        <span class="layer-title">midas-common — Cloud Portability Abstraction (pip package imported by all services)</span>
+        <span class="layer-hint">Not a pod — shared Python package. Swap AWS → Azure/GCP by changing the adapter only</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <div class="svc-card">
+          <div class="svc-card-head head-violet">ports/</div>
+          <div class="svc-card-body"><div class="module-files">StoragePort<br/>CachePort<br/>NoSQLPort<br/>SecretsPort<br/>QueuePort<br/>AgentRuntimePort</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-violet">adapters/aws/</div>
+          <div class="svc-card-body"><div class="module-files">S3StorageAdapter<br/>S3FilesAdapter<br/>DynamoDBAdapter<br/>RedisAdapter<br/>SecretsManagerAdapter<br/>AgentCoreAdapter</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-violet">clients/</div>
+          <div class="svc-card-body"><div class="module-files">AuthzClient (gRPC)<br/>DataFabricClient (gRPC)<br/>ComputationClient (gRPC)<br/>EvaluationClient (gRPC)<br/>IdentityClient (gRPC)</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-violet">proto/</div>
+          <div class="svc-card-body"><div class="module-files">authz.proto<br/>data_fabric.proto<br/>computation.proto<br/>evaluation.proto<br/>identity.proto<br/>agent.proto<br/>+ _pb2.py generated stubs</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-violet">middleware/</div>
+          <div class="svc-card-body"><div class="module-files">jwt_extractor.py<br/>request_id.py<br/>rate_limit.py<br/>factory.py →<br/> get_storage()<br/> get_cache()<br/> get_nosql()</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANAGED STORES LAYER -->
+    <div class="arch-layer layer-stores">
+      <div class="layer-header" onclick="toggleLayer(this)">
+        <span class="layer-icon">☁️</span>
+        <span class="layer-title">Managed Data Stores — AWS (all via PrivateLink VPC endpoints)</span>
+        <span class="layer-hint">No public endpoints · All traffic stays inside VPC vpc-0c4d673f3e95a93eb</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="layer-body">
+        <div class="svc-card wide">
+          <div class="svc-card-head head-store">🗃️ DynamoDB (16 tables)</div>
+          <div class="svc-card-body">
+            <div class="module-files muted">midas-users &nbsp;·&nbsp; midas-sessions<br/>midas-roles &nbsp;·&nbsp; midas-permissions &nbsp;·&nbsp; midas-user-roles<br/>midas-projects<br/>midas-data-catalogue<br/>midas-analytics-results<br/>midas-messages &nbsp;·&nbsp; midas-doc-jobs<br/>midas-pipeline-catalogue &nbsp;·&nbsp; midas-pipeline-runs<br/>midas-evaluations &nbsp;·&nbsp; midas-graphrag-meta<br/><strong style="color:var(--pink)">midas-agent-catalogue &nbsp;·&nbsp; midas-agent-runs</strong></div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">⚡ ElastiCache Redis</div>
+          <div class="svc-card-body">
+            <div class="module-files muted">session:{jti}<br/>authz:{uid}:{resource}<br/>df:{dataset_id}:{scope}<br/>llm-sel:{session_id}<br/>train:progress:{run_id}<br/>qc:{dataset_id}:{hash}<br/><strong style="color:var(--pink)">agent:active:{sid}</strong><br/><strong style="color:var(--pink)">agent:progress:{run_id}</strong></div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">🪣 AWS S3</div>
+          <div class="svc-card-body">
+            <div class="module-files muted">midas-raw/ (CSV/Excel)<br/>midas-waf-logs/<br/>midas-docs/</div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">📂 AWS S3 Files</div>
+          <div class="svc-card-body">
+            <div class="module-files muted">midas-datasets/parquet/<br/>midas-datasets/splits/<br/>midas-artefacts/{run_id}/<br/>midas-knowledge-graphs/<br/>midas-documentation/<br/><strong style="color:var(--pink)">midas-agent-runs/</strong></div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">🔑 Secrets Manager</div>
+          <div class="svc-card-body">
+            <div class="module-files muted">/midas/identity/cognito-*<br/>/midas/identity/jwt-signing-key<br/>/midas/llm/ai-gateway-key<br/>/midas/db/*<br/>/midas/agent-platform/agentcore-*</div>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">🔍 OpenSearch Serverless</div>
+          <div class="svc-card-body"><div class="module-files muted">Vector index (replaces FAISS)<br/>k-NN search<br/>Document embeddings<br/>Owned by graphrag-service</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">🪪 Cognito User Pool</div>
+          <div class="svc-card-body"><div class="module-files muted">PKCE OAuth2 flow<br/>PrivateLink endpoint<br/>Owned by identity-service</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-pink">🧠 AgentCore (NEW)</div>
+          <div class="svc-card-body"><div class="module-files muted">Runtime API (PrivateLink)<br/>Memory API (PrivateLink)<br/>microVM per session<br/>Owned by agent-platform-service</div></div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-card-head head-store">🤖 AI Gateway</div>
+          <div class="svc-card-body"><div class="module-files muted">LiteLLM proxy<br/>OpenAI-compatible REST<br/>VPC PrivateLink<br/>External submodule (ai_gateway/)</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /arch-canvas -->
+</section>
+
+<hr class="divider" />
+
+<!-- ─── AGENT TOOL CATALOGUE ─────────────────────────────────────────── -->
+<section id="agent-platform">
+  <h2><span class="icon">🧠</span> AI Agent Fabric — MCP Tool Catalogue</h2>
+  <div class="alert-box">Every tool calls the owning EXLDecision service gRPC or REST API — agents use the <em>same interfaces as human users</em>. RBAC is enforced on every tool invocation via <code>authz_tool.py → CheckPermission</code>.</div>
+  <div class="tool-grid">
+    <div class="tool-card"><div class="tool-name">midas.data.upload</div><div class="tool-svc">→ data-fabric-service</div><div class="tool-transport"><span class="tag grpc">gRPC RegisterArtefact</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.data.get_dataset</div><div class="tool-svc">→ data-fabric-service</div><div class="tool-transport"><span class="tag grpc">gRPC GetDataset</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.data.preview</div><div class="tool-svc">→ data-fabric-service</div><div class="tool-transport"><span class="tag grpc">gRPC GetDataframe(preview)</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.data.list_datasets</div><div class="tool-svc">→ data-fabric-service</div><div class="tool-transport"><span class="tag grpc">gRPC ListDatasets</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.data.get_split</div><div class="tool-svc">→ data-fabric-service</div><div class="tool-transport"><span class="tag grpc">gRPC GetDataframe(train|test)</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.analytics.run_qc</div><div class="tool-svc">→ analytics-service</div><div class="tool-transport"><span class="tag grpc">gRPC RunQC</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.analytics.run_dqs</div><div class="tool-svc">→ analytics-service</div><div class="tool-transport"><span class="tag rest">REST POST /analytics/dqs</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.analytics.correlations</div><div class="tool-svc">→ analytics-service</div><div class="tool-transport"><span class="tag rest">REST POST /analytics/correlations</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.analytics.vif</div><div class="tool-svc">→ analytics-service</div><div class="tool-transport"><span class="tag rest">REST POST /analytics/vif</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.computation.list_pipelines</div><div class="tool-svc">→ computation-service</div><div class="tool-transport"><span class="tag rest">REST GET /computation/pipelines</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.computation.run_pipeline</div><div class="tool-svc">→ computation-service</div><div class="tool-transport"><span class="tag grpc">gRPC SubmitRun</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.computation.get_run_status</div><div class="tool-svc">→ computation-service</div><div class="tool-transport"><span class="tag grpc">gRPC GetRunStatus</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.computation.list_components</div><div class="tool-svc">→ computation-service</div><div class="tool-transport"><span class="tag rest">REST GET /computation/components</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.llm.chat</div><div class="tool-svc">→ llm-service</div><div class="tool-transport"><span class="tag grpc">gRPC Chat(stream)</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.llm.list_models</div><div class="tool-svc">→ llm-service</div><div class="tool-transport"><span class="tag rest">REST GET /chat/models</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.graphrag.build</div><div class="tool-svc">→ graphrag-service</div><div class="tool-transport"><span class="tag rest">REST POST /graphrag/build</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.graphrag.query</div><div class="tool-svc">→ graphrag-service</div><div class="tool-transport"><span class="tag grpc">gRPC Query</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.graphrag.vector_search</div><div class="tool-svc">→ graphrag-service</div><div class="tool-transport"><span class="tag grpc">gRPC VectorSearch</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.evaluation.get_results</div><div class="tool-svc">→ evaluation-service</div><div class="tool-transport"><span class="tag rest">REST GET /evaluation/{model_id}</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.evaluation.compare</div><div class="tool-svc">→ evaluation-service</div><div class="tool-transport"><span class="tag rest">REST GET /evaluation/{id}/compare</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.project.list</div><div class="tool-svc">→ project-service</div><div class="tool-transport"><span class="tag grpc">gRPC ListProjectsForUser</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.project.get</div><div class="tool-svc">→ project-service</div><div class="tool-transport"><span class="tag grpc">gRPC GetProject</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.auth.check_permission</div><div class="tool-svc">→ authz-service</div><div class="tool-transport"><span class="tag grpc">gRPC CheckPermission</span></div></div>
+    <div class="tool-card"><div class="tool-name">midas.documentation.generate</div><div class="tool-svc">→ documentation-service</div><div class="tool-transport"><span class="tag rest">REST POST /documentation/generate</span></div></div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── GBM TRAINING FLOW ─────────────────────────────────────────────── -->
+<section id="gbm-flow">
+  <h2><span class="icon">🔄</span> End-to-End Transaction: GBM Model Training</h2>
+  <p class="muted" style="margin-bottom:16px;font-size:12px;">Every actor, API call, gRPC call, cache operation, and data store write — from browser click to rendered model scorecard.</p>
+  <div class="flow-wrap">
+    <table class="flow-table">
+      <thead>
+        <tr>
+          <th>Step</th>
+          <th>Actor</th>
+          <th>Call / Action</th>
+          <th>To Service</th>
+          <th>Data In → Out</th>
+          <th>Side Effects</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="step-num">1</span></td>
+          <td><span class="actor-badge actor-user">User</span><br/><span class="actor-badge actor-ui">Web UI</span></td>
+          <td><span class="call-tag call-rest">REST</span> <code>POST /api/v1/analytics/qc</code></td>
+          <td>analytics-service</td>
+          <td class="data-type">{dataset_id, checks[]} → {qc_run_id, status:"passed"}</td>
+          <td>→ <span class="call-tag call-rest">REST</span> WAF+ALB+Istio validates JWT<br/>→ <span class="call-tag call-grpc">gRPC</span> CheckPermission → authz-service<br/>→ <span class="call-tag call-grpc">gRPC</span> GetDataframe → data-fabric-service<br/>→ <span class="call-tag call-cache">cache</span> Redis df:ds-001:full HIT<br/>→ <span class="call-tag call-store">DDB</span> midas-analytics-results write</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">2</span></td>
+          <td><span class="actor-badge actor-user">User</span></td>
+          <td><span class="call-tag call-rest">REST</span> <code>POST /api/v1/computation/pipelines/gbm-standard-v2/runs</code></td>
+          <td>computation-service</td>
+          <td class="data-type">{dataset_id, qc_run_id, hyperparams} → 202 {run_id}</td>
+          <td>→ <span class="call-tag call-grpc">gRPC</span> CheckPermission → authz-service<br/>→ <span class="call-tag call-store">DDB</span> validate QC passed<br/>→ <span class="call-tag call-grpc">gRPC</span> GetDataset → data-fabric-service<br/>→ <span class="call-tag call-store">DDB</span> midas-pipeline-runs write SUBMITTED<br/>→ kfp.Client.create_run() → Kubeflow API</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">3</span></td>
+          <td><span class="actor-badge actor-ui">Web UI</span></td>
+          <td><span class="call-tag call-rest">REST</span> <code>GET /computation/runs/run-002/stream</code></td>
+          <td>computation-service</td>
+          <td class="data-type">Accept: text/event-stream → SSE chunks</td>
+          <td>→ <span class="call-tag call-cache">cache</span> SUBSCRIBE Redis train:progress:run-002<br/>→ SSE forwarded to browser as events arrive</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">4</span></td>
+          <td><span class="actor-badge actor-infra">Kubeflow/Argo</span></td>
+          <td>Schedule pipeline step pods</td>
+          <td>midas-pipelines ns</td>
+          <td class="data-type">DAG: fe-pod → gbm-pod → meea-pod</td>
+          <td>→ pods started in midas-pipelines namespace<br/>→ IRSA: pipeline-step-sa IAM role</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">5</span></td>
+          <td><span class="actor-badge actor-svc">feature-engineer pod</span></td>
+          <td><span class="call-tag call-grpc">gRPC</span> GetDataframe + RegisterArtefact</td>
+          <td>data-fabric-service</td>
+          <td class="data-type">dataset_id → ParquetBytes LZ4 (50k×42) → ArtefactRef (50k×67 engineered)</td>
+          <td>→ <span class="call-tag call-cache">cache</span> Redis df:ds-001:full HIT<br/>→ <span class="call-tag call-store">S3F</span> write feature-eng/output.parquet<br/>→ <span class="call-tag call-store">DDB</span> midas-data-catalogue artefact write<br/>→ <span class="call-tag call-pub">pub</span> Redis train:progress → SSE to browser</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">6</span></td>
+          <td><span class="actor-badge actor-svc">gbm-trainer pod</span></td>
+          <td><span class="call-tag call-grpc">gRPC</span> GetDataframe + GetArtefact + RegisterArtefact</td>
+          <td>data-fabric-service</td>
+          <td class="data-type">train split (40k×42) + fe-output (40k×67) → model.pkl</td>
+          <td>→ <span class="call-tag call-cache">cache</span> Redis df:ds-001:train MISS → S3 read<br/>→ LightGBM.fit() ~120s CPU<br/>→ <span class="call-tag call-store">S3F</span> write model/gbm_model.pkl<br/>→ <span class="call-tag call-store">DDB</span> midas-data-catalogue artefact write<br/>→ <span class="call-tag call-pub">pub</span> Redis train_auc=0.847 → SSE</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">7</span></td>
+          <td><span class="actor-badge actor-svc">meea-evaluator pod</span></td>
+          <td><span class="call-tag call-grpc">gRPC</span> GetDataframe + GetArtefact + StoreEvaluation</td>
+          <td>data-fabric-service + evaluation-service</td>
+          <td class="data-type">test split (10k) + model.pkl → AUC-ROC=0.831, F1=0.712</td>
+          <td>→ <span class="call-tag call-grpc">gRPC</span> StoreEvaluation → evaluation-service<br/>→ <span class="call-tag call-store">DDB</span> midas-evaluations write<br/>→ <span class="call-tag call-store">S3F</span> write eval/meea.json.gz<br/>→ <span class="call-tag call-pub">pub</span> Redis COMPLETE auc_roc=0.831 → SSE</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">8</span></td>
+          <td><span class="actor-badge actor-svc">computation-service</span></td>
+          <td>KFP watcher detects SUCCEEDED</td>
+          <td>DynamoDB + Redis</td>
+          <td class="data-type">kfp_run=SUCCEEDED → run-002 COMPLETE</td>
+          <td>→ <span class="call-tag call-store">DDB</span> midas-pipeline-runs update COMPLETE + artefacts<br/>→ <span class="call-tag call-pub">pub</span> Redis final event → SSE closes</td>
+        </tr>
+        <tr>
+          <td><span class="step-num">9</span></td>
+          <td><span class="actor-badge actor-user">User</span><br/><span class="actor-badge actor-ui">Web UI</span></td>
+          <td><span class="call-tag call-rest">REST</span> GET /computation/runs/run-002 + GET /evaluation/run-002</td>
+          <td>computation-service + evaluation-service</td>
+          <td class="data-type">→ RunRecord {status, artefacts[]} + EvalRecord {auc_roc, f1, confusion_matrix}</td>
+          <td>→ <span class="call-tag call-store">DDB</span> midas-pipeline-runs read<br/>→ <span class="call-tag call-store">DDB</span> midas-evaluations read<br/>→ UI renders scorecard</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── DATA HANDOFFS ─────────────────────────────────────────────────── -->
+<section id="data-handoffs">
+  <h2><span class="icon">📦</span> Data Handoff Types</h2>
+  <div class="handoff-grid">
+    <div class="handoff-card">
+      <div class="handoff-head" style="color:#93c5fd">REST JSON Payloads</div>
+      <div class="handoff-body">
+        <div class="handoff-row"><div class="handoff-key">DatasetMeta</div><div class="handoff-val">{id, name, schema[], row_count, versions[]}</div></div>
+        <div class="handoff-row"><div class="handoff-key">RunRecord</div><div class="handoff-val">{run_id, status, pipeline_id, artefacts[], metrics{}}</div></div>
+        <div class="handoff-row"><div class="handoff-key">QCResult</div><div class="handoff-val">{qc_run_id, status, issues[], warnings[]}</div></div>
+        <div class="handoff-row"><div class="handoff-key">ChatCompletion</div><div class="handoff-val">{id, choices[], usage{}}</div></div>
+        <div class="handoff-row"><div class="handoff-key">EvalRecord</div><div class="handoff-val">{model_id, auc_roc, f1, confusion_matrix, feature_importance{}}</div></div>
+        <div class="handoff-row"><div class="handoff-key">AgentRunRecord</div><div class="handoff-val">{run_id, status, tool_calls[], output}</div></div>
+      </div>
+    </div>
+    <div class="handoff-card">
+      <div class="handoff-head" style="color:var(--accent2)">gRPC Protobuf Messages</div>
+      <div class="handoff-body">
+        <div class="handoff-row"><div class="handoff-key">ParquetBytes</div><div class="handoff-val">{parquet_lz4: bytes, row_count, col_count}</div></div>
+        <div class="handoff-row"><div class="handoff-key">ArtefactRef</div><div class="handoff-val">{ref_id, s3_files_key, type, job_id}</div></div>
+        <div class="handoff-row"><div class="handoff-key">CheckPermResp</div><div class="handoff-val">{allowed: bool, reason: string}</div></div>
+        <div class="handoff-row"><div class="handoff-key">UserContext</div><div class="handoff-val">{user_id, email, groups[], exp}</div></div>
+        <div class="handoff-row"><div class="handoff-key">RunStatus</div><div class="handoff-val">{run_id, status, step, pct_complete}</div></div>
+        <div class="handoff-row"><div class="handoff-key">ChatChunk</div><div class="handoff-val">{delta: string, finish_reason}</div></div>
+        <div class="handoff-row"><div class="handoff-key">AgentChunk</div><div class="handoff-val">{delta, tool_name?, tool_result?, finish_reason}</div></div>
+      </div>
+    </div>
+    <div class="handoff-card">
+      <div class="handoff-head" style="color:var(--teal)">Redis Pub/Sub Events</div>
+      <div class="handoff-body">
+        <div class="handoff-row"><div class="handoff-key">train:progress:{run_id}</div><div class="handoff-val">{step, status, output_cols?, train_auc?, auc_roc?, f1?}</div></div>
+        <div class="handoff-row"><div class="handoff-key">agent:progress:{run_id}</div><div class="handoff-val">{step, tool_name?, status, partial_output?}</div></div>
+        <div class="handoff-row"><div class="handoff-key">SSE forwarded</div><div class="handoff-val">text/event-stream → browser</div></div>
+      </div>
+    </div>
+    <div class="handoff-card">
+      <div class="handoff-head" style="color:var(--orange)">S3 / S3 Files Objects</div>
+      <div class="handoff-body">
+        <div class="handoff-row"><div class="handoff-key">midas-raw/</div><div class="handoff-val">Raw CSV / Excel uploads</div></div>
+        <div class="handoff-row"><div class="handoff-key">midas-datasets/parquet/</div><div class="handoff-val">Parquet LZ4 full dataset</div></div>
+        <div class="handoff-row"><div class="handoff-key">midas-datasets/splits/</div><div class="handoff-val">train.parquet · test.parquet</div></div>
+        <div class="handoff-row"><div class="handoff-key">midas-artefacts/{run}/model/</div><div class="handoff-val">gbm_model.pkl</div></div>
+        <div class="handoff-row"><div class="handoff-key">midas-artefacts/{run}/eval/</div><div class="handoff-val">meea.json.gz</div></div>
+        <div class="handoff-row"><div class="handoff-key">midas-knowledge-graphs/</div><div class="handoff-val">KG cache (graphrag-service)</div></div>
+        <div class="handoff-row"><div class="handoff-key">midas-agent-runs/</div><div class="handoff-val">Agent run artefacts &amp; outputs</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── STORAGE STRATEGY ───────────────────────────────────────────────── -->
+<section id="storage">
+  <h2><span class="icon">🗄️</span> Storage Strategy</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--accent)">DynamoDB</div><div class="handoff-body" style="font-size:11px;color:var(--muted)"><strong style="color:var(--text)">Use for:</strong> All structured metadata, user records, RBAC, pipeline catalogue, run state, evaluation metadata.<br/><br/><strong style="color:var(--text)">Never store:</strong> Binary blobs, DataFrames, pickled objects.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--teal)">ElastiCache Redis</div><div class="handoff-body" style="font-size:11px;color:var(--muted)"><strong style="color:var(--text)">Use for:</strong> Session tokens, permission cache (5min), DataFrame hot cache (30min), LLM selection, progress pub/sub.<br/><br/><strong style="color:var(--text)">Policy:</strong> allkeys-lru, 3-node cluster, keyspace notifications on.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--orange)">S3 Files</div><div class="handoff-body" style="font-size:11px;color:var(--muted)"><strong style="color:var(--text)">Use for:</strong> Parquet datasets, splits, model artefacts, evaluation files, knowledge graphs, agent run outputs.<br/><br/><strong style="color:var(--text)">Access:</strong> Only via data-fabric-service gRPC — never direct boto3 in other services.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--pink)">AgentCore Memory</div><div class="handoff-body" style="font-size:11px;color:var(--muted)"><strong style="color:var(--text)">Use for:</strong> Long-term agent memory — user preferences, dataset names, model choices across sessions.<br/><br/><strong style="color:var(--text)">Access:</strong> Only via AgentRuntimePort.store_memory / retrieve_memory — never DynamoDB direct.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:var(--yellow)">Secrets Manager</div><div class="handoff-body" style="font-size:11px;color:var(--muted)"><strong style="color:var(--text)">Use for:</strong> All credentials, API keys, JWT signing keys, AgentCore credentials.<br/><br/><strong style="color:var(--text)">Rule:</strong> Never in env vars, never in code, never in images.</div></div>
+    <div class="handoff-card"><div class="handoff-head" style="color:#67e8f9">OpenSearch Serverless</div><div class="handoff-body" style="font-size:11px;color:var(--muted)"><strong style="color:var(--text)">Use for:</strong> Vector index for semantic search and RAG context retrieval (replaces FAISS on local disk).<br/><br/><strong style="color:var(--text)">Owned by:</strong> graphrag-service only.</div></div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── CODE MIGRATION MAP ─────────────────────────────────────────────── -->
+<section id="code-map">
+  <h2><span class="icon">🔁</span> Code Migration Map — Monolith → Microservice</h2>
+  <div class="flow-wrap">
+    <table class="flow-table">
+      <thead>
+        <tr><th>Monolith File / Module</th><th>Action</th><th>Destination Service</th><th>Key Change</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/auth_routes.py<br/>app/api/cognito_routes.py<br/>app/services/auth_service.py</td><td><span class="tag moved">REFACTOR</span></td><td>identity-service</td><td>Replace manual HS256 with SecretsPort. Add Cognito PKCE exchange.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">[no equivalent]</td><td><span class="tag new">NEW</span></td><td>authz-service</td><td>New RBAC engine. DynamoDB tables: roles, permissions, user-roles. gRPC CheckPermission.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/project_routes.py</td><td><span class="tag moved">EXTRACT</span></td><td>project-service</td><td>Raw SQL → NoSQLPort DynamoDB. Add gRPC GetProject.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/routes.py /upload,/datasets<br/>app/services/dataset_service.py<br/>app/services/dataframe_state_manager.py</td><td><span class="tag moved">REFACTOR</span></td><td>data-fabric-service</td><td>DataFrameStateManager DELETED. DataFrames → S3 Files + Redis LZ4 cache. Add gRPC servicer.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/routes.py /qc,/dqs,/vif<br/>app/services/dqs_service.py</td><td><span class="tag moved">EXTRACT</span></td><td>analytics-service</td><td>Replace DataFrameStateManager calls with DataFabricClient.GetDataframe() gRPC.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/routes.py /chat,/execute-code<br/>app/services/llm_service.py</td><td><span class="tag moved">EXTRACT</span></td><td>llm-service</td><td>_session_selections dict → Redis llm-sel:{session_id}. Add gRPC Chat stream.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/routes.py /agent<br/>app/services/agentic_system.py</td><td><span class="tag new">MOVED + EXTEND</span></td><td>agent-platform-service</td><td>Wrap with AgentCore Runtime. Add tool registry (24 MCP tools). Add memory + session management.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/api/routes.py /train,/auto-train<br/>app/services/model_training*.py<br/>app/services/background_jobs.py</td><td><span class="tag moved">REFACTOR + DELETE</span></td><td>computation-service + pipeline components</td><td>BackgroundJobManager DELETED. Training logic → @kfp.component. Kubeflow replaces threads.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/services/graphrag_service.py<br/>app/services/graphrag_process_manager.py<br/>app/services/vector_store.py</td><td><span class="tag moved">REFACTOR</span></td><td>graphrag-service</td><td>graphrag_process_manager DELETED. Whole service IS the process. FAISS → OpenSearch Serverless.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/models/_db_backend.py<br/>app/core/executor.py</td><td><span class="tag" style="background:#3a1e1e;color:var(--red)">DELETE</span></td><td>—</td><td>Raw SQL gone. ThreadPoolExecutor gone. DynamoDB via NoSQLPort. Kubeflow for async.</td></tr>
+        <tr><td class="mono" style="color:var(--accent2)">app/models/model_evaluation_database.py<br/>app/services/model_evaluation_service.py</td><td><span class="tag moved">EXTRACT</span></td><td>evaluation-service</td><td>Postgres raw SQL → DynamoDB midas-evaluations. Add gRPC StoreEvaluation.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ─── REQUIREMENTS VALIDATION ───────────────────────────────────────── -->
+<section id="requirements">
+  <h2><span class="icon">✅</span> Requirements Validation</h2>
+  <div class="flow-wrap">
+    <table class="req-table">
+      <thead>
+        <tr><th>Requirement</th><th>Where addressed</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>14 independent microservices</td><td>§4, §5 — Service Catalogue</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AWS EKS + Kubernetes (pods, services)</td><td>§13 — EKS cluster, namespaces, IRSA, pod spec</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Istio service mesh (mTLS, retry, circuit-breaker)</td><td>§13.4 — PeerAuthentication, VirtualService, DestinationRule</td><td><span class="check">✓</span></td></tr>
+        <tr><td>gRPC for service-to-service</td><td>§14.1 — all internal calls gRPC; proto files in §8.3, §7.4</td><td><span class="check">✓</span></td></tr>
+        <tr><td>RESTful API for external boundary</td><td>§14.2 — all external endpoints documented per service</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AWS Cognito for authentication</td><td>§6.2 — PKCE flow, session JWT, identity-service</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Dedicated identity-service + authz-service (RBAC)</td><td>§5.1–5.2, §6 deep-dive, RBAC model</td><td><span class="check">✓</span></td></tr>
+        <tr><td>data-fabric-service (single data owner)</td><td>§5.4, §7 deep-dive, DynamoDB catalogue, S3 Files layout</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AWS S3 Files for inter-service data sharing</td><td>§7.2, §11.2 — bucket layout</td><td><span class="check">✓</span></td></tr>
+        <tr><td>DynamoDB over SQLite/Postgres</td><td>§11.1 — all 16 tables; §18 — migration guide</td><td><span class="check">✓</span></td></tr>
+        <tr><td>ElastiCache Redis caching layer</td><td>§17 — all key patterns and TTLs</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AWS Secrets Manager</td><td>§16 — naming convention, pod startup fetch, rotation</td><td><span class="check">✓</span></td></tr>
+        <tr><td>computation-service on Kubeflow Pipelines</td><td>§5.7, §8 deep-dive, pipeline components, Argo Workflows</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Pipeline catalogue (create/edit/delete/metadata)</td><td>§8.3 — full CRUD API for pipelines, components, functions</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AWS ALB + WAF ingress</td><td>§9 — NLB→WAF→ALB→Istio traffic flow, WAF rule set</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Cloud portability abstraction (AWS/Azure/GCP)</td><td>§12, §15 — Port interfaces, adapters, factory</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AI Agent Fabric (agent-platform-service)</td><td>§5.11, §10 deep-dive — AgentCore abstraction</td><td><span class="check">✓</span></td></tr>
+        <tr><td>AWS AgentCore runtime + session management</td><td>§10.2 — AgentCoreAdapter, §10.4 — session lifecycle (microVM, 8h max)</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Agent long-term memory across sessions</td><td>§10.5 — AgentCore Memory API, store_memory / retrieve_memory</td><td><span class="check">✓</span></td></tr>
+        <tr><td>EXLDecision platform as Agent Tools (MCP, 24 tools)</td><td>§10.3 — full tool catalogue, every service covered</td><td><span class="check">✓</span></td></tr>
+        <tr><td>RBAC enforced for all agent tool calls</td><td>§10.3 — authz_tool.py CheckPermission gate in every adapter</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Out-of-the-box agents (5 types)</td><td>§10.6 — data-qa, train, insight, doc, pipeline-builder agents</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Agents use same REST/gRPC APIs as human users</td><td>§10.3 — every tool calls the owning service's existing interface</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Agent workloads run on EKS cluster</td><td>§10.1 — midas-agents namespace, AgentCore microVM</td><td><span class="check">✓</span></td></tr>
+        <tr><td>Developer code structure (what to write)</td><td>§4.2 — full service repo structure; §20.4 — per-flow file table</td><td><span class="check">✓</span></td></tr>
+        <tr><td>End-to-end GBM training transaction flow</td><td>§20 — every actor, API, gRPC call, data store</td><td><span class="check">✓</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div><!-- /content -->
+</main>
+</div><!-- /page-wrap -->
+
+<script>
+  function toggleLayer(header) {
+    header.classList.toggle('collapsed');
+    const body = header.nextElementSibling;
+    body.classList.toggle('hidden');
+  }
+
+  // Highlight active nav item on scroll
+  const sections = document.querySelectorAll('section[id], div[id="hero"]');
+  const navItems = document.querySelectorAll('.nav-item');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navItems.forEach(item => item.classList.remove('active'));
+        const id = entry.target.id;
+        const active = document.querySelector(`.nav-item[href="#${id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(s => observer.observe(s));
+
+  // ── Inbound highlight from architecture.html ─────────────────────────
+  // When arriving via a click on the component diagram, the URL hash points
+  // to a section. We scroll to it and briefly flash-highlight the layer header.
+  (function() {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const target = document.querySelector(hash);
+    if (!target) return;
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Find the nearest .arch-layer inside or around the target and flash it
+      const layer = target.closest
+        ? (target.closest('.arch-layer') || target.querySelector('.arch-layer'))
+        : null;
+      const flashEl = layer || target;
+      flashEl.style.transition = 'box-shadow 0.3s ease';
+      flashEl.style.boxShadow = '0 0 0 3px #4f8ef7, 0 0 24px rgba(79,142,247,0.4)';
+      setTimeout(() => {
+        flashEl.style.boxShadow = '';
+      }, 2200);
+    }, 350);
+  })();
+
+</script>
+</body>
+</html>

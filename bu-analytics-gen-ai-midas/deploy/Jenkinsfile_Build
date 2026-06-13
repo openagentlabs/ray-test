@@ -1,0 +1,79 @@
+#!groovy
+
+properties([
+    parameters([
+        choice(name: 'CUSTOMER', defaultValue: 'midas', choices: ['midas'], description: 'Which customer this build is for'),
+        choice(name: 'ENVIRONMENT', defaultValue: 'dev', choices: ['dev', 'uat', 'prod'], description: 'Target environment'),
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag (e.g. latest or git SHA)'),
+        string(name: 'GIT_BRANCH', defaultValue: 'develop', description: 'Branch to build')
+    ])
+])
+
+pipeline {
+    agent {
+        label 'cicd'
+    }
+
+    environment {
+        CUSTOMER            = "${params.CUSTOMER}"
+        ENVIRONMENT         = "${params.ENVIRONMENT}"
+        IMAGE_TAG           = "${params.IMAGE_TAG}"
+        GIT_BRANCH          = "${params.GIT_BRANCH}"
+        GIT_REPO_URL        = "https://ucgithub.exlservice.com/Unified-Cloud-DevOps/bu-analytics-gen-ai-midas.git"
+        OIDC_ROLE_NAME      = "EXLJenkinsCrossAccountRole-BU"
+        AWS_DEFAULT_REGION  = "us-east-1"
+        AWS_REGION          = "us-east-1"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                sh """
+                    git clone ${GIT_REPO_URL}
+                    (cd bu-analytics-gen-ai-midas && git checkout ${GIT_BRANCH})
+                    ls -la bu-analytics-gen-ai-midas/
+                """
+            }
+        }
+
+        stage('Get customer mapping & AWS role') {
+            steps {
+                script {
+                    currentBuild.description = "CUSTOMER: ${env.CUSTOMER}\nENVIRONMENT: ${env.ENVIRONMENT}\nIMAGE_TAG: ${env.IMAGE_TAG}\nBUILT BY: ${env.BUILD_USER_ID}"
+
+                    env.AWS_ACCOUNT_ID = sh(script: "jq -r --arg env '${ENVIRONMENT}' '.[\$env].aws_account_id' bu-analytics-gen-ai-midas/deploy/resources/customer-mapping/${CUSTOMER}.json", returnStdout: true).trim()
+                    env.AWS_ROLE_ARN = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${OIDC_ROLE_NAME}"
+                    env.TENANT_ENV = sh(script: "jq -r --arg env '${ENVIRONMENT}' '.[\$env].tenant_env' bu-analytics-gen-ai-midas/deploy/resources/customer-mapping/${CUSTOMER}.json", returnStdout: true).trim()
+
+                    echo "AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}"
+                    echo "TENANT_ENV: ${env.TENANT_ENV}"
+                    echo "IMAGE_TAG: ${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Build and push images') {
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        dir('bu-analytics-gen-ai-midas') {
+                            sh """
+                                set -e
+                                aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+
+                                IMAGE_TAG=${IMAGE_TAG} ENVIRONMENT=${TENANT_ENV} AWS_REGION=${AWS_DEFAULT_REGION} ./deploy/scripts/ci/docker-build-matrix.sh
+                                AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID} TENANT_ENV=${TENANT_ENV} IMAGE_TAG=${IMAGE_TAG} ./deploy/scripts/ci/push-images-ecr.sh
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            deleteDir()
+        }
+    }
+}

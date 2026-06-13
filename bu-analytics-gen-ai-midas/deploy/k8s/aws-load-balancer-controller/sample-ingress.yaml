@@ -1,0 +1,35 @@
+# NOTE: MIDAS does not use Ingress objects for pod registration.
+# Pod registration uses TargetGroupBinding CRDs managed by Terraform (deploy/ecs-app/eks-tgb.tf).
+# This sample is retained for reference only — do not apply to a MIDAS cluster.
+#
+# Example Ingress - internal ALB only. Replace host, cert, and backend Service before apply.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: midas-sample-internal
+  namespace: default
+  annotations:
+    # Required for MIDAS: internal scheme only (no internet-facing ALB).
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    # TLS: set an ACM certificate ARN in us-east-1 for the hostname (or omit listener for HTTP-only tests).
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "true"
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    # Long-lived SSE (e.g. /api/v1/knowledge-graph-stream/*): ALB default idle timeout is 60s and causes 504.
+    # Raise idle timeout on the load balancer (seconds, AWS max 4000 for ALB) and/or rely on app SSE keepalive comments.
+    # alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=600
+spec:
+  ingressClassName: alb
+  rules:
+    - host: midas-internal.example.corp
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: REPLACE_BACKEND_SERVICE
+                port:
+                  number: 80

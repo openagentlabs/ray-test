@@ -1,0 +1,55 @@
+kb:
+  code_templates:
+    data_profiling: "def profile_data(df):\n    \"\"\"Generate comprehensive data\
+      \ profile\"\"\"\n    profile = {\n        'shape': df.shape,\n        'dtypes':\
+      \ df.dtypes.value_counts().to_dict(),\n        'missing': df.isnull().sum().to_dict(),\n\
+      \        'unique': df.nunique().to_dict(),\n        'memory': df.memory_usage(deep=True).sum()\
+      \ / 1024**2\n    }\n    \n    for col in df.select_dtypes(include='number'):\n\
+      \        profile[col] = {\n            'mean': df[col].mean(),\n           \
+      \ 'std': df[col].std(),\n            'min': df[col].min(),\n            'p25':\
+      \ df[col].quantile(0.25),\n            'p50': df[col].quantile(0.50),\n    \
+      \        'p75': df[col].quantile(0.75),\n            'max': df[col].max(),\n\
+      \            'skew': df[col].skew(),\n            'kurt': df[col].kurtosis()\n\
+      \        }\n    return profile\n"
+    feature_importance_stability: "def check_importance_stability(X, y, n_splits=5):\n\
+      \    \"\"\"Check feature importance stability across CV folds\"\"\"\n    from\
+      \ sklearn.model_selection import TimeSeriesSplit\n    from sklearn.ensemble\
+      \ import RandomForestClassifier\n    \n    tscv = TimeSeriesSplit(n_splits=n_splits)\n\
+      \    importance_dict = {col: [] for col in X.columns}\n    \n    for train_idx,\
+      \ val_idx in tscv.split(X):\n        X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]\n\
+      \        \n        rf = RandomForestClassifier(n_estimators=100, random_state=42)\n\
+      \        rf.fit(X_train, y_train)\n        \n        for col, imp in zip(X.columns,\
+      \ rf.feature_importances_):\n            importance_dict[col].append(imp)\n\
+      \    \n    # Calculate coefficient of variation for each feature\n    stability_scores\
+      \ = {}\n    for col, imps in importance_dict.items():\n        mean_imp = np.mean(imps)\n\
+      \        std_imp = np.std(imps)\n        cv = std_imp / mean_imp if mean_imp\
+      \ > 0 else np.inf\n        stability_scores[col] = {\n            'mean_importance':\
+      \ mean_imp,\n            'cv': cv,\n            'stable': cv < 0.3\n       \
+      \ }\n        \n    return pd.DataFrame(stability_scores).T\n"
+    leakage_detection: "def detect_leakage(df, target_col, threshold=0.95):\n    \"\
+      \"\"Detect potential target leakage\"\"\"\n    from scipy.stats import chi2_contingency\n\
+      \    from sklearn.feature_selection import mutual_info_classif\n    \n    leakage_suspects\
+      \ = []\n    \n    for col in df.columns:\n        if col == target_col:\n  \
+      \          continue\n            \n        # Check correlation for numeric features\n\
+      \        if df[col].dtype in ['int64', 'float64']:\n            corr = df[col].corr(df[target_col])\n\
+      \            if abs(corr) > threshold:\n                leakage_suspects.append({\n\
+      \                    'feature': col,\n                    'correlation': corr,\n\
+      \                    'type': 'high_correlation'\n                })\n      \
+      \  \n        # Check mutual information\n        mi = mutual_info_classif(\n\
+      \            df[[col]].fillna(-999), \n            df[target_col], \n      \
+      \      discrete_features='auto'\n        )[0]\n        \n        if mi > 0.9:\n\
+      \            leakage_suspects.append({\n                'feature': col,\n  \
+      \              'mutual_info': mi,\n                'type': 'high_mutual_info'\n\
+      \            })\n            \n    return pd.DataFrame(leakage_suspects)\n"
+    psi_calculation: "def calculate_psi(expected, actual, bins=10):\n    \"\"\"Calculate\
+      \ Population Stability Index\"\"\"\n    import numpy as np\n    \n    # Create\
+      \ bins from expected distribution\n    breakpoints = np.quantile(expected, np.linspace(0,\
+      \ 1, bins + 1))\n    breakpoints[0] = -np.inf\n    breakpoints[-1] = np.inf\n\
+      \    \n    # Bin both distributions\n    expected_bins = pd.cut(expected, breakpoints).value_counts().sort_index()\n\
+      \    actual_bins = pd.cut(actual, breakpoints).value_counts().sort_index()\n\
+      \    \n    # Calculate proportions\n    expected_prop = expected_bins / len(expected)\n\
+      \    actual_prop = actual_bins / len(actual)\n    \n    # Add small constant\
+      \ to avoid log(0)\n    epsilon = 0.0001\n    expected_prop = expected_prop +\
+      \ epsilon\n    actual_prop = actual_prop + epsilon\n    \n    # Calculate PSI\n\
+      \    psi = np.sum((actual_prop - expected_prop) * np.log(actual_prop / expected_prop))\n\
+      \    \n    return psi\n"

@@ -1,0 +1,39 @@
+# REFERENCE ONLY — do not kubectl apply.
+# Authoritative TargetGroupBindings are managed by Terraform (deploy/ecs-app/eks-tgb.tf).
+# Applying this file manually will overwrite Terraform state and cause drift.
+#
+# TargetGroupBinding for midas-api-backend-svc
+#
+# This binds the Terraform-managed ALB target group to the backend Kubernetes
+# Service. The AWS Load Balancer Controller watches the Service's Endpoints and
+# automatically calls RegisterTargets / DeregisterTargets on the target group as
+# pods are created, replaced, or deleted (scale events, rollouts, etc.).
+#
+# Prerequisites:
+#   1. AWS Load Balancer Controller installed in the cluster (see
+#      deploy/k8s/aws-load-balancer-controller/README.md)
+#   2. Terraform applied with alb_nlb_enabled=true so the target group exists
+#   3. Substitute the real TG ARN from: terraform output alb_backend_target_group_arn
+#
+# Apply:
+#   kubectl apply -f deploy/k8s/ingress/targetgroupbinding-backend.yaml -n midas-apps
+#
+# Verify:
+#   kubectl get targetgroupbinding midas-backend-tgb -n midas-apps -o yaml
+#
+# ALB path routing:
+#   http://<ALB-DNS>/backend/health     → backend pod GET /health
+#   http://<ALB-DNS>/backend/api/v1/*   → backend pod GET /api/v1/*
+#   The ALB url-rewrite transform strips /backend before forwarding to port 8000.
+
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: midas-backend-tgb
+  namespace: midas-apps
+spec:
+  serviceRef:
+    name: midas-api-backend-svc
+    port: 8000
+  targetGroupARN: "arn:aws:elasticloadbalancing:us-east-1:811391286931:targetgroup/midas-dev-alb-be-tg/53b9ba8854682328"
+  targetType: ip

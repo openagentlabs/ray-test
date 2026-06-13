@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1.7
+#
+# MIDAS control-api container image — zero-JFrog build.
+#
+# Replaces `ai_gateway/CI/Dockerfile.c1-api`, which pulls `exlerate-aigtw-c1-api`
+# and its `exlerate-*` deps from the corporate JFrog Artifactory. The MIDAS
+# architecture rule (Q15.2 / Step 35) forbids JFrog at both build and runtime.
+#
+# This Dockerfile:
+#   1) Builds from `public.ecr.aws/docker/library/python:3.13-slim` (public ECR,
+#      reachable from MIDAS Jenkins via the Netskope proxy or the dedicated
+#      AI-GW mirror — see M-4).
+#   2) Installs the two MIDAS shims (`exlerate_logging`, `exlerate_database`)
+#      from `deploy/ai_gateway/vendored-shims/` using --no-deps so pip never
+#      tries to reach the internet for them.
+#   3) Installs the c1-api package itself (`ai_gateway/src/aigtw_c1_api/`)
+#      with --no-deps, deliberately ignoring the over-declared corporate
+#      `exlerate-*` packages listed in its pyproject.toml that are never
+#      actually imported by the source tree.
+#   4) Installs the explicit public-PyPI runtime deps from
+#      `deploy/ai_gateway/CI/requirements-c1-api-midas.txt` — one flat list,
+#      no extra indexes, no JFrog credentials.
+#
+# Build context must be the REPO ROOT (so both `ai_gateway/` and
+# `deploy/ai_gateway/` are visible). The Jenkinsfile passes `-f` + root context.
+
+FROM public.ecr.aws/docker/library/python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PATH="/home/appuser/.local/bin:${PATH}"
+
+ARG SPACY_MODEL_WHEEL="https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appgroup \
+    && useradd -r -g appgroup -m appuser
+
+WORKDIR /app
+
+# 1) MIDAS shims first — these stand in for the corporate exlerate-* packages.
+COPY deploy/ai_gateway/vendored-shims/exlerate_logging  /tmp/shims/exlerate_logging
+COPY deploy/ai_gateway/vendored-shims/exlerate_database /tmp/shims/exlerate_database
+RUN pip install --no-deps /tmp/shims/exlerate_logging /tmp/shims/exlerate_database
+
+# 2) c1-api source (install --no-deps so pip ignores the over-declared
+#    corporate JFrog entries in its pyproject.toml).
+COPY ai_gateway/src/aigtw_c1_api /tmp/c1_api
+RUN pip install --no-deps /tmp/c1_api
+
+# 3) Explicit public-PyPI runtime deps.
+COPY deploy/ai_gateway/CI/requirements-c1-api-midas.txt /tmp/requirements-c1-api-midas.txt
+RUN pip install --requirement /tmp/requirements-c1-api-midas.txt
+
+# 4) spaCy model — same wheel as upstream, pulled from GitHub releases via the
+#    corporate proxy. Kept separate from the requirements file because pip's
+#    dependency resolver misbehaves on URL-only requirements when combined with
+#    version-pinned transitive deps.
+RUN pip install "${SPACY_MODEL_WHEEL}"
+
+# 5) Clean up build artefacts that bloat the image.
+RUN pip uninstall -y pip \
+    && rm -rf /tmp/shims /tmp/c1_api /tmp/requirements-c1-api-midas.txt
+
+USER appuser
+EXPOSE 9001
+
+HEALTHCHECK --interval=30s --timeout=3s \
+    CMD curl -f http://localhost:9001/api/health || exit 1
+
+ENTRYPOINT ["uvicorn", "exlerate_aigtw_c1_api.main:app", "--host", "0.0.0.0", "--port", "9001"]

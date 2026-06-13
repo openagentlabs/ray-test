@@ -1,0 +1,113 @@
+# Fluent Bit Helm values — MIDAS Phase A CloudWatch Logs output
+#
+# Ships container stdout logs from the midas-apps namespace to CloudWatch
+# Logs at /midas/<environment>/backend.  The log group is Terraform-managed
+# (observability-app-logs module) so autoCreateGroup is disabled.
+#
+# This file is consumed by the observability-fluent-bit Terraform module via
+# helm_release.set / set_sensitive blocks.  Do NOT deploy manually against
+# shared environments — trigger the Jenkins pipeline instead.
+#
+# Chart source: https://aws.github.io/eks-charts  (aws-for-fluent-bit)
+# Docs: docs/observability-configuration.md
+
+# ---------------------------------------------------------------------------
+# CloudWatch Logs output — primary destination for Phase A
+# NOTE: Use cloudWatchLogs (new plugin, aws-for-fluent-bit >= 0.1.x) NOT
+# the legacy cloudWatch key.  Terraform's helm_release set blocks in
+# deploy/ecs-app/modules/observability-fluent-bit/main.tf are the
+# authoritative source — this file is reference documentation only.
+# ---------------------------------------------------------------------------
+cloudWatchLogs:
+  enabled: true
+  # Injected by Terraform module as a helm_release set block.
+  region: "us-east-1"
+  # Log group is pre-created by Terraform (observability-app-logs module).
+  # The actual value is injected by the Terraform module at deploy time.
+  logGroupName: "/midas/dev/backend"
+  # Stream per pod so individual replica logs are addressable.
+  logStreamPrefix: "pod/"
+  # Do NOT let Fluent Bit create the group — Terraform owns it.
+  autoCreateGroup: false
+  # Match the actual Fluent Bit tag format for container logs.
+  # Tags look like: kube.var.log.containers.<pod>_<ns>_<container>-<hash>.log
+  # Namespace restriction is applied by the grep additionalFilters block below.
+  match: "kube.var.log.containers.*"
+
+# Disable the legacy cloudWatch plugin explicitly.
+cloudWatch:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Disable unused outputs (Firehose, Kinesis, Elasticsearch)
+# ---------------------------------------------------------------------------
+firehose:
+  enabled: false
+
+kinesis:
+  enabled: false
+
+elasticsearch:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# DaemonSet configuration
+# ---------------------------------------------------------------------------
+tolerations:
+  - operator: Exists
+
+# Run in kube-system alongside other cluster infrastructure.
+# The chart creates its own ServiceAccount + ClusterRole (read pods/logs).
+serviceAccount:
+  create: true
+  name: fluent-bit
+
+# ---------------------------------------------------------------------------
+# Fluent Bit INPUT — tail container logs from all pods on the node
+# ---------------------------------------------------------------------------
+input:
+  tag: "kube.*"
+  path: "/var/log/containers/*.log"
+  db: "/var/log/fluentbit_kube.db"
+  parser: docker
+  dockerMode: "On"
+  memBufLimit: "5MB"
+  skipLongLines: "On"
+  refreshInterval: "10"
+
+# ---------------------------------------------------------------------------
+# Fluent Bit FILTER — enrich with Kubernetes pod metadata
+# ---------------------------------------------------------------------------
+filter:
+  match: "kube.*"
+  kubeURL: "https://kubernetes.default.svc:443"
+  kubeCAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  kubeTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  kubeTagPrefix: "kube.var.log.containers."
+  mergeLog: "On"
+  mergeLogKey: "log_processed"
+  keepLog: "Off"
+  k8sLoggingParser: "On"
+  k8sLoggingExclude: "On"
+
+# ---------------------------------------------------------------------------
+# Additional Fluent Bit config — namespace filter and MIDAS JSON parser
+# ---------------------------------------------------------------------------
+additionalFilters: |
+  # Drop logs that are NOT from the midas-apps namespace.
+  # This keeps CloudWatch clean and avoids shipping kube-system noise.
+  # Match must align with the actual tag: kube.var.log.containers.*
+  [FILTER]
+      Name                grep
+      Match               kube.var.log.containers.*
+      Regex               $kubernetes['namespace_name'] ^midas-apps$
+
+additionalParsers: |
+  # MIDAS structured JSON logs produced by logging_config.py JsonFormatter.
+  # Fields: timestamp, level, service, environment, @logGroupName, message, etc.
+  [PARSER]
+      Name              midas_json
+      Format            json
+      Time_Key          timestamp
+      Time_Format       %Y-%m-%dT%H:%M:%S.%LZ
+      Decode_Field_As   escaped log

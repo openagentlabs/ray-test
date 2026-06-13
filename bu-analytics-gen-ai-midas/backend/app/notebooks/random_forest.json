@@ -1,0 +1,58 @@
+{
+  "algorithm": "random_forest",
+  "title": "Random Forest Global Model Training",
+  "description": "This codebook demonstrates the backend code used to train a Random Forest model with k-fold cross-validation.",
+  "sections": [
+    {
+      "title": "1. Import Required Libraries",
+      "type": "code",
+      "content": "import pandas as pd\nimport numpy as np\nfrom sklearn.ensemble import RandomForestClassifier, RandomForestRegressor\nfrom sklearn.model_selection import train_test_split, KFold\nfrom sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score\nfrom sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error\nfrom sklearn.preprocessing import LabelEncoder, StandardScaler\nfrom sklearn.impute import SimpleImputer\nfrom sklearn.feature_selection import SelectKBest, f_classif, f_regression"
+    },
+    {
+      "title": "2. Load and Prepare Dataset",
+      "type": "code",
+      "content": "# Load your dataset\ndf = pd.read_csv('your_dataset.csv')\n\n# Define target variable\ntarget_variable = 'target_column'\n\n# Separate features and target\nX = df.drop(columns=[target_variable])\ny = df[target_variable]\n\nprint(f\"Dataset shape: {df.shape}\")\nprint(f\"Features: {X.shape[1]}\")\nprint(f\"Samples: {len(df)}\")"
+    },
+    {
+      "title": "3. Problem Type Detection",
+      "type": "code",
+      "content": "# Infer problem type from target variable\ndef infer_problem_type(target_series):\n    unique_values = target_series.nunique()\n    if unique_values <= 20:  # Classification\n        return 'classification'\n    else:  # Regression\n        return 'regression'\n\nproblem_type = infer_problem_type(y)\nprint(f\"Problem type: {problem_type}\")"
+    },
+    {
+      "title": "4. Data Splitting (Train/Validation/Test)",
+      "type": "code",
+      "content": "# First split: 80% train+val, 20% test\nif problem_type == 'classification':\n    X_temp, X_test, y_temp, y_test = train_test_split(\n        X, y, test_size=0.2, random_state=42, stratify=y\n    )\n    # Second split: 80% train, 20% validation\n    X_train, X_val, y_train, y_val = train_test_split(\n        X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp\n    )\nelse:\n    X_temp, X_test, y_temp, y_test = train_test_split(\n        X, y, test_size=0.2, random_state=42\n    )\n    X_train, X_val, y_train, y_val = train_test_split(\n        X_temp, y_temp, test_size=0.25, random_state=42\n    )\n\nprint(f\"Train size: {len(X_train)}\")\nprint(f\"Validation size: {len(X_val)}\")\nprint(f\"Test size: {len(X_test)}\")"
+    },
+    {
+      "title": "5. Data Preprocessing",
+      "type": "code",
+      "content": "def preprocess_data(X_train, X_val, X_test, y_train):\n    # Handle missing values\n    imputer = SimpleImputer(strategy='mean')\n    X_train_imputed = imputer.fit_transform(X_train)\n    X_val_imputed = imputer.transform(X_val)\n    X_test_imputed = imputer.transform(X_test)\n    \n    # Feature scaling\n    scaler = StandardScaler()\n    X_train_scaled = scaler.fit_transform(X_train_imputed)\n    X_val_scaled = scaler.transform(X_val_imputed)\n    X_test_scaled = scaler.transform(X_test_imputed)\n    \n    # Feature selection\n    n_features = min(10, X_train_scaled.shape[1])\n    if X_train_scaled.shape[1] > 10:\n        score_func = f_classif if problem_type == 'classification' else f_regression\n        selector = SelectKBest(score_func=score_func, k=n_features)\n        X_train_selected = selector.fit_transform(X_train_scaled, y_train)\n        X_val_selected = selector.transform(X_val_scaled)\n        X_test_selected = selector.transform(X_test_scaled)\n        return X_train_selected, X_val_selected, X_test_selected\n    \n    return X_train_scaled, X_val_scaled, X_test_scaled\n\nX_train_clean, X_val_clean, X_test_clean = preprocess_data(X_train, X_val, X_test, y_train)\nprint(f\"Preprocessed feature shape: {X_train_clean.shape}\")"
+    },
+    {
+      "title": "6. Initialize Random Forest Model",
+      "type": "code",
+      "content": "# Initialize model based on problem type\nif problem_type == 'classification':\n    model = RandomForestClassifier(\n        n_estimators=20,         # Number of trees\n        max_depth=3,             # Maximum tree depth\n        min_samples_split=100,   # Minimum samples to split\n        min_samples_leaf=50,     # Minimum samples per leaf\n        max_features=0.3,        # Features per split\n        random_state=42,\n        n_jobs=-1                # Use all CPU cores\n    )\nelse:\n    model = RandomForestRegressor(\n        n_estimators=100,        # Number of trees\n        max_depth=10,            # Maximum tree depth\n        min_samples_split=20,    # Minimum samples to split\n        min_samples_leaf=10,     # Minimum samples per leaf\n        max_features='sqrt',     # Features per split\n        random_state=42,\n        n_jobs=-1                # Use all CPU cores\n    )\n\nprint(f\"Model initialized: {type(model).__name__}\")"
+    },
+    {
+      "title": "7. K-Fold Cross-Validation",
+      "type": "code",
+      "content": "# Set number of folds\nk_folds = 3\nkfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)\n\n# Store cross-validation results\ncv_results = []\n\nfor fold, (train_idx, val_idx) in enumerate(kfold.split(X_train_clean)):\n    # Split data for this fold\n    X_fold_train = X_train_clean[train_idx]\n    X_fold_val = X_train_clean[val_idx]\n    y_fold_train = y_train.iloc[train_idx] if isinstance(y_train, pd.Series) else y_train[train_idx]\n    y_fold_val = y_train.iloc[val_idx] if isinstance(y_train, pd.Series) else y_train[val_idx]\n    \n    # Train model on fold\n    model.fit(X_fold_train, y_fold_train)\n    \n    # Predict on validation fold\n    y_pred = model.predict(X_fold_val)\n    \n    # Calculate metrics\n    if problem_type == 'classification':\n        fold_metrics = {\n            'fold': fold + 1,\n            'accuracy': accuracy_score(y_fold_val, y_pred),\n            'precision': precision_score(y_fold_val, y_pred, average='weighted', zero_division=0),\n            'recall': recall_score(y_fold_val, y_pred, average='weighted', zero_division=0),\n            'f1_score': f1_score(y_fold_val, y_pred, average='weighted', zero_division=0)\n        }\n    else:\n        mse = mean_squared_error(y_fold_val, y_pred)\n        fold_metrics = {\n            'fold': fold + 1,\n            'r2_score': r2_score(y_fold_val, y_pred),\n            'mse': mse,\n            'rmse': np.sqrt(mse),\n            'mae': mean_absolute_error(y_fold_val, y_pred)\n        }\n    \n    cv_results.append(fold_metrics)\n    print(f\"Fold {fold + 1} completed: {fold_metrics}\")\n\ncv_df = pd.DataFrame(cv_results)\nprint(\"\\nCross-Validation Results:\")\nprint(cv_df)\nprint(\"\\nMean Performance:\")\nprint(cv_df.mean())"
+    },
+    {
+      "title": "8. Train Final Model on Full Training Set",
+      "type": "code",
+      "content": "# Train final model on entire training set\nmodel.fit(X_train_clean, y_train)\nprint(\"Final model trained on full training set\")"
+    },
+    {
+      "title": "9. Evaluate on Test Set",
+      "type": "code",
+      "content": "# Make predictions on test set\ny_test_pred = model.predict(X_test_clean)\n\n# Calculate test metrics\nif problem_type == 'classification':\n    test_metrics = {\n        'accuracy': accuracy_score(y_test, y_test_pred),\n        'precision': precision_score(y_test, y_test_pred, average='weighted', zero_division=0),\n        'recall': recall_score(y_test, y_test_pred, average='weighted', zero_division=0),\n        'f1_score': f1_score(y_test, y_test_pred, average='weighted', zero_division=0)\n    }\nelse:\n    test_mse = mean_squared_error(y_test, y_test_pred)\n    test_metrics = {\n        'r2_score': r2_score(y_test, y_test_pred),\n        'mse': test_mse,\n        'rmse': np.sqrt(test_mse),\n        'mae': mean_absolute_error(y_test, y_test_pred)\n    }\n\nprint(\"\\nTest Set Performance:\")\nfor metric, value in test_metrics.items():\n    print(f\"{metric}: {value:.4f}\")"
+    },
+    {
+      "title": "10. Feature Importance Analysis",
+      "type": "code",
+      "content": "# Get feature importances\nif hasattr(model, 'feature_importances_'):\n    importances = model.feature_importances_\n    feature_importance_df = pd.DataFrame({\n        'feature': range(len(importances)),\n        'importance': importances\n    }).sort_values('importance', ascending=False)\n    \n    print(\"\\nTop 10 Feature Importances:\")\n    print(feature_importance_df.head(10))"
+    }
+  ]
+}
+

@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- /*
+    RollingUpdate strategy:
+      - When replicaCount >= 2, allow one extra pod during rollout (maxSurge: 1)
+        and keep all but one available (maxUnavailable: 0). This is the standard
+        zero-downtime shape for multi-replica backends.
+      - When replicaCount == 1, fall back to the legacy single-pod budget
+        (maxSurge: 0, maxUnavailable: 1) because the backend pod is ~53Gi and
+        an m6i.4xlarge node typically lacks the headroom for a second pod.
+  */}}
+  strategy:
+    # Deal with deployment updates timing out due to resource exhaustion.
+    type: Recreate
+    #type: RollingUpdate
+    #rollingUpdate:
+    #  {{- if gt (int .Values.replicaCount) 1 }}
+    #  maxSurge: 1
+    #  maxUnavailable: 0
+    #  {{- else }}
+    #  maxSurge: 0
+    #  maxUnavailable: 1
+    #  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        {{- with .Values.rollout.suffix }}
+        midas.midas.io/rollout-suffix: {{ . | quote }}
+        {{- end }}
+      {{- with .Values.rollout.suffix }}
+      annotations:
+        midas.midas.io/rollout-suffix: {{ . | quote }}
+      {{- end }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            {{- with .Values.securityContext }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.appSecret.secretName }}
+          env:
+            # Override midas-app-secret for these keys so bogus SM values cannot break boto3 endpoints.
+            - name: AWS_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: AWS_SECRETS_MANAGER_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: WEB_CONCURRENCY
+              value: {{ .Values.webConcurrency | quote }}
+            - name: GUNICORN_TIMEOUT
+              value: "3600"
+            - name: GRAPHRAG_SERVICE_URL
+              value: {{ .Values.graphragServiceUrl | quote }}
+            - name: GRAPHRAG_AUTOSTART
+              value: "false"
+            # {{- with .Values.podManager }}
+            # # Routing-tier (pod-manager) gRPC integration. Backend stays decoupled
+            # # when disabled (POD_MANAGER_ENABLED=false => app.state.pod_manager_service is None).
+            # - name: POD_MANAGER_ENABLED
+            #   value: {{ .enabled | quote }}
+            # {{- if .enabled }}
+            # - name: POD_MANAGER_HOST
+            #   value: {{ .host | quote }}
+            # - name: POD_MANAGER_PORT
+            #   value: {{ .port | quote }}
+            # - name: POD_MANAGER_TIMEOUT_SECONDS
+            #   value: {{ .timeoutSeconds | quote }}
+            # - name: POD_MANAGER_ENSURE_RETRIES
+            #   value: {{ .ensureRetries | quote }}
+            # {{- end }}
+            # {{- end }}
+            {{- with .Values.redisLock }}
+            # Phase 2 cross-pod dataset-job lock (see docs/adr/0003-...).
+            # Resolves Redis via the existing session URL chain (Secrets
+            # Manager / SESSION_REDIS_URL / REDIS_URL already in envFrom).
+            - name: DATASET_LOCK_TTL_MS
+              value: {{ .ttlMs | int64 | toString | quote }}
+            {{- if not .enabled }}
+            - name: DATASET_LOCK_REDIS_DISABLED
+              value: "1"
+            {{- end }}
+            {{- end }}
+            - name: S3_BUCKET_NAME
+              value: "midas-dev-us-east-1-test-20260404180513813900000001"
+            - name: S3_REGION
+              value: "us-east-1"
+            - name: S3_UPLOAD_KEY_PREFIX
+              value: "uploads"
+            - name: AWS_RDS_POSTGRES_DB_NAME
+              value: {{ .Values.rdsPostgresDbName | quote }}
+            {{- with .Values.rdsPostgresHost }}
+            # Override so pods resolve the RDS endpoint even when the RDS-managed secret
+            # (after rotation) contains only username/password. Sourced from Helm values,
+            # which are seeded from Terraform rds_postgres_endpoint via the SM app secret.
+            - name: AWS_RDS_POSTGRES_HOST
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.rdsPostgresPort }}
+            - name: AWS_RDS_POSTGRES_PORT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.rdsPostgresSslmode }}
+            - name: AWS_RDS_POSTGRES_SSLMODE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.httpsProxy }}
+            - name: HTTPS_PROXY
+              value: {{ . | quote }}
+            - name: https_proxy
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.httpProxy }}
+            - name: HTTP_PROXY
+              value: {{ . | quote }}
+            - name: http_proxy
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.noProxy }}
+            - name: NO_PROXY
+              value: {{ . | quote }}
+            - name: no_proxy
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.observability }}
+            - name: OTEL_ENABLED
+              value: {{ .enabled | quote }}
+            - name: OTEL_METRICS_ENABLED
+              value: {{ .metricsEnabled | quote }}
+            - name: OTEL_METRICS_NAMESPACE
+              value: {{ .metricsNamespace | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .serviceName | quote }}
+            {{- with .logGroupName }}
+            - name: LOG_CLOUDWATCH_LOG_GROUP
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .environment }}
+            - name: OTEL_ENVIRONMENT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .enabled }}
+            - name: LOG_FORMAT
+              value: "json"
+            {{- end }}
+            {{- with .otlpEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .resourceAttributes }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

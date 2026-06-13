@@ -1,0 +1,58 @@
+kb:
+  segment_discovery_policy:
+    candidate_name_patterns:
+      exclude:
+      - '*id*'
+      - '*_id'
+      - id_*
+      - '*timestamp*'
+      - '*status*'
+      include:
+      - '*product*type*'
+      - '*secured*'
+      - '*channel*'
+      - '*customer*type*'
+      - '*portfolio*'
+      - '*region*'
+      - '*state*'
+    code_template: "def discover_segments(df, candidate_cols, min_samples=2000):\n\
+      \    \"\"\"Discover viable segments for modeling\"\"\"\n    segments = []\n\
+      \    for col in candidate_cols:\n        if col not in df.columns:\n       \
+      \     continue\n        if df[col].nunique() <= 10:\n            value_counts\
+      \ = df[col].value_counts()\n            valid_segments = value_counts[value_counts\
+      \ >= min_samples]\n            for val in valid_segments.index:\n          \
+      \      segment_auc = compute_segment_auc(df[df[col]==val])\n               \
+      \ segments.append({\n                    'column': col, \n                 \
+      \   'value': val, \n                    'count': value_counts[val],\n      \
+      \              'auc': segment_auc\n                })\n    return pd.DataFrame(segments).sort_values('auc',\
+      \ ascending=False)\n"
+    deployment:
+      backoff_on_missing_segment: use_global_stats
+      merge_small_buckets_into: __OTHER__
+    derived_segments:
+      product_type_from_columns:
+        installment_if:
+        - '*loan*amount*'
+        - '*term*'
+        revolver_if:
+        - '*credit*limit*'
+      secured_flag_from_columns:
+      - '*collateral*'
+      - '*lien*'
+      - '*ltv*'
+      vintage_from_as_of: true
+    scoring:
+      folds: <KFOLDS|5>
+      impute_features_top_k: 12
+      keep_threshold_auc_equiv: 0.01
+      max_keys_to_keep: 2
+      score_weights:
+        complexity_pen: 0.1
+        drift_pen: 0.2
+        impute_lift: 0.5
+        stability: 0.2
+    viability_thresholds:
+      max_cardinality: 10
+      min_segment_rows: 2000
+      min_segment_share: 0.05
+      psi_warn_per_month: <PSI_WARN|0.10>

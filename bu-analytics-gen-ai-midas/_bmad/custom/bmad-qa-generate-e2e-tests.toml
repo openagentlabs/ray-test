@@ -1,0 +1,10 @@
+# MIDAS team override — bmad-qa-generate-e2e-tests
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad-output/testing/scenario-test-gate.md",
+  "MIDAS stack: backend FastAPI + pytest (TestClient/httpx AsyncClient); frontend React + Vitest + jsdom. Output test artifacts under _bmad-output/test-artifacts/ per _bmad/tea/config.yaml.",
+  "Complement unit tests; do not skip pytest/Vitest gate for scenarios 1–3.",
+  "If generated tests cover formulas/ML logic: produce or update SME review package per sme-verification-gate.md; human must obtain SME sign-off.",
+]

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EXL Decision — Architectural decisions (Future state)</title>
+  <script src="../requirements/requirements-data.js"></script>
+  <script src="decisions-data.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{ --page-bg:#e8eef5; --font:'Segoe UI','Inter',system-ui,sans-serif; --txt:#1e293b; --border:#cbd5e1; }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--page-bg);color:var(--txt);font-size:13px;line-height:1.45}
+    .page-wrap{display:flex;min-height:100vh}
+    .sidebar{width:230px;min-width:230px;background:#1a1d27;border-right:1px solid #2e3350;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0}
+    .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid #2e3350;margin-bottom:16px}
+    .sidebar-logo h1{font-size:15px;font-weight:700;color:#4f8ef7}
+    .sidebar-logo p{font-size:10px;color:#94a3b8;margin-top:3px}
+    .nav-section{padding:6px 20px 2px;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
+    .nav-item{display:block;padding:6px 20px;color:#94a3b8;text-decoration:none;font-size:12px;border-left:2px solid transparent;transition:all .15s}
+    .nav-item:hover{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.07)}
+    .nav-item.active{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.1);font-weight:600}
+    .main{flex:1;overflow-x:auto;background:var(--page-bg);min-width:0}
+    .page-header{background:#1e293b;padding:20px 36px 16px;border-bottom:3px solid #7c3aed}
+    .page-header h1{font-size:22px;font-weight:900;color:#fff;letter-spacing:1.2px;text-transform:uppercase}
+    .page-header p{color:#94a3b8;font-size:11px;margin-top:5px;max-width:980px}
+    .page-header .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+    .badge{background:#2e3350;border:1px solid #3a4060;color:#94a3b8;font-size:10px;padding:2px 9px;border-radius:10px}
+    .hint-bar{background:#f5f3ff;border-bottom:1px solid #c4b5fd;padding:9px 36px;font-size:11px;color:#5b21b6;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+    .hint-bar a{color:#6d28d9;font-weight:800}
+    .canvas{padding:24px 28px 60px;max-width:1200px}
+    .req-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .req-card h2{font-size:15px;font-weight:900;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .req-id{font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;background:#1e293b;color:#e2e8f0}
+    .st-acc{display:inline-block;font-size:9px;font-weight:800;padding:2px 8px;border-radius:6px;text-transform:uppercase;background:#d1fae5;color:#065f46}
+    .cat{display:inline-block;font-size:9px;padding:2px 8px;border-radius:6px;background:#e0f2fe;color:#0369a1;font-weight:800}
+    .req-body{color:#334155;font-size:12px;line-height:1.65;margin-top:6px}
+    .req-nodes{margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b}
+    .req-nodes button{margin:2px 4px 2px 0;padding:2px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;cursor:pointer;font-size:10px;font-weight:700;color:#334155}
+    .req-nodes button:hover{background:#ede9fe;border-color:#a78bfa}
+    .empty{color:#94a3b8;font-size:13px;padding:20px;text-align:center;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1}
+    .page-header a{color:#c4b5fd}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <nav class="sidebar">
+  <div class="sidebar-logo"><h1>EXL Decision</h1><p>Architecture Explorer</p></div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="../requirements/index.html">📜 Requirements</a>
+      <a class="nav-item active" href="index.html">⚖️ Architectural decisions</a>
+</nav>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Architectural decisions</h1>
+        <p>
+          Record of decisions for the Future state model. Traceability uses the same component ids as the
+          <a href="../developer/index.html">Developer Architecture Diagram</a> and <a href="../requirements/index.html">Requirements</a> register.
+        </p>
+        <div class="badges">
+          <span class="badge">Future state</span>
+          <span class="badge" id="stat-total">—</span>
+          <span class="badge" id="stat-filter">—</span>
+        </div>
+      </div>
+      <div class="hint-bar" id="filter-bar" style="display:none">
+        <span id="filter-text"></span>
+        <a href="index.html" id="clear-filter">Show all decisions</a>
+      </div>
+      <div class="canvas">
+        <div id="dec-list"></div>
+        <p class="empty" id="dec-empty" style="display:none">No decisions match this filter.</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      function esc(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      const params = new URLSearchParams(window.location.search);
+      const node = params.get("node");
+      const all = window.MIDAS_DECISIONS || [];
+      const labels = window.MIDAS_NODE_LABELS || {};
+      const list = node
+        ? all.filter(function (d) {
+            return (d.relatedNodeIds || []).indexOf(node) !== -1;
+          })
+        : all.slice();
+      document.getElementById("stat-total").textContent = all.length + " decisions";
+      const filterEl = document.getElementById("stat-filter");
+      const bar = document.getElementById("filter-bar");
+      const filterText = document.getElementById("filter-text");
+      if (node) {
+        bar.style.display = "flex";
+        filterText.innerHTML =
+          "Filtered to <strong>" +
+          esc(labels[node] || node) +
+          "</strong> — " +
+          list.length +
+          " decision(s)";
+        filterEl.textContent = "Showing " + list.length + " of " + all.length;
+      } else {
+        filterEl.textContent = "Full list";
+      }
+      const root = document.getElementById("dec-list");
+      const empty = document.getElementById("dec-empty");
+      root.innerHTML = "";
+      if (list.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+      list.forEach(function (d) {
+        const card = document.createElement("article");
+        card.className = "req-card";
+        card.setAttribute("id", d.id);
+        const h = document.createElement("h2");
+        const rid = document.createElement("span");
+        rid.className = "req-id";
+        rid.textContent = d.id;
+        h.appendChild(rid);
+        h.appendChild(document.createTextNode(" " + d.title));
+        const st = document.createElement("span");
+        st.className = "st-acc";
+        st.textContent = d.status || "proposed";
+        h.appendChild(st);
+        if (d.category) {
+          const c = document.createElement("span");
+          c.className = "cat";
+          c.textContent = d.category;
+          h.appendChild(c);
+        }
+        card.appendChild(h);
+        const body = document.createElement("div");
+        body.className = "req-body";
+        body.textContent = d.body;
+        card.appendChild(body);
+        const nodes = document.createElement("div");
+        nodes.className = "req-nodes";
+        nodes.innerHTML = "<strong style=\"color:#475569\">Related components:</strong> ";
+        (d.relatedNodeIds || []).forEach(function (nid) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = labels[nid] || nid;
+          b.title = nid;
+          b.addEventListener("click", function () {
+            window.location.href = "index.html?node=" + encodeURIComponent(nid);
+          });
+          nodes.appendChild(b);
+        });
+        card.appendChild(nodes);
+        root.appendChild(card);
+      });
+    })();
+  </script>
+</body>
+</html>

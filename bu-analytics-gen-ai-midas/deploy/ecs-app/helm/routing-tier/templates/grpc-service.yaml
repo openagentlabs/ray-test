@@ -1,0 +1,22 @@
+{{- if .Values.grpcIngress.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "routing-tier.fullname" . }}-grpc
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "routing-tier.labels" . | nindent 4 }}
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: {{ .Values.grpcIngress.scheme | quote }}
+spec:
+  type: LoadBalancer
+  selector:
+    {{- include "routing-tier.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ .Values.grpcIngress.port }}
+      targetPort: grpc
+      protocol: TCP
+{{- end }}

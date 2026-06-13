@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: midas-backend
+  namespace: midas-saiyam
+  labels:
+    app: midas-backend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: midas-backend
+  template:
+    metadata:
+      labels:
+        app: midas-backend
+    spec:
+      nodeSelector:
+          midas-role: backend
+      containers:
+      - name: backend
+        image: 882884688997.dkr.ecr.us-east-1.amazonaws.com/midas-backend:2026-03-17-1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: ENDPOINT
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: API_KEY
+        - name: MODEL
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: MODEL
+        - name: EMBEDDING_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: EMBEDDING_MODEL
+        - name: EMBEDDING_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: EMBEDDING_ENDPOINT
+        - name: API_KEY_EMBEDDING
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: API_KEY_EMBEDDING
+        - name: AZURE_KG_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: AZURE_KG_ENDPOINT
+        - name: KG_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: midas-backend-secrets
+              key: KG_MODEL
+        # RFE (Model Training Step 3/4) ---------------------------------------
+        # For a single-replica deployment, local mode is fine. Switch to
+        # "distributed" + a Redis endpoint + an RWX PVC (see rfe-artifacts
+        # volume below and the separate rfe-worker Deployment example) when
+        # scaling horizontally.
+        - name: RFE_SCALING_MODE
+          value: "local"
+        - name: RFE_STORAGE_BACKEND
+          value: "filesystem"
+        - name: RFE_ARTIFACTS_DIR
+          value: "/app/rfe_artifacts"
+        # Uncomment when switching to distributed mode:
+        # - name: REDIS_URL
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: midas-backend-secrets
+        #       key: REDIS_URL
+        volumeMounts:
+        - name: rfe-artifacts
+          mountPath: /app/rfe_artifacts
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+      volumes:
+      # Shared RFE artifact storage. For a single-replica deployment an
+      # emptyDir is sufficient; for multi-replica deployments (or the
+      # rfe-worker StatefulSet), replace this with a PersistentVolumeClaim
+      # bound to a ReadWriteMany volume (EFS on AWS, Azure Files on Azure).
+      - name: rfe-artifacts
+        emptyDir: {}
+        # Replace with the following once you have an RWX PVC provisioned:
+        # persistentVolumeClaim:
+        #   claimName: rfe-artifacts-rwx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: midas-backend
+  namespace: midas-saiyam
+  labels:
+    app: midas-backend
+spec:
+  selector:
+    app: midas-backend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP

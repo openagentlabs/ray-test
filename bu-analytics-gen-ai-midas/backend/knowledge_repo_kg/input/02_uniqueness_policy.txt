@@ -1,0 +1,37 @@
+kb:
+  uniqueness_policy:
+    consider_pairs_top_k: 8
+    consider_triples_top_k: 5
+    dq_actions:
+      on_near_unique: warn_and_propose_composite
+      on_no_key: create_surrogate_row_id_and_warn
+    exclude_name_patterns:
+    - '*date*'
+    - '*timestamp*'
+    - '*amount*'
+    - '*balance*'
+    - '*paid*'
+    - '*total*'
+    - '*status*'
+    id_name_patterns:
+    - '*id'
+    - '*_id'
+    - id_*
+    - '*account*id*'
+    - '*application*id*'
+    - '*customer*id*'
+    max_near_unique_dups: 10
+    near_unique_threshold: 0.999
+    normalize_string_keys: true
+    surrogate_key_strategy:
+      components:
+      - customer_id
+      - as_of_date
+      - row_number
+      hash_function: sha256
+      method: hash_composite
+      prefix: SURR_
+    time_awareness:
+      also_check_key_plus_asof: true
+      as_of_date_field: <AS_OF_DATE>
+      check_per_snapshot: true

@@ -1,0 +1,78 @@
+# AWS overlay — HTTP :80 on, HTTPS :443 off until certificateArn is set.
+global:
+  deployTarget: aws
+
+replicaCount: 1
+
+#serviceAccount:
+#  roleArn: "" # terraform output pod_manager_irsa_role_arn
+
+envoy:
+  replicaCount: 1
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/midas/envoy-router"
+
+podManager:
+  replicaCount: 1
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/midas/router-svc"
+  logLevel: DEBUG
+  kubernetes:
+    backendPort: 8000
+  loginPodPool:
+    routingUpstream: login-pod:8000
+  auth:
+    devMode: true
+  appSecret:
+    enabled: true
+    name: midas-app-secret
+
+loginPool:
+  enabled: true
+  replicaCount: 1
+  servicePort: 8000
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/midas-dev-midas-api-backend-svc"
+#  resources:
+#    requests:
+#      cpu: "8"
+#      memory: "32Gi"
+#    limits:
+#      cpu: "8"
+#      memory: "32Gi"
+
+backendPool:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: "<ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/midas-dev-midas-api-backend-svc"
+#  resources:
+#    requests:
+#      cpu: "16"
+#      memory: "80Gi"
+#    limits:
+#      cpu: "16"
+#      memory: "80Gi"
+
+ingress:
+  enabled: false
+  listeners:
+    http:
+      enabled: true
+      port: 80
+    https:
+      enabled: false
+      port: 443
+      certificateArn: ""
+      sslRedirect: false
+
+grpcIngress:
+  enabled: false
+  type: nlb
+  port: 8804
+
+hpa:
+  enabled: false
+
+pdb:
+  minAvailable: 1

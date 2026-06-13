@@ -1,0 +1,17 @@
+services:
+  graphrag-service:
+    container_name: midas-graphrag-service
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile.graphrag
+    ports:
+      - "8001:8001"
+    environment:
+      GRAPHRAG_SERVICE_PORT: "8001"
+      LLM_GATEWAY_URL: ${LLM_GATEWAY_URL}
+      LLM_GATEWAY_VIRTUAL_KEY: ${LLM_GATEWAY_VIRTUAL_KEY}
+    volumes:
+      - ./knowledge_repo_kg:/app/knowledge_repo_kg
+      - ./kg_logs:/app/kg_logs
+      - ./kg_cache:/app/kg_cache
+    restart: unless-stopped

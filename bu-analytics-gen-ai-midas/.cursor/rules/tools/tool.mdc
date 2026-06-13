@@ -1,0 +1,131 @@
+---
+description: Jenkins MIDAS deploy CLI. How to use .cursor/tools/jenkins_tools.py to trigger, monitor, and approve pipeline builds. Always applied.
+globs:
+  - .cursor/tools/jenkins_tools.py
+  - .cursor/scripts/requirements-jenkins-cli.txt
+alwaysApply: true
+---
+
+# Jenkins MIDAS deploy CLI (`tool.mdc`)
+
+Use `.cursor/tools/jenkins_tools.py` for every Jenkins interaction. Never use `curl`, the Jenkins UI, or manual workflows. Complements `.cursor/rules/jenkins.mdc` (pipeline-first release path).
+
+## Essentials
+
+| Attribute | Value |
+|---|---|
+| Script | `.cursor/tools/jenkins_tools.py` |
+| Requirements | `.cursor/scripts/requirements-jenkins-cli.txt` |
+| Default Jenkins URL | `https://ucjenkinsdev.exlservice.com` |
+| Default job | `exlerate/exlerate-solutions/MIDAS/bu-analytics-gen-ai-midas-deploy-eks` |
+| Full schema for the agent | `python3 .cursor/tools/jenkins_tools.py --help-ai` |
+| Human help | `python3 .cursor/tools/jenkins_tools.py --help` |
+
+When the agent needs the full command or flag reference, run `--help-ai`. It returns JSON and does not require credentials. Use it instead of guessing flags.
+
+## Authentication
+
+Required env vars:
+
+| Variable | Description |
+|---|---|
+| `JENKINS_USER` | Jenkins username (for example `first.last`) |
+| `JENKINS_API_TOKEN` | Token from Jenkins UI > User > Configure > API Token |
+
+Optional env vars: `JENKINS_URL`, `JENKINS_JOB`. Env vars take priority over `--user` and `--api-token` flags.
+
+First-time setup:
+
+```bash
+python3 -m pip install -r .cursor/scripts/requirements-jenkins-cli.txt
+python3 .cursor/tools/jenkins_tools.py set-env --user <name> --api-token <token>
+```
+
+## Commands
+
+Run any command with `--json` when parsing output. Global flags go before the subcommand: `--user`, `--api-token`, `--url`, `--job`, `--build`, `--json`, `--help`, `--help-ai`.
+
+| Command | Purpose |
+|---|---|
+| `set-env` | Persist `JENKINS_USER` and `JENKINS_API_TOKEN` to shell RC. |
+| `whoami` | Verify authentication. |
+| `server-info` | Jenkins version, executor count, queue length. |
+| `list-jobs` | Browse jobs and folders. |
+| `parameters` | List job parameters (types, defaults, descriptions). |
+| `trigger` | Queue a new build. Use `--param KEY=VALUE`; add `--wait` to block. |
+| `status` | Status of the latest build or `--build N`. |
+| `build-history` | Last N builds (`--count N`). |
+| `stages` | Pipeline stage tree with status. Reports pending input gates. |
+| `logs` | Console log. `--follow` streams; `--tail N` shows last N lines. |
+| `approve` | Submit a pending input gate. `--abort-input` rejects it. |
+| `abort` | Stop a running build. |
+| `queue` | List queued builds. |
+| `artifacts` | List build artifacts; `--download-dir DIR` downloads. |
+| `enable` / `disable` | Enable or disable the job. |
+| `nodes` | Jenkins agent status. |
+| `plugins` | Installed plugins (`--updates-only` to filter). |
+| `test-results` | Aggregated test counts for a build. |
+
+For full flag specs, example outputs, and error formats, run `--help-ai`.
+
+## Agent safety rules
+
+1. **Confirm the target environment** with the user before calling `trigger`. Ask which of `dev`, `uat`, or `prod` the `ENVIRONMENT` parameter should be.
+2. **Never auto-approve production.** For any `approve` against a `prod` build, require explicit user confirmation showing they reviewed `stages` and `logs` first.
+3. **Use `trigger`, not laptop mutation tools.** Never substitute `terraform apply` or `helm upgrade` for a pipeline run against a shared environment.
+4. **Always pass `--json`** when you need to parse the output.
+5. **Run `--help-ai` first** when you are unsure about a flag or command.
+
+## Common patterns
+
+### Check pipeline state
+
+```bash
+python3 .cursor/tools/jenkins_tools.py status --json
+python3 .cursor/tools/jenkins_tools.py stages --json
+```
+
+### Deploy and wait
+
+```bash
+python3 .cursor/tools/jenkins_tools.py trigger \
+  --param ENVIRONMENT=dev --wait --json
+```
+
+### Monitor a running build
+
+```bash
+python3 .cursor/tools/jenkins_tools.py logs --follow
+```
+
+### Handle an approval gate
+
+1. Run `stages --json` and show the pending input to the user.
+2. Wait for explicit user confirmation.
+3. Run `approve --json` (or `approve --abort-input --json` to reject).
+
+### Diagnose a failed build
+
+```bash
+python3 .cursor/tools/jenkins_tools.py status --json
+python3 .cursor/tools/jenkins_tools.py stages --json
+python3 .cursor/tools/jenkins_tools.py logs --tail 300
+```
+
+## Errors
+
+| Error | Fix |
+|---|---|
+| `Missing Jenkins credentials: JENKINS_USER` | Run `set-env` or `export JENKINS_USER=...`. |
+| `Authentication failed` | Regenerate the API token in the Jenkins UI. |
+| `Cannot connect to Jenkins` | Check VPN and `JENKINS_URL`. |
+| `Job not found: 'exlerate/...'` | Run `list-jobs` to find the correct path. |
+| `Required library 'api4jenkins' is not installed` | `pip install -r .cursor/scripts/requirements-jenkins-cli.txt`. |
+
+The script exits with code `1` on any error. Errors print to stderr as `[ERROR] <message>`. With `--json`, errors print to stdout as `{"error": "<message>"}`.
+
+## Related rules
+
+- `.cursor/rules/jenkins.mdc` - pipeline-first release path.
+- `.cursor/rules/solution_const.mdc` - MIDAS identifiers.
+- `.cursor/rules/architecture.mdc` - private-by-default design.

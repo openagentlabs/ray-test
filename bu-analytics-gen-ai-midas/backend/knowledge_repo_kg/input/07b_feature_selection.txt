@@ -1,0 +1,52 @@
+kb:
+  feature_selection:
+    code_template: "def select_features(X, y, method='lasso_cv', top_k=100):\n   \
+      \ \"\"\"Select top features using specified method\"\"\"\n    from sklearn.feature_selection\
+      \ import SelectKBest, mutual_info_classif\n    from sklearn.linear_model import\
+      \ LassoCV\n    \n    if method == 'mutual_info':\n        selector = SelectKBest(mutual_info_classif,\
+      \ k=top_k)\n        selector.fit(X, y)\n        selected = X.columns[selector.get_support()]\n\
+      \    elif method == 'lasso_cv':\n        lasso = LassoCV(cv=5, random_state=42)\n\
+      \        lasso.fit(X, y)\n        selected = X.columns[np.abs(lasso.coef_) >\
+      \ 0]\n    \n    return selected\n"
+    importance_tracking:
+      methods:
+      - permutation
+      - shap
+      - gain
+      - split_count
+      stability_check_across_folds: true
+      top_k_to_keep: 100
+    multi_collinearity_removal:
+      correlation_threshold: <PAIR_CUT|0.9>
+      removal_strategy: keep_higher_iv
+      vif_threshold: <VIF|10>
+    strategies:
+      embedded_methods:
+      - alpha_range:
+        - 0.001
+        - 1.0
+        method: lasso_cv
+      - l1_ratio:
+        - 0.1
+        - 0.5
+        - 0.9
+        method: elastic_net_cv
+      - method: random_forest_importance
+        n_estimators: 100
+      filter_methods:
+      - method: variance_threshold
+        min_variance: <MIN_VARIANCE|0.01>
+      - method: mutual_info_threshold
+        min_mi: <MIN_MI|0.001>
+      - method: chi2_test
+        p_value: 0.05
+      - method: anova_f
+        p_value: 0.05
+      wrapper_methods:
+      - method: rfe
+        min_features: 20
+        step: 0.1
+      - max_features: 100
+        method: forward_selection
+      - method: backward_elimination
+        min_features: 20

@@ -1,0 +1,310 @@
+// midas-ai-gateway-litellm-ORD5
+//
+// Pipeline: helm install/upgrade LiteLLM proxy into midas-eks-aigtw-dev.
+// Reads:    ai_gateway/helm/litellm/values.yaml          (in-tree fork — upstream baseline)
+//           deploy/ai_gateway/helm/litellm/values-midas-${ENVIRONMENT}.yaml (MIDAS overrides)
+//           ai_gateway/config/default-config-base.yaml + default-config-${REGION}.yaml (model lists)
+//           ai_gateway/config/guardrails.yaml
+// Depends:  ORD1 (RDS, S3 config bucket, IRSA for Bedrock, all litellm-* secrets,
+//                 litellm-alb-config / litellm-config-from-s3 ConfigMaps),
+//           ORD2/skopeo bootstrap (litellm image in MIDAS ECR),
+//           ORD4 (Langfuse running for observability — non-fatal if missing).
+// Chart:    oci://docker.litellm.ai/berriai/litellm-helm:1.81.13 (pulled at runtime).
+//
+// Bootstrap-mode shortcuts (mirrors ORD3/ORD4):
+//   * Uses EXLJenkinsCrossAccountRole-BU instead of the dedicated AI-GW role (M-14 pending).
+//   * No HTTPS_PROXY credential — `cicd` agent has corporate egress configured at the host.
+// SOP: .cursor/scratch/sop-capture-2026-04-19_1529.md (Step 34)
+
+pipeline {
+    agent { label 'cicd' }
+
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev'], description: 'Target environment.')
+        choice(name: 'ACTION',      choices: ['install', 'uninstall'], description: 'Helm action.')
+        booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Render without applying.')
+        string(name: 'IMAGE_REPO',  defaultValue: '811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-litellm', description: 'LiteLLM image repo (MIDAS ECR).')
+        string(name: 'IMAGE_TAG',   defaultValue: 'v1.83.3-stable', description: 'LiteLLM image tag.')
+        string(name: 'CHART_VERSION', defaultValue: '1.81.13', description: 'litellm-helm chart version (must exist on docker.litellm.ai).')
+    }
+
+    environment {
+        AWS_REGION         = 'us-east-1'
+        AWS_ACCOUNT_ID     = '811391286931'
+        // TODO(isolation): swap to EXLJenkinsAIGatewayCrossAccountRole-BU after M-14.
+        AWS_ROLE_ARN       = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/EXLJenkinsCrossAccountRole-BU"
+        EKS_CLUSTER        = "midas-eks-aigtw-${params.ENVIRONMENT}"
+        NAMESPACE          = 'litellm'
+        RELEASE            = 'litellm'
+        UPSTREAM_VALUES    = "ai_gateway/helm/litellm/values.yaml"
+        MIDAS_VALUES       = "deploy/ai_gateway/helm/litellm/values-midas-${params.ENVIRONMENT}.yaml"
+        DRY_FLAG           = "${params.DRY_RUN ? '--dry-run' : ''}"
+        IMAGE_REPO         = "${params.IMAGE_REPO}"
+        IMAGE_TAG          = "${params.IMAGE_TAG}"
+        CHART_VERSION      = "${params.CHART_VERSION}"
+    }
+
+    stages {
+        stage('Checkout (with in-tree fork submodule)') {
+            steps {
+                checkout scm
+                sh 'git submodule update --init --recursive'
+            }
+        }
+
+        stage('Configure kubectl + helm against dedicated EKS') {
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+                        kubectl get nodes
+                        helm version
+                    '''
+                }
+            }
+        }
+
+        stage('Sync Langfuse secrets from AWS Secrets Manager') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        CLUSTER="midas-eks-aigtw-${ENVIRONMENT}"
+                        echo "Syncing Langfuse credentials from AWS Secrets Manager into K8s litellm namespace..."
+
+                        PK=$(aws secretsmanager get-secret-value \
+                          --secret-id "langfuse-public-key-${CLUSTER}" \
+                          --region "$AWS_REGION" --query SecretString --output text)
+                        SK=$(aws secretsmanager get-secret-value \
+                          --secret-id "langfuse-secret-key-${CLUSTER}" \
+                          --region "$AWS_REGION" --query SecretString --output text)
+                        HOST=$(aws secretsmanager get-secret-value \
+                          --secret-id "langfuse-host-${CLUSTER}" \
+                          --region "$AWS_REGION" --query SecretString --output text)
+
+                        PK_B64=$(echo -n "$PK"   | base64 -w0)
+                        SK_B64=$(echo -n "$SK"   | base64 -w0)
+                        HOST_B64=$(echo -n "$HOST" | base64 -w0)
+
+                        kubectl patch secret langfuse-public-key -n "$NAMESPACE" \
+                          --type=json \
+                          -p="[{\\"op\\":\\"replace\\",\\"path\\":\\"/data/langfuse-public-key\\",\\"value\\":\\"${PK_B64}\\"}]"
+
+                        kubectl patch secret langfuse-secret-key -n "$NAMESPACE" \
+                          --type=json \
+                          -p="[{\\"op\\":\\"replace\\",\\"path\\":\\"/data/langfuse-secret-key\\",\\"value\\":\\"${SK_B64}\\"}]"
+
+                        kubectl patch secret langfuse-host -n "$NAMESPACE" \
+                          --type=json \
+                          -p="[{\\"op\\":\\"replace\\",\\"path\\":\\"/data/langfuse-host\\",\\"value\\":\\"${HOST_B64}\\"}]"
+
+                        echo "Langfuse secrets synced successfully."
+                        echo "  public-key : $(echo -n $PK_B64 | base64 -d)"
+                        echo "  host       : $(echo -n $HOST_B64 | base64 -d)"
+                    '''
+                }
+            }
+        }
+
+        stage('Sync Azure OpenAI API keys from AWS Secrets Manager') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        CLUSTER="midas-eks-aigtw-${ENVIRONMENT}"
+                        echo "Syncing Azure OpenAI API keys from AWS Secrets Manager into K8s litellm namespace..."
+
+                        AZURE_KEY=$(aws secretsmanager get-secret-value \
+                          --secret-id "azure-openai-api-key-${CLUSTER}" \
+                          --region "$AWS_REGION" --query SecretString --output text)
+                        AZURE_KEY_USE2=$(aws secretsmanager get-secret-value \
+                          --secret-id "azure-openai-api-key-use2-${CLUSTER}" \
+                          --region "$AWS_REGION" --query SecretString --output text)
+
+                        AZURE_KEY_B64=$(echo -n "$AZURE_KEY"      | base64 -w0)
+                        AZURE_KEY_USE2_B64=$(echo -n "$AZURE_KEY_USE2" | base64 -w0)
+
+                        kubectl patch secret azure-openai-api-key -n "$NAMESPACE" \
+                          --type=json \
+                          -p="[{\\"op\\":\\"replace\\",\\"path\\":\\"/data/azure-openai-api-key\\",\\"value\\":\\"${AZURE_KEY_B64}\\"}]"
+
+                        kubectl patch secret azure-openai-api-key-use2 -n "$NAMESPACE" \
+                          --type=json \
+                          -p="[{\\"op\\":\\"replace\\",\\"path\\":\\"/data/azure-openai-api-key-use2\\",\\"value\\":\\"${AZURE_KEY_USE2_B64}\\"}]"
+
+                        echo "Azure OpenAI API keys synced successfully."
+                        echo "  azure-openai-api-key      : $(echo -n $AZURE_KEY_B64 | base64 -d | cut -c1-10)..."
+                        echo "  azure-openai-api-key-use2 : $(echo -n $AZURE_KEY_USE2_B64 | base64 -d | cut -c1-10)..."
+                    '''
+                }
+            }
+        }
+
+        stage('Build proxy_config.yaml from upstream model lists') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    // create_model_config.sh expects to run from ai_gateway/helm/litellm/
+                    // (paths inside it are ../../config/...). It builds ai_gateway/config/config.yaml
+                    // by merging base + region + guardrails.
+                    //
+                    // MIDAS override: if MIDAS-owned copies exist under deploy/ai_gateway/config/
+                    // they take precedence over the submodule files. This lets MIDAS control the
+                    // active model list without pushing to the upstream submodule repo.
+                    sh '''
+                        set -e
+                        MIDAS_CONFIG_DIR="deploy/ai_gateway/config"
+                        if [ -f "${MIDAS_CONFIG_DIR}/default-config-base.yaml" ]; then
+                            echo "Applying MIDAS config override: default-config-base.yaml"
+                            cp "${MIDAS_CONFIG_DIR}/default-config-base.yaml" ai_gateway/config/default-config-base.yaml
+                        fi
+                        if [ -f "${MIDAS_CONFIG_DIR}/default-config-us-east-1.yaml" ]; then
+                            echo "Applying MIDAS config override: default-config-us-east-1.yaml"
+                            cp "${MIDAS_CONFIG_DIR}/default-config-us-east-1.yaml" ai_gateway/config/default-config-us-east-1.yaml
+                        fi
+                        if [ -f "${MIDAS_CONFIG_DIR}/guardrails.yaml" ]; then
+                            echo "Applying MIDAS config override: guardrails.yaml"
+                            cp "${MIDAS_CONFIG_DIR}/guardrails.yaml" ai_gateway/config/guardrails.yaml
+                        fi
+                        if ! command -v yq >/dev/null 2>&1; then
+                            echo "Installing yq..."
+                            wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /tmp/yq && chmod +x /tmp/yq && sudo mv /tmp/yq /usr/local/bin/yq
+                        fi
+                        echo "yq version: $(yq --version 2>&1 || true)"
+                        cd ai_gateway/helm/litellm
+                        bash create_model_config.sh
+                        cd "$WORKSPACE"
+                        ls -la ai_gateway/config/config.yaml
+                        # Wrap config.yaml under proxy_config: key (as the litellm-helm chart expects)
+                        # using python (avoids yq quoting headaches across yq variants).
+                        python3 - <<PYEOF > /tmp/proxy-config-values.yaml
+import yaml, sys
+with open("ai_gateway/config/config.yaml") as f:
+    data = yaml.safe_load(f)
+print(yaml.safe_dump({"proxy_config": data}, default_flow_style=False))
+PYEOF
+                        ls -la /tmp/proxy-config-values.yaml
+                        # Count models — same yaml lib avoids yq variant differences.
+                        MODEL_COUNT=$(python3 -c "import yaml; d=yaml.safe_load(open('/tmp/proxy-config-values.yaml')); print(len(d.get('proxy_config',{}).get('model_list',[])))")
+                        echo "Built proxy-config-values.yaml with ${MODEL_COUNT} models"
+                        if [ "${MODEL_COUNT}" -le 0 ]; then
+                            echo "ERROR: 0 models in proxy_config — aborting"
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Upload config.yaml to S3 (audit/backup)') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        S3_BUCKET=$(kubectl -n "$NAMESPACE" get cm litellm-config-from-s3 -o jsonpath='{.data.LITELLM_CONFIG_BUCKET_NAME}')
+                        S3_KEY=$(kubectl -n "$NAMESPACE" get cm litellm-config-from-s3 -o jsonpath='{.data.LITELLM_CONFIG_BUCKET_OBJECT_KEY}')
+                        if [ -n "$S3_BUCKET" ] && [ -n "$S3_KEY" ]; then
+                            aws s3 cp ai_gateway/config/config.yaml "s3://${S3_BUCKET}/${S3_KEY}"
+                            echo "Uploaded to s3://${S3_BUCKET}/${S3_KEY}"
+                        else
+                            echo "WARN: litellm-config-from-s3 ConfigMap missing bucket/key — skipping S3 upload."
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Helm install/upgrade LiteLLM') {
+            when { expression { params.ACTION == 'install' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    // Build alb-values overlay from litellm-alb-config CM (mirrors upstream pipeline).
+                    sh '''
+                        set -e
+                        ACM_CERT_ARN=$(kubectl -n "$NAMESPACE" get cm litellm-alb-config -o jsonpath='{.data.ACM_CERT_ARN}')
+                        SUBNETS=$(kubectl -n "$NAMESPACE" get cm litellm-alb-config -o jsonpath='{.data.SUBNETS}')
+                        AWS_ALB_SG=$(kubectl -n "$NAMESPACE" get cm litellm-alb-config -o jsonpath='{.data.AWS_ALB_SG}')
+                        cat > /tmp/alb-values.yaml <<EOF
+ingress:
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: "$ACM_CERT_ARN"
+    alb.ingress.kubernetes.io/subnets: "$SUBNETS"
+    alb.ingress.kubernetes.io/security-groups: "$AWS_ALB_SG"
+EOF
+                        # Pull chart locally so we can tar/inspect easily and so the helm
+                        # install isn't blocked on registry auth at install time.
+                        helm pull "oci://docker.litellm.ai/berriai/litellm-helm" --version "$CHART_VERSION" -d /tmp
+                        CHART_TGZ=$(ls /tmp/litellm-helm-${CHART_VERSION}.tgz)
+
+                        # Compose the value-file chain. Order matters: upstream baseline → MIDAS
+                        # overrides → ALB overlay → (optional) generated proxy_config.
+                        EXTRA_FLAGS=""
+                        if [ -f /tmp/proxy-config-values.yaml ]; then
+                            EXTRA_FLAGS="-f /tmp/proxy-config-values.yaml"
+                        fi
+                        TS=$(date +%s)
+                        # --wait + --atomic: block until every resource is Ready; roll back
+                        # automatically on any failure (prevents "Helm succeeded but proxy
+                        # pod crash-loops on a bad model-list entry" regressions).
+                        helm upgrade --install "$RELEASE" "$CHART_TGZ" \
+                            --namespace "$NAMESPACE" --create-namespace \
+                            -f "$UPSTREAM_VALUES" \
+                            -f "$MIDAS_VALUES" \
+                            -f /tmp/alb-values.yaml \
+                            ${EXTRA_FLAGS} \
+                            --set image.repository="$IMAGE_REPO" \
+                            --set image.tag="$IMAGE_TAG" \
+                            --set-string podAnnotations.deploy-timestamp="$TS" \
+                            --wait --atomic --timeout 15m \
+                            ${DRY_FLAG:-}
+
+                        if [ -z "${DRY_FLAG:-}" ]; then
+                            echo "Triggering rollout to pick up new ConfigMap…"
+                            kubectl -n "$NAMESPACE" rollout restart deployment "$RELEASE" || true
+                            kubectl -n "$NAMESPACE" rollout status deployment "$RELEASE" --timeout=10m || true
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Post-deploy sanity: confirm every image comes from MIDAS ECR') {
+            when { expression { params.ACTION == 'install' && !params.DRY_RUN } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        echo "=== All container + initContainer images in $NAMESPACE ==="
+                        kubectl -n "$NAMESPACE" get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\\n"}{range .spec.containers[*]}  container={.image}{"\\n"}{end}{range .spec.initContainers[*]}  init={.image}{"\\n"}{end}{end}' \
+                          | tee /tmp/litellm-images.txt
+
+                        BAD=$(grep -oE "(container|init)=[^ ]+" /tmp/litellm-images.txt | awk -F= '{print $2}' \
+                              | grep -vE '^811391286931\\.dkr\\.ecr\\.us-east-1\\.amazonaws\\.com/' || true)
+                        if [ -n "$BAD" ]; then
+                            echo "FAIL: non-MIDAS-ECR images detected:" >&2
+                            echo "$BAD" >&2
+                            exit 1
+                        fi
+                        echo "PASS: every running image is MIDAS ECR."
+                    '''
+                }
+            }
+        }
+
+        stage('Helm uninstall LiteLLM') {
+            when { expression { params.ACTION == 'uninstall' } }
+            steps {
+                withAWS(role: env.AWS_ROLE_ARN, region: env.AWS_REGION, useNode: true) {
+                    sh '''
+                        set -e
+                        helm uninstall "$RELEASE" --namespace "$NAMESPACE" ${DRY_FLAG:-} || true
+                    '''
+                }
+            }
+        }
+    }
+}

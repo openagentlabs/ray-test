@@ -1,0 +1,504 @@
+{
+  "MIDAS Comprehensive Test Report": {
+    "Test Suite Execution": {
+      "Start Time": "2025-12-11T15:37:47.095269",
+      "End Time": "2025-12-11T15:42:19.598657",
+      "Overall Status": "COMPLETED",
+      "Total Features Tested": 29,
+      "Passed Tests": 24,
+      "Failed Tests": 5,
+      "Success Rate": "82.8%"
+    },
+    "Dataset Information": {
+      "Dataset Used": "C:\\Users\\saiyam268728\\OneDrive - EXLService.com (I) Pvt. Ltd\\Documents\\MIDAS-Saiyam\\Model_Documentation\\midas\\testing\\loan_data_sample 3.csv",
+      "Data Dictionary": "testing/LCDataDictionary 2 4.csv",
+      "Dataset ID": "9f88f473-574b-49b6-8c97-5a92cad39ac2",
+      "Models Trained": 0,
+      "Test User": "testuser"
+    },
+    "Feature Categories": {
+      "Data Management & Ingestion": [
+        "data_ingestion",
+        "data_dictionary_upload",
+        "problem_type_detection"
+      ],
+      "DatasetOverviewSidebar - Overview": [
+        "overview_key_statistics",
+        "overview_data_types",
+        "overview_column_details",
+        "overview_target_variable"
+      ],
+      "DatasetOverviewSidebar - Quality": [
+        "quality_metrics",
+        "quality_recommendations"
+      ],
+      "DatasetOverviewSidebar - Insights": [
+        "insights_quick_insights"
+      ],
+      "DatasetOverviewSidebar - Config": [
+        "config_knowledge_graph"
+      ],
+      "Automated Data Quality": [
+        "data_quality_missing_values",
+        "data_quality_outliers",
+        "data_quality_duplicates"
+      ],
+      "Automation - Code Execution": [
+        "code_execution"
+      ],
+      "Data Insights": [
+        "data_split",
+        "bivariate_analysis",
+        "correlation_analysis",
+        "information_value",
+        "vif_analysis",
+        "correlation_matrix",
+        "generate_auto_insights"
+      ],
+      "Segmentation Analysis": [
+        "segmentation_cart",
+        "segmentation_chaid",
+        "codebook_view_and_download"
+      ],
+      "Feature Engineering": [
+        "feature_engineering_apply_to_segments",
+        "feature_engineering_woe",
+        "feature_engineering_log",
+        "feature_engineering_one_hot_encoding"
+      ]
+    },
+    "Detailed Results": {
+      "data_ingestion": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:37:51.488078",
+        "Error": null,
+        "Details": {
+          "Dataset ID": "9f88f473-574b-49b6-8c97-5a92cad39ac2",
+          "Upload Time (seconds)": 1.97,
+          "Response Status": "Success"
+        }
+      },
+      "data_dictionary_upload": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:37:51.488731",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 0.01,
+          "Data Dictionary Entries": 78
+        }
+      },
+      "problem_type_detection": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:37:52.525895",
+        "Error": null,
+        "Details": {
+          "Problem Type": "classification",
+          "Target Variable Type": "Categorical",
+          "Expected vs Actual": {
+            "problem_type": {
+              "expected": "classification",
+              "actual": "classification",
+              "match": true
+            }
+          }
+        }
+      },
+      "overview_key_statistics": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:37:55.625755",
+        "Error": null,
+        "Details": {
+          "Records": 46630,
+          "Columns": 75,
+          "High Missing (>95%)": 17,
+          "Duplicates": 0,
+          "Processing Time (seconds)": 3.1,
+          "Expected vs Actual": {
+            "records": {
+              "expected": 46630,
+              "actual": 46630,
+              "match": true
+            },
+            "columns": {
+              "expected": 75,
+              "actual": 75,
+              "match": true
+            },
+            "high_missing_95_percent": {
+              "expected": 17,
+              "actual": 17,
+              "match": true
+            },
+            "duplicates": {
+              "expected": 0,
+              "actual": 0,
+              "match": true
+            }
+          }
+        }
+      },
+      "overview_data_types": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:37:56.770693",
+        "Error": null,
+        "Details": {
+          "Numerical": 52,
+          "Categorical": 19,
+          "Datetime": 4,
+          "Processing Time (seconds)": 1.14,
+          "Expected vs Actual": {
+            "numerical": {
+              "expected": 52,
+              "actual": 52,
+              "match": true
+            },
+            "categorical": {
+              "expected": 19,
+              "actual": 19,
+              "match": true
+            },
+            "datetime": {
+              "expected": 4,
+              "actual": 4,
+              "match": true
+            }
+          }
+        }
+      },
+      "overview_column_details": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:37:58.654496",
+        "Error": null,
+        "Details": {
+          "Columns with Details": 75,
+          "Total Columns": 75,
+          "CSV Downloadable": "No",
+          "Processing Time (seconds)": 1.88,
+          "Expected vs Actual": {
+            "columns_with_details": {
+              "expected": 75,
+              "actual": 75,
+              "match": true
+            },
+            "total_columns": {
+              "expected": 75,
+              "actual": 75,
+              "match": true
+            }
+          }
+        }
+      },
+      "overview_target_variable": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:38:01.736416",
+        "Error": null,
+        "Details": {
+          "Name": "target_flag",
+          "Type": "Categorical",
+          "Processing Time (seconds)": 3.08,
+          "Expected vs Actual": {
+            "name": {
+              "expected": "target_flag",
+              "actual": "target_flag",
+              "match": true
+            },
+            "type": {
+              "expected": "Categorical",
+              "actual": "Categorical",
+              "match": true
+            }
+          }
+        }
+      },
+      "quality_metrics": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:38:03.266738",
+        "Error": null,
+        "Details": {
+          "Empty Columns": 17,
+          "Constant Columns": 3,
+          "Sparse Columns (>50% missing)": 4,
+          "Formatting Issues": 1,
+          "Total Issues": 25,
+          "Processing Time (seconds)": 1.53,
+          "Expected vs Actual": {
+            "total_issues": {
+              "expected": 25,
+              "actual": 25,
+              "match": true
+            }
+          }
+        }
+      },
+      "quality_recommendations": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:38:05.630930",
+        "Error": null,
+        "Details": {
+          "Recommendations Rendered": 2,
+          "Recommendation Details": [
+            "Missing Values Detected",
+            "Constant Columns Found"
+          ],
+          "Processing Time (seconds)": 2.36,
+          "Expected vs Actual": {
+            "recommendations_rendered": {
+              "expected": 2,
+              "actual": 2,
+              "match": true
+            }
+          }
+        }
+      },
+      "insights_quick_insights": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:38:07.052208",
+        "Error": null,
+        "Details": {
+          "Total Insights": 4,
+          "Insight Details": [
+            "Data Distribution",
+            "Missing Values",
+            "High Cardinality",
+            "Target Variable"
+          ],
+          "Processing Time (seconds)": 1.42,
+          "Expected vs Actual": {
+            "total_insights": {
+              "expected": 4,
+              "actual": 4,
+              "match": true
+            }
+          }
+        }
+      },
+      "config_knowledge_graph": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:38:07.064055",
+        "Error": null,
+        "Details": {
+          "Knowledge Graph Accessible": true,
+          "Status": "processing...",
+          "Processing Time (seconds)": 0.01
+        }
+      },
+      "data_quality_missing_values": {
+        "Status": "FAILED",
+        "Timestamp": "2025-12-11T15:40:13.991501",
+        "Error": "Unable to fetch data quality results",
+        "Details": null
+      },
+      "data_quality_outliers": {
+        "Status": "FAILED",
+        "Timestamp": "2025-12-11T15:40:54.130757",
+        "Error": "Unable to fetch data quality results",
+        "Details": null
+      },
+      "data_quality_duplicates": {
+        "Status": "FAILED",
+        "Timestamp": "2025-12-11T15:41:34.090365",
+        "Error": "Unable to fetch data quality results",
+        "Details": null
+      },
+      "code_execution": {
+        "Status": "FAILED",
+        "Timestamp": "2025-12-11T15:41:35.326352",
+        "Error": "Code execution request failed: {'error': '{\"detail\":\"Internal server error: Expecting value: line 1 column 1 (char 0)\"}', 'status_code': 500}",
+        "Details": {
+          "time_taken_seconds": 1.24
+        }
+      },
+      "data_split": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:41:36.089417",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 0.76,
+          "Radio Buttons Available": "Dev, Hold, Entire"
+        }
+      },
+      "bivariate_analysis": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:41:40.861415",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 4.77,
+          "Variables Analyzed": 74,
+          "Analysis Content": "Generated successfully",
+          "Download Ready": "Data structure suitable for Excel export"
+        }
+      },
+      "correlation_analysis": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:41:58.384640",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 17.5,
+          "Numeric Correlation Analysis": "Present with Pearson and Spearman coefficients (50 variables)",
+          "Categorical Correlation Analysis": "Present with Chi-Square and Cramér's V (22 variables)"
+        }
+      },
+      "information_value": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:02.441289",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 4.06,
+          "IV Analysis": "Generated successfully",
+          "Download Ready": "Data structure suitable for Excel export (Full Insight Report and Detailed IV Report)"
+        }
+      },
+      "vif_analysis": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:02.705294",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 0.26,
+          "VIF Analysis": "Generated successfully",
+          "Variables Analyzed": 35,
+          "Download Ready": "Data structure suitable for Excel export"
+        }
+      },
+      "correlation_matrix": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:05.768539",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 3.06,
+          "Correlation Matrix": "Generated successfully",
+          "Variables": 33,
+          "Download Ready": "Data structure suitable for Excel export"
+        }
+      },
+      "generate_auto_insights": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:07.929259",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": 2.16,
+          "Auto Insights": "Generated successfully",
+          "Download Ready": "Data structure suitable for Excel export (Full Insight Report)"
+        }
+      },
+      "segmentation_cart": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:12.951840",
+        "Error": null,
+        "Details": {
+          "Method": "CART",
+          "Variables Used": "last_pymnt_d, id, out_prncp_inv, total_rec_int, open_acc",
+          "Segments": 4,
+          "Recommendation": "Segments failed 1/4 quality checks. Consider recreating with different parameters.",
+          "Monotonicity Insight": "Monotonicity: As WoE decreases, Bad Rate increases (good). (corr=-0.989)"
+        }
+      },
+      "segmentation_chaid": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:15.366565",
+        "Error": null,
+        "Details": {
+          "Method": "CHAID",
+          "Variables Used": "total_bal_il, collections_12_mths_ex_med, acc_now_delinq, collection_recovery_fee, funded_amnt_inv",
+          "Segments": 4,
+          "Recommendation": "Segments failed 1/4 quality checks. Consider recreating with different parameters.",
+          "Monotonicity Insight": "Monotonicity: As WoE decreases, Bad Rate increases (good). (corr=-1.000)"
+        }
+      },
+      "codebook_view_and_download": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:15.386433",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": "0.02",
+          "CART Endpoint Accessible": true,
+          "CHAID Endpoint Accessible": true,
+          "CART Download Ready": true,
+          "CHAID Download Ready": true,
+          "CART Codebook": {
+            "Algorithm": "cart",
+            "Number of Sections": 13,
+            "Total Code Length": 43028,
+            "Has Python Imports": true,
+            "Has Python Functions": true,
+            "Python File Valid": true
+          },
+          "CHAID Codebook": {
+            "Algorithm": "chaid",
+            "Number of Sections": 13,
+            "Total Code Length": 43031,
+            "Has Python Imports": true,
+            "Has Python Functions": true,
+            "Python File Valid": true
+          }
+        }
+      },
+      "feature_engineering_apply_to_segments": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:15.387569",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": "0.00",
+          "Segments Available": true,
+          "Number of Segments": 4,
+          "Segment IDs": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      },
+      "feature_engineering_woe": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:17.978283",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": "2.59",
+          "Transformation Success": true,
+          "Transformed Variables Produced": true,
+          "Number of Transformed Variables": 74,
+          "Download Report Ready": true,
+          "Sample Variables": [
+            "id_transform_woe",
+            "member_id_transform_woe",
+            "loan_amnt_transform_woe",
+            "funded_amnt_transform_woe",
+            "funded_amnt_inv_transform_woe"
+          ]
+        }
+      },
+      "feature_engineering_log": {
+        "Status": "PASSED",
+        "Timestamp": "2025-12-11T15:42:18.957492",
+        "Error": null,
+        "Details": {
+          "Processing Time (seconds)": "0.98",
+          "Transformation Success": true,
+          "Transformed Variables Produced": true,
+          "Number of Transformed Variables": 52,
+          "Download Report Ready": true,
+          "Sample Variables": [
+            "id_transform_log",
+            "member_id_transform_log",
+            "loan_amnt_transform_log",
+            "funded_amnt_transform_log",
+            "funded_amnt_inv_transform_log"
+          ]
+        }
+      },
+      "feature_engineering_one_hot_encoding": {
+        "Status": "FAILED",
+        "Timestamp": "2025-12-11T15:42:19.598223",
+        "Error": "Transformation failed or no transformed variables produced",
+        "Details": {
+          "Processing Time (seconds)": "0.64",
+          "Transformation Success": true,
+          "Transformed Variables Produced": false,
+          "Number of Transformed Variables": 0,
+          "Download Report Ready": false,
+          "Sample Variables": []
+        }
+      }
+    }
+  }
+}

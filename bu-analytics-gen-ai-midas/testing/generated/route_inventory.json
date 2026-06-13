@@ -1,0 +1,1694 @@
+{
+  "generator": "testing/scripts/generate_route_inventory.py",
+  "route_count": 211,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/analyze-dataset",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/analyze-dataset"
+    },
+    {
+      "method": "POST",
+      "path": "/exchange",
+      "router_var": "cognito_router",
+      "router_prefix": "/api/v1/auth/cognito",
+      "source_file": "backend/app/api/cognito_routes.py",
+      "full_path": "/api/v1/auth/cognito/exchange"
+    },
+    {
+      "method": "GET",
+      "path": "/login-url",
+      "router_var": "cognito_router",
+      "router_prefix": "/api/v1/auth/cognito",
+      "source_file": "backend/app/api/cognito_routes.py",
+      "full_path": "/api/v1/auth/cognito/login-url"
+    },
+    {
+      "method": "POST",
+      "path": "/logout",
+      "router_var": "cognito_router",
+      "router_prefix": "/api/v1/auth/cognito",
+      "source_file": "backend/app/api/cognito_routes.py",
+      "full_path": "/api/v1/auth/cognito/logout"
+    },
+    {
+      "method": "POST",
+      "path": "/logout-everywhere",
+      "router_var": "cognito_router",
+      "router_prefix": "/api/v1/auth/cognito",
+      "source_file": "backend/app/api/cognito_routes.py",
+      "full_path": "/api/v1/auth/cognito/logout-everywhere"
+    },
+    {
+      "method": "POST",
+      "path": "/refresh",
+      "router_var": "cognito_router",
+      "router_prefix": "/api/v1/auth/cognito",
+      "source_file": "backend/app/api/cognito_routes.py",
+      "full_path": "/api/v1/auth/cognito/refresh"
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/login"
+    },
+    {
+      "method": "POST",
+      "path": "/logout",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/logout"
+    },
+    {
+      "method": "GET",
+      "path": "/me",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/me"
+    },
+    {
+      "method": "POST",
+      "path": "/refresh",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/refresh"
+    },
+    {
+      "method": "POST",
+      "path": "/register",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/register"
+    },
+    {
+      "method": "GET",
+      "path": "/users",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/users"
+    },
+    {
+      "method": "DELETE",
+      "path": "/users/{user_id}",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/users/{user_id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/users/{user_id}",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/users/{user_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/verify-token",
+      "router_var": "auth_router",
+      "router_prefix": "/api/v1/auth",
+      "source_file": "backend/app/api/auth_routes.py",
+      "full_path": "/api/v1/auth/verify-token"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-train-model",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-train-model"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/analyze",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/analyze"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/analyze/start",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/analyze/start"
+    },
+    {
+      "method": "GET",
+      "path": "/auto-training/analyze/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/analyze/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/cancel/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/cancel/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/auto-training/meea-status/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/meea-status/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/run",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/run"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/select-algorithms",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/select-algorithms"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/select-best-model",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/select-best-model"
+    },
+    {
+      "method": "POST",
+      "path": "/auto-training/select-variables",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/select-variables"
+    },
+    {
+      "method": "GET",
+      "path": "/auto-training/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/status/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/auto-training/stream/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/auto-training/stream/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/calculate-vif-correlation/start",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/calculate-vif-correlation/start"
+    },
+    {
+      "method": "GET",
+      "path": "/calculate-vif-correlation/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/calculate-vif-correlation/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/cancel/{job_id}",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/cancel/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/chat",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/chat"
+    },
+    {
+      "method": "GET",
+      "path": "/chat/states",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/chat/states"
+    },
+    {
+      "method": "GET",
+      "path": "/chat/{dataset_id}/history",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/chat/{dataset_id}/history"
+    },
+    {
+      "method": "DELETE",
+      "path": "/chat/{dataset_id}/reset",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/chat/{dataset_id}/reset"
+    },
+    {
+      "method": "POST",
+      "path": "/combine-presplit",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/combine-presplit"
+    },
+    {
+      "method": "GET",
+      "path": "/dataset-preview/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/dataset-preview/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/dataset-type-classification-by-id",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/dataset-type-classification-by-id"
+    },
+    {
+      "method": "GET",
+      "path": "/dataset-type-classification/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/dataset-type-classification/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/dataset/scope",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/dataset/scope"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets"
+    },
+    {
+      "method": "DELETE",
+      "path": "/datasets/{dataset_id}",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/{dataset_id}/classify-variables",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/classify-variables"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/classify-variables/status",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/classify-variables/status"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/column-distribution-by-scope/{column_name}",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/column-distribution-by-scope/{column_name}"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/column-distribution/{column_name}",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/column-distribution/{column_name}"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/column-info",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/column-info"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/column-info-by-scope",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/column-info-by-scope"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/{dataset_id}/column-insights",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/column-insights"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/compare-column-stats",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/compare-column-stats"
+    },
+    {
+      "method": "PUT",
+      "path": "/datasets/{dataset_id}/config",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/config"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/{dataset_id}/cross-algorithm-recommendation",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/cross-algorithm-recommendation"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/download-column-stats",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/download-column-stats"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/download-processed",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/download-processed"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/dqs",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/dqs"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/dqs-by-scope",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/dqs-by-scope"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/{dataset_id}/dqs-recommendations",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/dqs-recommendations"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/eda-snapshot",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/eda-snapshot"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/export",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/export"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/{dataset_id}/identify-duplicates",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/identify-duplicates"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/overview-bundle",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/overview-bundle"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/raw-data",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/raw-data"
+    },
+    {
+      "method": "POST",
+      "path": "/datasets/{dataset_id}/remove-duplicates",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/remove-duplicates"
+    },
+    {
+      "method": "GET",
+      "path": "/datasets/{dataset_id}/stats",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/datasets/{dataset_id}/stats"
+    },
+    {
+      "method": "POST",
+      "path": "/detect-problem-type",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/detect-problem-type"
+    },
+    {
+      "method": "POST",
+      "path": "/detect-segments",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/detect-segments"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/calculate-event-rate",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/calculate-event-rate"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/download",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/download"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-ai-explainability-writeup",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-ai-explainability-writeup"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-data-quality-summary",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-data-quality-summary"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-data-summary",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-data-summary"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-decile-progression-writeup",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-decile-progression-writeup"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-feature-engineering-writeup",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-feature-engineering-writeup"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-model-objective",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-model-objective"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-model-validation-writeup",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-model-validation-writeup"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-monotonicity-summary",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-monotonicity-summary"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-quality-changes-writeup",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-quality-changes-writeup"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-sampling-plan-writeup",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-sampling-plan-writeup"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-segmentation-understanding",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-segmentation-understanding"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/generate-target-definition",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/generate-target-definition"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-column-stats",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-column-stats"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-data-insights",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-data-insights"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-model-performance",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-model-performance"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-quality-check-plan",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-quality-check-plan"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-sampling-plan",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-sampling-plan"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-transformed-variables",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-transformed-variables"
+    },
+    {
+      "method": "POST",
+      "path": "/documentation/get-variable-analysis",
+      "router_var": "documentation_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/documentation_routes.py",
+      "full_path": "/api/v1/documentation/get-variable-analysis"
+    },
+    {
+      "method": "POST",
+      "path": "/exclusion-preview",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/exclusion-preview"
+    },
+    {
+      "method": "POST",
+      "path": "/exclusion-preview-by-id",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/exclusion-preview-by-id"
+    },
+    {
+      "method": "POST",
+      "path": "/execute-code",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/execute-code"
+    },
+    {
+      "method": "GET",
+      "path": "/export-model/{model_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/export-model/{model_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/export-segment-model/{model_id}/{segment_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/export-segment-model/{model_id}/{segment_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/feature-transformation/start",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/feature-transformation/start"
+    },
+    {
+      "method": "GET",
+      "path": "/feature-transformation/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/feature-transformation/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/finalize",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/finalize"
+    },
+    {
+      "method": "POST",
+      "path": "/finalize-presplit",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/finalize-presplit"
+    },
+    {
+      "method": "POST",
+      "path": "/generate-knowledge-graph",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/generate-knowledge-graph"
+    },
+    {
+      "method": "POST",
+      "path": "/generate-qc-template/{template_type}",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/generate-qc-template/{template_type}"
+    },
+    {
+      "method": "POST",
+      "path": "/get-available-variables",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/get-available-variables"
+    },
+    {
+      "method": "GET",
+      "path": "/get-codebook/{training_mode}/{training_type}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/get-codebook/{training_mode}/{training_type}"
+    },
+    {
+      "method": "POST",
+      "path": "/get-recommended-metrics",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/get-recommended-metrics"
+    },
+    {
+      "method": "GET",
+      "path": "/ingest-stream/{dataset_id}",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/sse.py",
+      "full_path": "/api/v1/ingest-stream/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/ingest-stream/{dataset_id}/test-publish",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/sse.py",
+      "full_path": "/api/v1/ingest-stream/{dataset_id}/test-publish"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/bivariate/all",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/bivariate/all"
+    },
+    {
+      "method": "GET",
+      "path": "/insights/bivariate/{dataset_id}/variable/{variable_name}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/bivariate/{dataset_id}/variable/{variable_name}"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/correlation-matrix",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/correlation-matrix"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/correlation-ratio-analysis",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/correlation-ratio-analysis"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/correlation/analyze",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/correlation/analyze"
+    },
+    {
+      "method": "GET",
+      "path": "/insights/correlation/{dataset_id}/heatmap",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/correlation/{dataset_id}/heatmap"
+    },
+    {
+      "method": "GET",
+      "path": "/insights/correlation/{dataset_id}/heatmap/categorical",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/correlation/{dataset_id}/heatmap/categorical"
+    },
+    {
+      "method": "GET",
+      "path": "/insights/correlation/{dataset_id}/variable/{variable_name}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/correlation/{dataset_id}/variable/{variable_name}"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/iv-analysis",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/iv-analysis"
+    },
+    {
+      "method": "GET",
+      "path": "/insights/jobs/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/jobs/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/vif-analysis",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/vif-analysis"
+    },
+    {
+      "method": "POST",
+      "path": "/insights/vif-analysis-dedicated",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/insights/vif-analysis-dedicated"
+    },
+    {
+      "method": "GET",
+      "path": "/keepalive",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/keepalive"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge-graph-progress/{dataset_id}",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/knowledge-graph-progress/{dataset_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge-graph-stream/{dataset_id}",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/knowledge-graph-stream/{dataset_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/llm-config",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/llm-config"
+    },
+    {
+      "method": "GET",
+      "path": "/model-codebook/{algorithm}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-codebook/{algorithm}"
+    },
+    {
+      "method": "POST",
+      "path": "/model-evaluation/compare",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/compare"
+    },
+    {
+      "method": "POST",
+      "path": "/model-evaluation/evaluate-all-existing",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/evaluate-all-existing"
+    },
+    {
+      "method": "POST",
+      "path": "/model-evaluation/evaluate-existing/{model_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/evaluate-existing/{model_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/list/all",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/list/all"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/list/by-dataset",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/list/by-dataset"
+    },
+    {
+      "method": "DELETE",
+      "path": "/model-evaluation/{model_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/chat-summary",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/chat-summary"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/error-patterns",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/error-patterns"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/explainability",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/explainability"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/feature-importance",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/feature-importance"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/granular-accuracy",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/granular-accuracy"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/granular-accuracy/by-segments",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/granular-accuracy/by-segments"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/pdp-data",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/pdp-data"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/performance",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/performance"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/phase/{phase_num}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/phase/{phase_num}"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/prediction-confidence",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/prediction-confidence"
+    },
+    {
+      "method": "POST",
+      "path": "/model-evaluation/{model_id}/recalculate-explainability",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/recalculate-explainability"
+    },
+    {
+      "method": "GET",
+      "path": "/model-evaluation/{model_id}/samples",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{model_id}/samples"
+    },
+    {
+      "method": "POST",
+      "path": "/model-evaluation/{original_model_id}/evaluate-pruned",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-evaluation/{original_model_id}/evaluate-pruned"
+    },
+    {
+      "method": "POST",
+      "path": "/model-training/lr-backward-elimination",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/model-training/lr-backward-elimination"
+    },
+    {
+      "method": "GET",
+      "path": "/models/{model_id}/download-artifacts",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/models/{model_id}/download-artifacts"
+    },
+    {
+      "method": "GET",
+      "path": "/monotone/{dataset_id}",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/monotone/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/partition-preview",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/partition-preview"
+    },
+    {
+      "method": "POST",
+      "path": "/partition-preview-by-id",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/partition-preview-by-id"
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "router_var": "project_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/project_routes.py",
+      "full_path": "/api/v1/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "router_var": "project_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/project_routes.py",
+      "full_path": "/api/v1/projects"
+    },
+    {
+      "method": "DELETE",
+      "path": "/projects/{project_id}",
+      "router_var": "project_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/project_routes.py",
+      "full_path": "/api/v1/projects/{project_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/projects/{project_id}",
+      "router_var": "project_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/project_routes.py",
+      "full_path": "/api/v1/projects/{project_id}"
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/{project_id}",
+      "router_var": "project_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/project_routes.py",
+      "full_path": "/api/v1/projects/{project_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/qc/next-step",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/qc/next-step"
+    },
+    {
+      "method": "POST",
+      "path": "/qc/regenerate-code",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/qc/regenerate-code"
+    },
+    {
+      "method": "POST",
+      "path": "/qc/skip-treatment",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/qc/skip-treatment"
+    },
+    {
+      "method": "GET",
+      "path": "/result/{job_id}",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/result/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/run-auto-segmentation",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/run-auto-segmentation"
+    },
+    {
+      "method": "POST",
+      "path": "/run-segmentation",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/run-segmentation"
+    },
+    {
+      "method": "POST",
+      "path": "/segment-auto-training/cancel/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-auto-training/cancel/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/segment-auto-training/run",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-auto-training/run"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-auto-training/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-auto-training/status/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-auto-training/{model_id}/segment/{segment_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-auto-training/{model_id}/segment/{segment_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-auto-training/{model_id}/unified-results",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-auto-training/{model_id}/unified-results"
+    },
+    {
+      "method": "POST",
+      "path": "/segment-profiling/start",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-profiling/start"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-profiling/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-profiling/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/segment-training/cancel/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/cancel/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/preview",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/preview"
+    },
+    {
+      "method": "POST",
+      "path": "/segment-training/run",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/run"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/status/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/{model_id}/compare",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/{model_id}/compare"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/{model_id}/history",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/{model_id}/history"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/{model_id}/results",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/{model_id}/results"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/{model_id}/screen",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/{model_id}/screen"
+    },
+    {
+      "method": "GET",
+      "path": "/segment-training/{model_id}/unified-results",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segment-training/{model_id}/unified-results"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation-model-evaluation/segments/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation-model-evaluation/segments/{dataset_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation-model-evaluation/{dataset_id}/{segment_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation-model-evaluation/{dataset_id}/{segment_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/add-to-data",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/add-to-data"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation/audit-log/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/audit-log/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/edit-cutoff",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/edit-cutoff"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/generate-narrative",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/generate-narrative"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation/insight-pins/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/insight-pins/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/merge-segments",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/merge-segments"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/move-categorical-value",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/move-categorical-value"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/run",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/run"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation/schemes/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/schemes/{dataset_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation/schemes/{dataset_id}/{scheme_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/schemes/{dataset_id}/{scheme_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/segmentation/top-variables/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/top-variables/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/segmentation/validate-rules",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmentation/validate-rules"
+    },
+    {
+      "method": "GET",
+      "path": "/segmented-dataset-preview/{dataset_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/segmented-dataset-preview/{dataset_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/start",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/start"
+    },
+    {
+      "method": "GET",
+      "path": "/status/{job_id}",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/status/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/stream/{job_id}",
+      "router_var": "rfe_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/rfe_routes.py",
+      "full_path": "/api/v1/stream/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/train-global-model",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/train-global-model"
+    },
+    {
+      "method": "GET",
+      "path": "/train-global-model/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/train-global-model/status/{job_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/train-multiple-models",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/train-multiple-models"
+    },
+    {
+      "method": "POST",
+      "path": "/train-multiple-models/cancel/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/train-multiple-models/cancel/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/train-multiple-models/status/{job_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/train-multiple-models/status/{job_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/training-logs/{model_id}",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/training-logs/{model_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/training/lock-variables",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/training/lock-variables"
+    },
+    {
+      "method": "POST",
+      "path": "/update-custom-treatments",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/update-custom-treatments"
+    },
+    {
+      "method": "POST",
+      "path": "/upload",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/upload"
+    },
+    {
+      "method": "POST",
+      "path": "/upload-chunked/init",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/chunked_upload.py",
+      "full_path": "/api/v1/upload-chunked/init"
+    },
+    {
+      "method": "DELETE",
+      "path": "/upload-chunked/{upload_id}",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/chunked_upload.py",
+      "full_path": "/api/v1/upload-chunked/{upload_id}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/upload-chunked/{upload_id}",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/chunked_upload.py",
+      "full_path": "/api/v1/upload-chunked/{upload_id}"
+    },
+    {
+      "method": "POST",
+      "path": "/upload-chunked/{upload_id}/finalize",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/chunked_upload.py",
+      "full_path": "/api/v1/upload-chunked/{upload_id}/finalize"
+    },
+    {
+      "method": "GET",
+      "path": "/upload-chunked/{upload_id}/status",
+      "router_var": "router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/chunked_upload.py",
+      "full_path": "/api/v1/upload-chunked/{upload_id}/status"
+    },
+    {
+      "method": "POST",
+      "path": "/user-knowledge/preferences",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/user-knowledge/preferences"
+    },
+    {
+      "method": "POST",
+      "path": "/user-knowledge/upload",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/user-knowledge/upload"
+    },
+    {
+      "method": "POST",
+      "path": "/validate-unique-ids-by-id",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/validate-unique-ids-by-id"
+    },
+    {
+      "method": "POST",
+      "path": "/validate-variable-selection",
+      "router_var": "chat_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/validate-variable-selection"
+    },
+    {
+      "method": "POST",
+      "path": "/variable-review/apply",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/variable-review/apply"
+    },
+    {
+      "method": "POST",
+      "path": "/variable-review/preview",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/variable-review/preview"
+    },
+    {
+      "method": "POST",
+      "path": "/variable-review/run",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/variable-review/run"
+    },
+    {
+      "method": "POST",
+      "path": "/vector-store/reinitialize",
+      "router_var": "upload_router",
+      "router_prefix": "/api/v1",
+      "source_file": "backend/app/api/routes.py",
+      "full_path": "/api/v1/vector-store/reinitialize"
+    }
+  ]
+}

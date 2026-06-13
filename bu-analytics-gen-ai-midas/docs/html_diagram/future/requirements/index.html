@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EXL Decision — Future state requirements</title>
+  <script src="requirements-data.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --page-bg:#e8eef5;
+      --font:'Segoe UI','Inter',system-ui,sans-serif;
+      --txt:#1e293b;
+      --muted:#64748b;
+      --border:#cbd5e1;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--page-bg);color:var(--txt);font-size:13px;line-height:1.45}
+    .page-wrap{display:flex;min-height:100vh}
+    .sidebar{width:230px;min-width:230px;background:#1a1d27;border-right:1px solid #2e3350;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0}
+    .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid #2e3350;margin-bottom:16px}
+    .sidebar-logo h1{font-size:15px;font-weight:700;color:#4f8ef7}
+    .sidebar-logo p{font-size:10px;color:#94a3b8;margin-top:3px}
+    .nav-section{padding:6px 20px 2px;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
+    .nav-item{display:block;padding:6px 20px;color:#94a3b8;text-decoration:none;font-size:12px;border-left:2px solid transparent;transition:all .15s}
+    .nav-item:hover{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.07)}
+    .nav-item.active{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.1);font-weight:600}
+    .main{flex:1;overflow-x:auto;background:var(--page-bg);min-width:0}
+    .page-header{background:#1e293b;padding:20px 36px 16px;border-bottom:3px solid #059669}
+    .page-header h1{font-size:22px;font-weight:900;color:#fff;letter-spacing:1.2px;text-transform:uppercase}
+    .page-header p{color:#94a3b8;font-size:11px;margin-top:5px;max-width:980px}
+    .page-header .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+    .badge{background:#2e3350;border:1px solid #3a4060;color:#94a3b8;font-size:10px;padding:2px 9px;border-radius:10px}
+    .hint-bar{background:#ecfdf5;border-bottom:1px solid #6ee7b7;padding:9px 36px;font-size:11px;color:#065f46;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+    .hint-bar a{color:#047857;font-weight:800}
+    .canvas{padding:24px 28px 60px;max-width:1200px}
+    .req-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .req-card h2{font-size:15px;font-weight:900;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .req-id{font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;background:#1e293b;color:#e2e8f0}
+    .pri{display:inline-block;font-size:9px;font-weight:800;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px}
+    .pri-must{background:#fee2e2;color:#991b1b}
+    .pri-should{background:#fef9c3;color:#854d0e}
+    .pri-could{background:#e2e8f0;color:#475569}
+    .cat{display:inline-block;font-size:9px;padding:2px 8px;border-radius:6px;background:#e0f2fe;color:#0369a1;font-weight:800}
+    .req-body{color:#334155;font-size:12px;line-height:1.65;margin-top:6px}
+    .req-nodes{margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b}
+    .req-nodes button{margin:2px 4px 2px 0;padding:2px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;cursor:pointer;font-size:10px;font-weight:700;color:#334155}
+    .req-nodes button:hover{background:#e0f2fe;border-color:#7dd3fc}
+    .empty{color:#94a3b8;font-size:13px;padding:20px;text-align:center;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <nav class="sidebar">
+  <div class="sidebar-logo"><h1>EXL Decision</h1><p>Architecture Explorer</p></div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item active" href="index.html">📜 Requirements</a>
+      <a class="nav-item" href="../decisions/index.html">⚖️ Architectural decisions</a>
+</nav>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Architecture requirements</h1>
+        <p>
+          Register of future-state requirements traceable to components on the
+          <a href="../developer/index.html" style="color:#93c5fd">Developer Architecture Diagram</a>
+          (including <strong>Amazon EKS</strong>, <strong>Kubeflow Pipelines</strong>, <strong>Argo Workflows</strong>, <strong>AWS Secrets Manager</strong>, <strong>AI Gateway (LiteLLM)</strong> / <code>d-aigateway</code>, <strong>agent-platform-service</strong> / <code>d-agent</code>, and REQ-FS-044–049).
+          <strong>REQ-FS-001</strong> and <strong>REQ-FS-002</strong> map to every in-VPC diagram box except the browser client (<code>d-browser</code>).
+          Effort S/M/L (<code>MIDAS_NODE_COMPLEXITY</code>) applies only to NEW/REFACTOR components. Primary owner discipline per diagram box is <code>MIDAS_NODE_OWNER</code> (developer vs devops).
+          Open a component on that page to see counts and deep links filtered to the same node.
+        </p>
+        <div class="badges">
+          <span class="badge">Future state</span>
+          <span class="badge" id="stat-total">—</span>
+          <span class="badge" id="stat-filter">—</span>
+        </div>
+      </div>
+      <div class="hint-bar" id="filter-bar" style="display:none">
+        <span id="filter-text"></span>
+        <a href="index.html" id="clear-filter">Show all requirements</a>
+      </div>
+
+      <div class="canvas">
+        <div id="req-list"></div>
+        <p class="empty" id="req-empty" style="display:none">No requirements match this filter.</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      function esc(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function priClass(p) {
+        if (p === "must") return "pri-must";
+        if (p === "should") return "pri-should";
+        return "pri-could";
+      }
+      const params = new URLSearchParams(window.location.search);
+      const node = params.get("node");
+      const all = window.MIDAS_REQUIREMENTS || [];
+      const labels = window.MIDAS_NODE_LABELS || {};
+      const cxMap = window.MIDAS_NODE_COMPLEXITY || {};
+      const list = node
+        ? all.filter(function (r) {
+            return r.nodeIds.indexOf(node) !== -1;
+          })
+        : all.slice();
+      const totalEl = document.getElementById("stat-total");
+      const filterEl = document.getElementById("stat-filter");
+      const bar = document.getElementById("filter-bar");
+      const filterText = document.getElementById("filter-text");
+      totalEl.textContent = all.length + " requirements in register";
+      if (node) {
+        bar.style.display = "flex";
+        var cxTier = (cxMap[node] || "").toUpperCase();
+        filterText.innerHTML =
+          "Filtered to <strong>" +
+          esc(labels[node] || node) +
+          "</strong> (" +
+          esc(node) +
+          ")" +
+          (cxTier ? " · effort <strong>" + esc(cxTier) + "</strong>" : "") +
+          " — " +
+          list.length +
+          " match" +
+          (list.length === 1 ? "" : "es");
+        filterEl.textContent = "Showing " + list.length + " of " + all.length;
+      } else {
+        filterEl.textContent = "Full register";
+      }
+      const root = document.getElementById("req-list");
+      const empty = document.getElementById("req-empty");
+      root.innerHTML = "";
+      if (list.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+      list.forEach(function (r) {
+        const card = document.createElement("article");
+        card.className = "req-card";
+        card.setAttribute("id", r.id);
+        const h = document.createElement("h2");
+        const rid = document.createElement("span");
+        rid.className = "req-id";
+        rid.textContent = r.id;
+        h.appendChild(rid);
+        h.appendChild(document.createTextNode(" " + r.title));
+        const pr = document.createElement("span");
+        pr.className = "pri " + priClass(r.priority);
+        pr.textContent = r.priority || "note";
+        h.appendChild(pr);
+        if (r.category) {
+          const c = document.createElement("span");
+          c.className = "cat";
+          c.textContent = r.category;
+          h.appendChild(c);
+        }
+        card.appendChild(h);
+        const body = document.createElement("div");
+        body.className = "req-body";
+        body.textContent = r.body;
+        card.appendChild(body);
+        const nodes = document.createElement("div");
+        nodes.className = "req-nodes";
+        nodes.innerHTML =
+          "<strong style=\"color:#475569\">Maps to:</strong> ";
+        (r.nodeIds || []).forEach(function (nid) {
+          const b = document.createElement("button");
+          b.type = "button";
+          var cx = (cxMap[nid] || "").toUpperCase();
+          b.textContent = (labels[nid] || nid) + (cx ? " (" + cx + ")" : "");
+          b.title = nid + (cx ? " · effort " + cx : "");
+          b.addEventListener("click", function () {
+            window.location.href = "index.html?node=" + encodeURIComponent(nid);
+          });
+          nodes.appendChild(b);
+        });
+        card.appendChild(nodes);
+        root.appendChild(card);
+      });
+      if (node && list.length) {
+        const first = document.getElementById(list[0].id);
+        if (first) first.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    })();
+  </script>
+</body>
+</html>

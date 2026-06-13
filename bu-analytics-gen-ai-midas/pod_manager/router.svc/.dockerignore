@@ -1,0 +1,21 @@
+# Client packages (not part of the Python server image)
+client_py/.venv
+client_py/**/__pycache__
+client_ts/node_modules
+client_ts/dist
+
+# Local Python dev artifacts
+server/.venv
+server/**/__pycache__
+server/**/*.py[cod]
+server/.pytest_cache
+server/.mypy_cache
+server/.ruff_cache
+server/src/**/*.egg-info
+
+# Secrets and local overrides (mount at run time instead)
+server/.env
+server/.env.local
+
+.git
+**/.git

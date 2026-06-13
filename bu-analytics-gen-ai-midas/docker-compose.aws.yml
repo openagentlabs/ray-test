@@ -1,0 +1,49 @@
+# docker-compose.aws.yml - overlay that switches backend to AWS managed services.
+#
+# Usage (requires VPN / AWS network access to private VPC):
+#   docker compose -f docker-compose.yml -f docker-compose.aws.yml up backend frontend
+#
+# This override:
+#   - Points DATABASE_URL at the Terraform-managed RDS instance
+#   - Points REDIS_URL at the ElastiCache cluster (TLS + auth token)
+#   - Skips starting local postgres/redis containers (scale: 0)
+#   - S3 bucket is always AWS (already set in base compose)
+#
+# AWS endpoints (all private VPC - requires network access):
+#   RDS:          midas-dev-us-east-1-pg-20260406163456132500000004.cuzwqoeau6l8.us-east-1.rds.amazonaws.com:5432
+#   ElastiCache:  master.midas-dev-redis.ez4lfs.use1.cache.amazonaws.com:6379  (TLS, auth required)
+#   S3 bucket:    midas-dev-us-east-1-test-20260404180513813900000001
+
+services:
+  postgres:
+    deploy:
+      replicas: 0
+
+  redis:
+    deploy:
+      replicas: 0
+
+  # GraphRAG still runs as a local Docker container even in AWS mode
+  # (it connects to the same Docker network as backend)
+  graphrag:
+    environment:
+      - GRAPHRAG_SERVICE_PORT=8001
+
+  backend:
+    depends_on:
+      backend-volume-init:
+        condition: service_completed_successfully
+      graphrag:
+        condition: service_healthy
+    environment:
+      - GRAPHRAG_SERVICE_URL=http://graphrag:8001
+      - DATABASE_URL=postgresql://midas_pg:F%3A%2A%21M5MaCfkgTdfT%3Aw1gsSh%28_c6k@midas-dev-us-east-1-pg-20260406163456132500000004.cuzwqoeau6l8.us-east-1.rds.amazonaws.com:5432/midas_dev
+      - REDIS_URL=rediss://:wI7VtHBtbQxu5WEXihJbBtE1P8oVBXg5@master.midas-dev-redis.ez4lfs.use1.cache.amazonaws.com:6379/0
+      - SESSION_REDIS_URL=rediss://:wI7VtHBtbQxu5WEXihJbBtE1P8oVBXg5@master.midas-dev-redis.ez4lfs.use1.cache.amazonaws.com:6379/0
+      - SESSION_ELASTICACHE_SECRET_ARN=arn:aws:secretsmanager:us-east-1:811391286931:secret:midas-dev-us-east-1-redis-auth-20260407123244934300000001-BThXC9
+      - AWS_RDS_POSTGRES_SECRET_ID=rds!db-209f07cb-802e-4256-883e-a036a0f70351
+      # Explicit host/port so the secrets loader can resolve the RDS endpoint even when the
+      # RDS-managed secret (after rotation) contains only username/password. Values match
+      # the Terraform-provisioned RDS instance for this compose overlay (dev environment).
+      - AWS_RDS_POSTGRES_HOST=midas-dev-us-east-1-pg-20260406163456132500000004.cuzwqoeau6l8.us-east-1.rds.amazonaws.com
+      - AWS_RDS_POSTGRES_PORT=5432

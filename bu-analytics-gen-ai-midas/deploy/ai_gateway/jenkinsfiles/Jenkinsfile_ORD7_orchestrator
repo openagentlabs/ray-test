@@ -1,0 +1,328 @@
+// midas-ai-gateway-orchestrator-ORD7
+//
+// Pipeline: invokes ORD1 → ORD2 → ORD3 → ORD4 → ORD5 → ORD6 strictly in order,
+// waiting for each to finish before starting the next. Every downstream Jenkins
+// job is called with its real parameter shape (validated against each ORD*'s
+// `parameters {}` block in this commit).
+//
+// Failure semantics:
+//   - `wait: true, propagate: true` on every `build` step means a downstream
+//     FAILURE immediately aborts ORD7 with the same status.
+//   - `AUTO_APPROVE_BETWEEN` defaults to false; each stage is followed by a
+//     human input gate unless AUTO_APPROVE_BETWEEN=true OR that downstream
+//     is skipped via its SKIP_* flag.
+//
+// Why we don't parallelise ORD3/4/5/6:
+//   ORD4 (Langfuse) needs ClickHouse healthy; ORD5 (LiteLLM) writes observability
+//   to Langfuse; ORD6 (control-api) consumes LiteLLM + Langfuse secrets.
+//   A strict serial pipeline matches the working path proven in steps 33–37.
+//
+// DRY_RUN propagation:
+//   - ORD7 DRY_RUN=true  → passes DRY_RUN=true to ORD2/3/4/5/6 and TF_ACTION=plan
+//                          to ORD1. Produces plans + Helm `--dry-run` manifests
+//                          without mutating anything.
+//   - ORD7 DRY_RUN=false → normal apply path (TF_ACTION=apply on ORD1,
+//                          ACTION=install on ORD3/4/5/6, ACTION=mirror_and_verify
+//                          on ORD2).
+
+pipeline {
+    agent { label 'cicd' }
+
+    options {
+        // Orchestrator runs can be long (TF + 5 Helm charts + images). Cap at 3h.
+        timeout(time: 3, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '5'))
+        disableConcurrentBuilds()  // only ONE end-to-end deploy at a time per environment
+    }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev'],
+            description: 'Target environment. Only dev today. Prod/UAT gates would add mandatory approvals.'
+        )
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: false,
+            description: 'When true: ORD1 runs TF plan (no apply), ORD2 uses ACTION=verify_only, ORD3-6 use DRY_RUN=true (Helm render, no install).'
+        )
+        booleanParam(
+            name: 'AUTO_APPROVE_BETWEEN',
+            defaultValue: false,
+            description: 'Skip every human input gate. Only use for repeatable redeploys of a known-good state.'
+        )
+        // Per-stage skip toggles — used to resume from a failed run without
+        // re-running the successful predecessors.
+        booleanParam(name: 'SKIP_TF',              defaultValue: false, description: 'Skip ORD1 phase-1 (Terraform — NLB/TG/cert baseline).')
+        booleanParam(name: 'SKIP_IMAGE_BOOTSTRAP', defaultValue: false, description: 'Skip ORD2 (image bootstrap).')
+        booleanParam(name: 'SKIP_CLICKHOUSE',      defaultValue: false, description: 'Skip ORD3 (ClickHouse).')
+        booleanParam(name: 'SKIP_LANGFUSE',        defaultValue: false, description: 'Skip ORD4 (Langfuse).')
+        booleanParam(name: 'SKIP_LITELLM',         defaultValue: false, description: 'Skip ORD5 (LiteLLM).')
+        booleanParam(name: 'SKIP_CONTROL_API',     defaultValue: false, description: 'Skip ORD6 (Control API).')
+        booleanParam(name: 'SKIP_TF_PHASE3',       defaultValue: false, description: 'Skip ORD1 phase-3 re-apply (NLB→ALB wire). Only skip if ALBs are already registered as NLB targets.')
+    }
+
+    environment {
+        // Namespace of the downstream jobs (relative to ORD7's parent folder).
+        ORD1_JOB = 'exlerate/exlerate-solutions/MIDAS/midas-ai-gateway-tf-deploy-ORD1'
+        ORD2_JOB = 'exlerate/exlerate-solutions/MIDAS/midas-ai-gateway-image-bootstrap-ORD2'
+        ORD3_JOB = 'exlerate/exlerate-solutions/MIDAS/midas-ai-gateway-clickhouse-ORD3'
+        ORD4_JOB = 'exlerate/exlerate-solutions/MIDAS/midas-ai-gateway-langfuse-ORD4'
+        ORD5_JOB = 'exlerate/exlerate-solutions/MIDAS/midas-ai-gateway-litellm-ORD5'
+        ORD6_JOB = 'exlerate/exlerate-solutions/MIDAS/midas-ai-gateway-control-api-ORD6'
+    }
+
+    stages {
+
+        stage('Plan summary') {
+            steps {
+                script {
+                    echo """
+╔══════════════════════════════════════════════════════════════════════╗
+║ ORD7 orchestrator plan                                              ║
+╠══════════════════════════════════════════════════════════════════════╣
+║ environment            : ${params.ENVIRONMENT}
+║ dry_run                : ${params.DRY_RUN}
+║ auto_approve_between   : ${params.AUTO_APPROVE_BETWEEN}
+║ ORD1 phase-1 (Terraform) : ${params.SKIP_TF              ? 'SKIP' : (params.DRY_RUN ? 'PLAN' : 'APPLY')}
+║ ORD2 (Image bootstrap)   : ${params.SKIP_IMAGE_BOOTSTRAP ? 'SKIP' : (params.DRY_RUN ? 'VERIFY-ONLY' : 'MIRROR+VERIFY')}
+║ ORD3 (ClickHouse)        : ${params.SKIP_CLICKHOUSE      ? 'SKIP' : (params.DRY_RUN ? 'DRY-INSTALL' : 'INSTALL')}
+║ ORD4 (Langfuse)          : ${params.SKIP_LANGFUSE        ? 'SKIP' : (params.DRY_RUN ? 'DRY-INSTALL' : 'INSTALL')}
+║ ORD5 (LiteLLM)           : ${params.SKIP_LITELLM         ? 'SKIP' : (params.DRY_RUN ? 'DRY-INSTALL' : 'INSTALL')}
+║ ORD6 (control-api)       : ${params.SKIP_CONTROL_API     ? 'SKIP' : (params.DRY_RUN ? 'DRY-INSTALL' : 'INSTALL')}
+║ ORD1 phase-3 (NLB wire)  : ${params.SKIP_TF_PHASE3       ? 'SKIP' : (params.DRY_RUN ? 'PLAN' : 'APPLY')}
+╚══════════════════════════════════════════════════════════════════════╝
+"""
+                }
+            }
+        }
+
+        stage('ORD1 — Terraform') {
+            when { expression { return !params.SKIP_TF } }
+            steps {
+                script {
+                    def tfAction = params.DRY_RUN ? 'plan' : 'apply'
+                    // If DRY_RUN: TF plan only, no apply, so AUTO_APPROVE_PLAN is irrelevant.
+                    // If not DRY_RUN and AUTO_APPROVE_BETWEEN=true: ORD1 must not pause for its
+                    // own internal plan-approval gate either (otherwise ORD7 hangs waiting for a
+                    // human that it was told to skip).
+                    def autoApprove = params.AUTO_APPROVE_BETWEEN
+                    // Phase 2: create NLB, TGs, certs, k8s secrets — but NOT the
+                    // NLB→ALB target group attachments (bootstrap_phase=2 skips those).
+                    // Phase 3 (NLB→ALB wire) runs after ORD4+ORD5 at the end of this pipeline.
+                    echo "Triggering ORD1 phase-2: TF_ACTION=${tfAction}, BOOTSTRAP_PHASE=2, AUTO_APPROVE_PLAN=${autoApprove}"
+                    def b = build(
+                        job:        env.ORD1_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT',            value: params.ENVIRONMENT),
+                            string(name: 'TF_ACTION',              value: tfAction),
+                            string(name: 'BOOTSTRAP_PHASE',        value: '2'),
+                            booleanParam(name: 'AUTO_APPROVE_PLAN', value: autoApprove)
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD1 phase-2 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+        stage('Gate after ORD1') {
+            when { expression { return !params.AUTO_APPROVE_BETWEEN && !params.SKIP_TF } }
+            steps { input message: 'ORD1 (Terraform) complete. Proceed to ORD2 (image bootstrap)?' }
+        }
+
+        stage('ORD2 — Image bootstrap') {
+            when { expression { return !params.SKIP_IMAGE_BOOTSTRAP } }
+            steps {
+                script {
+                    def ord2Action = params.DRY_RUN ? 'verify_only' : 'mirror_and_verify'
+                    echo "Triggering ORD2: ACTION=${ord2Action}, DRY_RUN=${params.DRY_RUN}"
+                    def b = build(
+                        job:        env.ORD2_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT',  value: params.ENVIRONMENT),
+                            string(name: 'ACTION',       value: ord2Action),
+                            booleanParam(name: 'DRY_RUN', value: params.DRY_RUN),
+                            string(name: 'IMAGE_FILTER', value: '*')
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD2 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+        stage('Gate after ORD2') {
+            when { expression { return !params.AUTO_APPROVE_BETWEEN && !params.SKIP_IMAGE_BOOTSTRAP } }
+            steps { input message: 'ORD2 (image bootstrap) complete. Proceed to ORD3 (ClickHouse)?' }
+        }
+
+        stage('ORD3 — ClickHouse') {
+            when { expression { return !params.SKIP_CLICKHOUSE } }
+            steps {
+                script {
+                    def b = build(
+                        job:        env.ORD3_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT', value: params.ENVIRONMENT),
+                            string(name: 'ACTION',      value: 'install'),
+                            booleanParam(name: 'DRY_RUN', value: params.DRY_RUN)
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD3 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+        stage('Gate after ORD3') {
+            when { expression { return !params.AUTO_APPROVE_BETWEEN && !params.SKIP_CLICKHOUSE } }
+            steps { input message: 'ORD3 (ClickHouse) complete. Proceed to ORD4 (Langfuse)?' }
+        }
+
+        stage('ORD4 — Langfuse') {
+            when { expression { return !params.SKIP_LANGFUSE } }
+            steps {
+                script {
+                    def b = build(
+                        job:        env.ORD4_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT', value: params.ENVIRONMENT),
+                            string(name: 'ACTION',      value: 'install'),
+                            booleanParam(name: 'DRY_RUN', value: params.DRY_RUN)
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD4 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+        stage('Gate after ORD4') {
+            when { expression { return !params.AUTO_APPROVE_BETWEEN && !params.SKIP_LANGFUSE } }
+            steps { input message: 'ORD4 (Langfuse) complete. Proceed to ORD5 (LiteLLM)?' }
+        }
+
+        stage('ORD5 — LiteLLM') {
+            when { expression { return !params.SKIP_LITELLM } }
+            steps {
+                script {
+                    def b = build(
+                        job:        env.ORD5_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT', value: params.ENVIRONMENT),
+                            string(name: 'ACTION',      value: 'install'),
+                            booleanParam(name: 'DRY_RUN', value: params.DRY_RUN)
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD5 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+        stage('Gate after ORD5') {
+            when { expression { return !params.AUTO_APPROVE_BETWEEN && !params.SKIP_LITELLM } }
+            steps { input message: 'ORD5 (LiteLLM) complete. Proceed to ORD6 (control-api)?' }
+        }
+
+        stage('ORD6 — control-api') {
+            when { expression { return !params.SKIP_CONTROL_API } }
+            steps {
+                script {
+                    // Leave IMAGE_TAG blank so ORD6 picks its own default
+                    // '1.0.0-midas-<BUILD_NUMBER>' (the build number of THAT run,
+                    // not ORD7's).
+                    def b = build(
+                        job:        env.ORD6_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT', value: params.ENVIRONMENT),
+                            string(name: 'ACTION',      value: 'install'),
+                            booleanParam(name: 'DRY_RUN', value: params.DRY_RUN)
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD6 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+
+        stage('ORD1 — Terraform phase-3 (NLB→ALB wire)') {
+            // WHY THIS STAGE EXISTS
+            //   aws_lb_target_group_attachment for target_type=alb requires the ALB to have
+            //   at least one listener matching the TG port BEFORE RegisterTargets is called.
+            //   ORD4 (Langfuse) and ORD5 (LiteLLM) each create an ALB :443 HTTPS listener
+            //   via the AWS Load Balancer Controller Ingress. Those listeners do not exist
+            //   when ORD1 runs at the top of this pipeline. Running ORD1 a second time,
+            //   after both Helm deploys, ensures the ALBs are ready and the NLB→ALB
+            //   attachment can succeed (bootstrap_phase >= 3 resources are gated on this).
+            //
+            //   c1_api_nlb_to_alb (bootstrap_phase >= 2) was already attached in the
+            //   first ORD1 pass; Terraform is idempotent so it will be a no-op here.
+            //
+            //   SKIP_TF_PHASE3=true lets you skip this stage if the NLB targets are already
+            //   healthy (e.g. on a re-run where only app code changed).
+            when { expression { return !params.SKIP_TF_PHASE3 } }
+            steps {
+                script {
+                    def tfAction = params.DRY_RUN ? 'plan' : 'apply'
+                    def autoApprove = params.AUTO_APPROVE_BETWEEN
+                    // Phase 3: register the Langfuse and LiteLLM ALBs as targets of their
+                    // NLB target groups. The ALBs must have :443 HTTPS listeners (created by
+                    // ORD4 and ORD5 Ingress above) before AWS allows RegisterTargets.
+                    echo "Triggering ORD1 phase-3: TF_ACTION=${tfAction}, BOOTSTRAP_PHASE=3, AUTO_APPROVE_PLAN=${autoApprove}"
+                    def b = build(
+                        job:        env.ORD1_JOB,
+                        parameters: [
+                            string(name: 'ENVIRONMENT',            value: params.ENVIRONMENT),
+                            string(name: 'TF_ACTION',              value: tfAction),
+                            string(name: 'BOOTSTRAP_PHASE',        value: '3'),
+                            booleanParam(name: 'AUTO_APPROVE_PLAN', value: autoApprove)
+                        ],
+                        wait:       true,
+                        propagate:  true
+                    )
+                    echo "ORD1 phase-3 finished with status=${b.result}, build=${b.getNumber()}"
+                }
+            }
+        }
+
+        stage('Orchestrator summary') {
+            steps {
+                script {
+                    echo """
+╔══════════════════════════════════════════════════════════════════════╗
+║ ORD7 orchestrator complete (${params.DRY_RUN ? 'DRY_RUN' : 'APPLY'})
+╠══════════════════════════════════════════════════════════════════════╣
+║ ORD1 Terraform (ph1)   : ${params.SKIP_TF              ? 'skipped' : 'ran'}
+║ ORD2 Image bootstrap   : ${params.SKIP_IMAGE_BOOTSTRAP ? 'skipped' : 'ran'}
+║ ORD3 ClickHouse        : ${params.SKIP_CLICKHOUSE      ? 'skipped' : 'ran'}
+║ ORD4 Langfuse          : ${params.SKIP_LANGFUSE        ? 'skipped' : 'ran'}
+║ ORD5 LiteLLM           : ${params.SKIP_LITELLM         ? 'skipped' : 'ran'}
+║ ORD6 control-api       : ${params.SKIP_CONTROL_API     ? 'skipped' : 'ran'}
+║ ORD1 Terraform (ph3)   : ${params.SKIP_TF_PHASE3       ? 'skipped' : 'ran'}
+╚══════════════════════════════════════════════════════════════════════╝
+
+Post-deploy smoke-test targets (manual today — ran from the jumpbox):
+  kubectl -n clickhouse    get pods   # chi-langfuse-fleet1-0-0-* Running
+  kubectl -n langfuse      get pods   # langfuse-web-* + langfuse-worker-* Running
+  kubectl -n litellm       get pods   # litellm-* Running
+  kubectl -n c1-api        get pods   # control-api-* Running 1/1
+  kubectl -n c1-api exec deployment/control-api -- python3 -c \\
+      "import urllib.request; print(urllib.request.urlopen('http://localhost:9001/api/health').read().decode())"
+"""
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "ORD7: end-to-end orchestration SUCCEEDED for environment=${params.ENVIRONMENT}."
+        }
+        failure {
+            echo "ORD7: end-to-end orchestration FAILED. Check the stage that failed and its downstream build link."
+        }
+    }
+}

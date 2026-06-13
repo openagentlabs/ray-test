@@ -1,0 +1,1011 @@
+import pandas as pd
+import numpy as np
+import ast
+import json
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+import logging
+import os
+
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+# Try to import VIF calculation library
+try:
+    from statsmodels.stats.outliers_influence import variance_inflation_factor
+    try:
+        from statsmodels.tools.tools import add_constant
+    except Exception:
+        add_constant = None  # Fallback - we'll proceed without an explicit constant if unavailable
+    STATSMODELS_AVAILABLE = True
+except ImportError:
+    STATSMODELS_AVAILABLE = False
+    logger.warning("statsmodels not available, VIF calculation will be disabled")
+
+
+class ModelTrainingSegmentationManualConfigurationService:
+    """Service for manual configuration of model training with segmentation support"""
+
+    def __init__(self):
+        self.logger = logger
+
+    def detect_problem_type_from_data(self, df: pd.DataFrame, target_column: str) -> Dict[str, Any]:
+        """
+        Detect problem type (classification or regression) from target variable
+
+        Args:
+            df: DataFrame containing the data
+            target_column: Name of the target column
+
+        Returns:
+            Dictionary with problem_type and metadata
+        """
+        try:
+            if target_column not in df.columns:
+                raise ValueError(f"Target column '{target_column}' not found in dataset")
+
+            y = df[target_column]
+
+            # Check if target is non-numeric or boolean
+            if not pd.api.types.is_numeric_dtype(y):
+                return {
+                    'problem_type': 'classification',
+                    'reason': 'Target variable is non-numeric',
+                    'unique_values': int(y.nunique()),
+                    'description': 'Predicting discrete categories or classes'
+                }
+
+            # Check if target is boolean
+            if y.dtype == bool:
+                return {
+                    'problem_type': 'classification',
+                    'reason': 'Target variable is boolean',
+                    'unique_values': int(y.nunique()),
+                    'description': 'Predicting discrete categories or classes'
+                }
+
+            # For numeric targets, check unique values
+            unique_count = y.nunique()
+            total_count = len(y)
+            unique_ratio = unique_count / total_count
+
+            # Binary classification (0/1)
+            if unique_count == 2:
+                unique_vals = sorted(y.dropna().unique())
+                if (unique_vals[0] == 0 and unique_vals[1] == 1) or \
+                   (unique_vals[0] == 0.0 and unique_vals[1] == 1.0):
+                    return {
+                        'problem_type': 'classification',
+                        'reason': 'Binary target variable (0/1)',
+                        'unique_values': int(unique_count),
+                        'description': 'Predicting discrete categories or classes'
+                    }
+
+            # Categorical classification (few unique values)
+            if unique_count <= 20 and unique_ratio <= 0.05:
+                # Check if values are mostly integers
+                integer_count = sum(1 for val in y.dropna().unique()
+                                  if isinstance(val, (int, np.integer)) or
+                                  (isinstance(val, float) and val.is_integer()))
+                if integer_count / len(y.dropna().unique()) > 0.8:
+                    return {
+                        'problem_type': 'classification',
+                        'reason': f'Low unique value ratio ({unique_ratio:.2%})',
+                        'unique_values': int(unique_count),
+                        'description': 'Predicting discrete categories or classes'
+                    }
+
+            # Continuous regression (many unique values)
+            if unique_count > 50:
+                return {
+                    'problem_type': 'regression',
+                    'reason': f'High unique value count ({unique_count})',
+                    'unique_values': int(unique_count),
+                    'description': 'Predicting continuous numerical values'
+                }
+
+            # Default to regression for numeric variables
+            return {
+                'problem_type': 'regression',
+                'reason': 'Numeric target with moderate unique values',
+                'unique_values': int(unique_count),
+                'description': 'Predicting continuous numerical values'
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error detecting problem type: {str(e)}")
+            raise
+
+    def get_available_segments(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Get available segments from dataset
+
+        Args:
+            df: DataFrame containing the data
+
+        Returns:
+            Dictionary with segment information
+        """
+        try:
+            # First try exact segment column names
+            segment_columns = ['segment', 'SEGMENT', 'Segment', 'segments', 'SEGMENTS', 'group', 'GROUP', 'cluster', 'CLUSTER', 'category', 'CATEGORY']
+            segment_column = None
+            for col in segment_columns:
+                if col in df.columns:
+                    segment_column = col
+                    break
+
+            # If no exact match, use intelligent analysis
+            if segment_column is None:
+                # Use the analyze_potential_segments method to provide detailed analysis
+                analysis_result = self.analyze_potential_segments(df)
+
+                if analysis_result.get('potential_segments'):
+                    # Format the analysis results into a user-friendly error message
+                    excellent = analysis_result.get('excellent_segments', [])
+                    good = analysis_result.get('good_segments', [])
+                    fair = analysis_result.get('fair_segments', [])
+                    recommendations = analysis_result.get('recommendations', [])
+
+                    error_msg = "🔍 Smart Analysis: No standard segment column found, but I found great alternatives!\n\n"
+
+                    if excellent:
+                        error_msg += "⭐ EXCELLENT segment candidates:\n"
+                        for i, seg in enumerate(excellent[:3]):
+                            sample_vals = ', '.join(map(str, seg['sample_values']))
+                            score = int(seg['suitability_score'] * 100)
+                            error_msg += f"• '{seg['column']}' ({seg['unique_values']} categories, {score}% suitability): {sample_vals}\n"
+                        error_msg += "\n"
+
+                    if good:
+                        error_msg += "✅ GOOD segment candidates:\n"
+                        for i, seg in enumerate(good[:3]):
+                            sample_vals = ', '.join(map(str, seg['sample_values']))
+                            score = int(seg['suitability_score'] * 100)
+                            error_msg += f"• '{seg['column']}' ({seg['unique_values']} categories, {score}% suitability): {sample_vals}\n"
+                        if len(good) > 3:
+                            error_msg += f"... and {len(good) - 3} more good options\n"
+                        error_msg += "\n"
+
+                    error_msg += "💡 To use segmentation:\n"
+                    error_msg += "• Click 'OK' and then rename one of these columns to 'segment'\n"
+                    error_msg += "• Or upload a dataset with a 'segment' column\n"
+                    error_msg += "• Common segment columns: grade, purpose, home_ownership, verification_status\n\n"
+
+                    error_msg += f"📊 Analyzed {analysis_result.get('total_analyzed', 0)} columns from your dataset."
+
+                    raise ValueError(error_msg)
+                else:
+                    # No good segment candidates found, use basic fallback
+                    available_columns = df.columns.tolist()
+                    error_msg = "No segment column found in dataset.\n\n"
+                    error_msg += f"Available columns: {available_columns[:10]}{'...' if len(available_columns) > 10 else ''}\n\n"
+                    error_msg += "To enable segmentation analysis:\n"
+                    error_msg += "• Add a categorical column (2-50 unique values) like 'grade', 'purpose', 'region'\n"
+                    error_msg += "• Or rename an existing categorical column to 'segment'\n"
+                    error_msg += "• Examples: customer_grade, loan_purpose, geographic_region"
+
+                    raise ValueError(error_msg)
+
+            segments = df[segment_column].unique()
+            segments = segments[~pd.isna(segments)]  # Remove NaN values
+
+            if len(segments) < 2:
+                raise ValueError(f"Segment column '{segment_column}' only has {len(segments)} unique value(s). Need at least 2 segments for segmentation analysis.")
+
+            segment_info = []
+            for segment in sorted(segments):
+                segment_data = df[df[segment_column] == segment]
+
+                # Find a suitable target-like column for distribution analysis
+                target_distribution = {}
+                for col in df.columns:
+                    if col.lower() not in [segment_column.lower(), 'id', 'member_id', 'loan_id', 'index']:
+                        col_data = segment_data[col].dropna()
+                        if len(col_data) > 0:
+                            unique_count = col_data.nunique()
+                            # Use the first categorical/numeric column that's not the segment column
+                            if unique_count <= 20:  # Categorical or discrete numeric
+                                target_distribution = col_data.value_counts().to_dict()
+                                break
+                            elif unique_count <= 100 and pd.api.types.is_numeric_dtype(col_data):  # Numeric with reasonable range
+                                target_distribution = {
+                                    'mean': float(col_data.mean()),
+                                    'std': float(col_data.std()),
+                                    'min': float(col_data.min()),
+                                    'max': float(col_data.max()),
+                                    'unique_count': unique_count
+                                }
+                                break
+
+                segment_info.append({
+                    'segment_id': segment,
+                    'segment_name': f"Segment_{segment}",
+                    'row_count': len(segment_data),
+                    'target_distribution': target_distribution
+                })
+
+            return {
+                'segment_column': segment_column,
+                'available_segments': segment_info,
+                'total_segments': len(segment_info),
+                'total_rows_per_segment': {seg['segment_id']: seg['row_count'] for seg in segment_info}
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error getting available segments: {str(e)}")
+            raise
+
+    def analyze_potential_segments(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Analyze dataset to find potential segment columns
+
+        Args:
+            df: DataFrame containing the data
+
+        Returns:
+            Dictionary with potential segment analysis
+        """
+        try:
+            available_columns = df.columns.tolist()
+            potential_segments = []
+
+            for col in available_columns:
+                # Skip obvious ID columns
+                if col.lower() in ['id', 'member_id', 'loan_id', 'application_id', 'index']:
+                    continue
+
+                col_data = df[col].dropna()
+                if len(col_data) == 0:
+                    continue
+
+                unique_count = col_data.nunique()
+                total_count = len(col_data)
+
+                # Skip if too many unique values (probably not categorical)
+                if unique_count > 50:
+                    continue
+
+                # Skip if too few unique values (probably not useful for segmentation)
+                if unique_count < 2:
+                    continue
+
+                # Calculate suitability score
+                balance_score = 1.0 - (col_data.value_counts().std() / col_data.value_counts().mean()) if len(col_data.value_counts()) > 1 else 0
+                coverage_score = total_count / len(df)
+
+                # Prefer categorical over numeric
+                is_categorical = not pd.api.types.is_numeric_dtype(col_data)
+                type_score = 1.0 if is_categorical else 0.5
+
+                # Calculate overall suitability score
+                suitability_score = (balance_score * 0.4 + coverage_score * 0.3 + type_score * 0.3)
+
+                if suitability_score > 0.3:  # Only show reasonably suitable columns
+                    potential_segments.append({
+                        'column': col,
+                        'unique_values': unique_count,
+                        'total_values': total_count,
+                        'missing_values': len(df) - total_count,
+                        'suitability_score': suitability_score,
+                        'is_categorical': is_categorical,
+                        'sample_values': col_data.unique()[:5].tolist(),
+                        'value_distribution': col_data.value_counts().head().to_dict()
+                    })
+
+            # Sort by suitability score
+            potential_segments.sort(key=lambda x: x['suitability_score'], reverse=True)
+
+            # Categorize suggestions
+            excellent_segments = [seg for seg in potential_segments if seg['suitability_score'] > 0.8]
+            good_segments = [seg for seg in potential_segments if 0.6 <= seg['suitability_score'] <= 0.8]
+            fair_segments = [seg for seg in potential_segments if 0.3 <= seg['suitability_score'] < 0.6]
+
+            return {
+                'potential_segments': potential_segments[:10],  # Top 10
+                'excellent_segments': excellent_segments,
+                'good_segments': good_segments,
+                'fair_segments': fair_segments,
+                'total_analyzed': len(potential_segments),
+                'recommendations': self._generate_segment_recommendations(excellent_segments, good_segments, fair_segments)
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error analyzing potential segments: {str(e)}")
+            return {
+                'potential_segments': [],
+                'error': str(e)
+            }
+
+    def _generate_segment_recommendations(self, excellent: List, good: List, fair: List) -> List[str]:
+        """Generate recommendations for using segments"""
+        recommendations = []
+
+        if excellent:
+            recommendations.append(f"Excellent segment candidates ({len(excellent)}): " +
+                                 ", ".join([seg['column'] for seg in excellent[:3]]))
+
+        if good:
+            recommendations.append(f"Good segment candidates ({len(good)}): " +
+                                 ", ".join([seg['column'] for seg in good[:3]]))
+
+        if not excellent and not good and fair:
+            recommendations.append(f"Fair segment candidates ({len(fair)}): " +
+                                 ", ".join([seg['column'] for seg in fair[:3]]))
+
+        if not recommendations:
+            recommendations.append("No strong segment candidates found. Consider creating segments based on:")
+            recommendations.append("• Geographic regions (states, cities, zip codes)")
+            recommendations.append("• Customer behavior patterns")
+            recommendations.append("• Product or service categories")
+            recommendations.append("• Risk or performance groups")
+
+        recommendations.append("\nTo enable segmentation:")
+        recommendations.append("1. Choose a categorical column from the suggestions above")
+        recommendations.append("2. Rename it to 'segment' in your data management tool")
+        recommendations.append("3. Or create a new column with segment categories")
+
+        return recommendations
+
+    def get_available_variables(self, df: pd.DataFrame, segment_column: str = 'segment') -> Dict[str, Any]:
+        """
+        Get list of available variables from dataset, excluding segment column
+
+        Args:
+            df: DataFrame containing the data
+            segment_column: Name of the segment column
+
+        Returns:
+            Dictionary with variable lists and metadata
+        """
+        try:
+            columns = df.columns.tolist()
+
+            # Identify common non-feature columns (excluding segment column)
+            non_feature_columns = ['ID', 'MEMBER_ID', 'id', 'member_id', segment_column, segment_column.lower()]
+
+            # Identify numerical and categorical columns
+            numerical_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_columns = df.select_dtypes(include=['object', 'category']).columns.tolist()
+
+            # Suggest target variables (typically numeric or binary categorical)
+            suggested_targets = []
+            for col in columns:
+                if col.upper() in ['TARGET', 'TARGET_FLAG', 'TARGET_VARIABLE', 'LABEL', 'Y']:
+                    suggested_targets.append(col)
+
+            # Default independent variables (exclude non-feature and target-like columns)
+            default_independent = [col for col in columns
+                                  if col.upper() not in [c.upper() for c in non_feature_columns]
+                                  and col.upper() not in ['TARGET', 'TARGET_FLAG', 'TARGET_VARIABLE', 'LABEL', 'Y']]
+
+            return {
+                'all_columns': columns,
+                'numerical_columns': numerical_columns,
+                'categorical_columns': categorical_columns,
+                'suggested_targets': suggested_targets,
+                'default_independent': default_independent,
+                'non_feature_columns': non_feature_columns,
+                'total_columns': len(columns),
+                'total_rows': len(df)
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error getting available variables: {str(e)}")
+            raise
+
+    def validate_variable_selection(self, df: pd.DataFrame, target_column: str,
+                                   independent_variables: List[str],
+                                   segment_column: str = 'segment') -> Dict[str, Any]:
+        """
+        Validate variable selection for segmentation
+
+        Args:
+            df: DataFrame containing the data
+            target_column: Selected target column
+            independent_variables: Selected independent variables
+            segment_column: Name of the segment column
+
+        Returns:
+            Dictionary with validation results
+        """
+        try:
+            errors = []
+            warnings = []
+
+            # Check if target column exists
+            if target_column not in df.columns:
+                errors.append(f"Target column '{target_column}' not found in dataset")
+
+            # Check if segment column exists
+            if segment_column not in df.columns:
+                errors.append(f"Segment column '{segment_column}' not found in dataset")
+
+            # Check if independent variables exist
+            missing_vars = [var for var in independent_variables if var not in df.columns]
+            if missing_vars:
+                errors.append(f"Independent variables not found: {', '.join(missing_vars)}")
+
+            # Check if target is in independent variables
+            if target_column in independent_variables:
+                errors.append("Target variable cannot be in independent variables")
+
+            # Check if segment is in independent variables
+            if segment_column in independent_variables:
+                errors.append("Segment variable cannot be in independent variables")
+
+            # Check minimum number of independent variables
+            if len(independent_variables) < 1:
+                errors.append("At least one independent variable must be selected")
+
+            # Check for segments with insufficient data
+            if not errors and segment_column in df.columns:
+                segments = df[segment_column].unique()
+                segments = segments[~pd.isna(segments)]
+
+                insufficient_segments = []
+                for segment in segments:
+                    segment_data = df[df[segment_column] == segment]
+                    if len(segment_data) < 10:  # Minimum threshold for training
+                        insufficient_segments.append(segment)
+
+                if insufficient_segments:
+                    warnings.append(f"Segments with insufficient data (need at least 10 rows): {', '.join(map(str, insufficient_segments))}")
+
+            return {
+                'is_valid': len(errors) == 0,
+                'errors': errors,
+                'warnings': warnings,
+                'summary': {
+                    'target_column': target_column,
+                    'segment_column': segment_column,
+                    'num_independent_variables': len(independent_variables),
+                    'total_features': len(independent_variables)
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error validating variable selection: {str(e)}")
+            return {
+                'is_valid': False,
+                'errors': [f"Validation error: {str(e)}"],
+                'warnings': [],
+                'summary': {}
+            }
+
+    def get_recommended_metrics(self, problem_type: str) -> Dict[str, Any]:
+        """
+        Get recommended optimization metrics based on problem type
+
+        Args:
+            problem_type: 'classification' or 'regression'
+
+        Returns:
+            Dictionary with recommended metrics and their configurations
+        """
+        try:
+            if problem_type == 'classification':
+                return {
+                    'recommended_metrics': [
+                        {
+                            'name': 'auc',
+                            'display_name': 'AUC-ROC',
+                            'description': 'Recommended for imbalanced data',
+                            'min': 0.0,
+                            'max': 1.0,
+                            'default': 0.85,
+                            'is_recommended': True
+                        },
+                        {
+                            'name': 'f1',
+                            'display_name': 'F1-Score',
+                            'description': 'Balanced precision/recall',
+                            'min': 0.0,
+                            'max': 1.0,
+                            'default': 0.80,
+                            'is_recommended': True
+                        }
+                    ]
+                }
+            else:  # regression
+                return {
+                    'recommended_metrics': [
+                        {
+                            'name': 'r2',
+                            'display_name': 'R²',
+                            'description': 'Coefficient of determination',
+                            'min': 0.0,
+                            'max': 1.0,
+                            'default': 0.80,
+                            'is_recommended': True
+                        }
+                    ]
+                }
+
+        except Exception as e:
+            self.logger.error(f"Error getting recommended metrics: {str(e)}")
+            raise
+
+    def calculate_vif_and_correlation(self, df: pd.DataFrame, target_column: str,
+                                     independent_variables: List[str],
+                                     segment_column: str = 'segment') -> Dict[str, Any]:
+        """
+        Calculate VIF and correlation for each independent variable across all segments
+
+        Args:
+            df: DataFrame containing the data
+            target_column: Name of the target column
+            independent_variables: List of independent variable names
+            segment_column: Name of the segment column
+
+        Returns:
+            Dictionary with variable statistics including VIF and correlation
+        """
+        try:
+            if target_column not in df.columns:
+                raise ValueError(f"Target column '{target_column}' not found in dataset")
+
+            # Filter to only include variables that exist in the dataframe
+            valid_independent = [var for var in independent_variables if var in df.columns]
+
+            if not valid_independent:
+                raise ValueError("No valid independent variables found")
+
+            # Get all segments
+            segments = df[segment_column].unique()
+            segments = segments[~pd.isna(segments)]
+
+            overall_stats = []
+            segment_stats = {}
+
+            for segment in segments:
+                segment_data = df[df[segment_column] == segment].copy()
+
+                # Prepare data for this segment
+                df_numeric = segment_data[valid_independent + [target_column]].copy()
+
+                # Handle missing values
+                for col in df_numeric.columns:
+                    if df_numeric[col].dtype in ['object', 'category']:
+                        mode_value = df_numeric[col].mode()
+                        fill_value = mode_value[0] if len(mode_value) > 0 else 'Unknown'
+                        df_numeric[col] = df_numeric[col].fillna(fill_value)
+                    else:
+                        df_numeric[col] = df_numeric[col].fillna(df_numeric[col].median())
+
+                # Convert categorical variables to numeric
+                categorical_columns = df_numeric.select_dtypes(include=['object', 'category']).columns.tolist()
+                if target_column in categorical_columns:
+                    categorical_columns.remove(target_column)
+
+                from sklearn.preprocessing import LabelEncoder
+                label_encoders = {}
+                for col in categorical_columns:
+                    le = LabelEncoder()
+                    df_numeric[col] = le.fit_transform(df_numeric[col].astype(str))
+                    label_encoders[col] = le
+
+                # Encode target if categorical
+                if df_numeric[target_column].dtype in ['object', 'category']:
+                    le_target = LabelEncoder()
+                    df_numeric[target_column] = le_target.fit_transform(df_numeric[target_column].astype(str))
+
+                # Calculate correlation with target for this segment
+                segment_correlations = {}
+                for var in valid_independent:
+                    try:
+                        corr = df_numeric[var].corr(df_numeric[target_column])
+                        segment_correlations[var] = float(corr) if not pd.isna(corr) else 0.0
+                    except Exception as e:
+                        self.logger.warning(f"Could not calculate correlation for {var} in segment {segment}: {str(e)}")
+                        segment_correlations[var] = 0.0
+
+                # Calculate VIF for this segment
+                segment_vif_data = {}
+                if STATSMODELS_AVAILABLE and len(valid_independent) > 1:
+                    try:
+                        X_df = df_numeric[valid_independent].copy()
+                        for col in X_df.columns:
+                            if not pd.api.types.is_numeric_dtype(X_df[col]):
+                                X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+                            X_df[col] = X_df[col].fillna(X_df[col].median())
+
+                        nunique = X_df.nunique(dropna=False)
+                        constant_cols = nunique[nunique <= 1].index.tolist()
+                        if constant_cols:
+                            X_df = X_df.drop(columns=constant_cols, errors='ignore')
+
+                        if X_df.shape[1] <= 1:
+                            for var in valid_independent:
+                                segment_vif_data[var] = None
+                        else:
+                            if add_constant is not None:
+                                X_exog = add_constant(X_df.astype(float).values, has_constant='add')
+                                col_names = ['const'] + list(X_df.columns)
+                                start_idx = 1
+                            else:
+                                X_exog = X_df.astype(float).values
+                                col_names = list(X_df.columns)
+                                start_idx = 0
+
+                            X_exog = X_exog + np.random.normal(0, 1e-12, X_exog.shape)
+
+                            for i in range(start_idx, X_exog.shape[1]):
+                                var_name = col_names[i]
+                                try:
+                                    vif_val = variance_inflation_factor(X_exog, i)
+                                    segment_vif_data[var_name] = float(vif_val if vif_val <= 1e6 else 1e6)
+                                except Exception:
+                                    segment_vif_data[var_name] = None
+
+                        for var in valid_independent:
+                            if var not in segment_vif_data:
+                                segment_vif_data[var] = None
+                    except Exception as e:
+                        self.logger.warning(f"VIF calculation failed for segment {segment}: {str(e)}")
+                        for var in valid_independent:
+                            segment_vif_data[var] = None
+                else:
+                    for var in valid_independent:
+                        segment_vif_data[var] = None
+
+                # Store segment statistics
+                segment_variable_stats = []
+                for var in valid_independent:
+                    stats = {
+                        'variable': var,
+                        'correlation': segment_correlations.get(var, 0.0),
+                        'vif': segment_vif_data.get(var),
+                        'abs_correlation': abs(segment_correlations.get(var, 0.0))
+                    }
+                    segment_variable_stats.append(stats)
+
+                segment_stats[segment] = {
+                    'variable_statistics': segment_variable_stats,
+                    'row_count': len(segment_data)
+                }
+
+                # Add to overall stats (weighted by segment size)
+                for var in valid_independent:
+                    corr = segment_correlations.get(var, 0.0)
+                    vif = segment_vif_data.get(var)
+                    abs_corr = abs(corr)
+
+                    overall_stats.append({
+                        'variable': var,
+                        'segment': segment,
+                        'correlation': corr,
+                        'vif': vif,
+                        'abs_correlation': abs_corr,
+                        'weight': len(segment_data)
+                    })
+
+            # Calculate overall weighted statistics
+            overall_variable_stats = []
+            for var in valid_independent:
+                var_data = [stat for stat in overall_stats if stat['variable'] == var]
+
+                if var_data:
+                    total_weight = sum(d['weight'] for d in var_data)
+                    weighted_corr = sum(d['correlation'] * d['weight'] for d in var_data) / total_weight
+                    avg_vif = np.mean([d['vif'] for d in var_data if d['vif'] is not None]) if any(d['vif'] for d in var_data) else None
+
+                    overall_variable_stats.append({
+                        'variable': var,
+                        'correlation': weighted_corr,
+                        'vif': avg_vif,
+                        'abs_correlation': abs(weighted_corr)
+                    })
+
+            # Sort by absolute correlation (descending)
+            overall_variable_stats.sort(key=lambda x: x['abs_correlation'], reverse=True)
+
+            return {
+                'overall_statistics': overall_variable_stats,
+                'segment_statistics': segment_stats,
+                'summary': {
+                    'total_segments': len(segments),
+                    'total_variables': len(valid_independent)
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error calculating VIF and correlation: {str(e)}")
+            raise
+
+    def _preprocess_segment(self, df: pd.DataFrame, target_column: str,
+                           independent_variables: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Lightweight preprocessing for a single segment."""
+        feature_columns: List[str]
+        if not independent_variables:
+            excluded = {target_column}
+            feature_columns = [c for c in df.columns if c not in excluded]
+        else:
+            feature_columns = [c for c in independent_variables if c in df.columns]
+
+        if target_column not in df.columns:
+            raise ValueError(f"Target column '{target_column}' not found in dataset")
+
+        X = df[feature_columns].copy()
+        y = df[target_column].copy()
+
+        # Missing values
+        for col in X.columns:
+            if X[col].dtype in ['object', 'category']:
+                mode_val = X[col].mode()
+                X[col] = X[col].fillna(mode_val[0] if not mode_val.empty else 'Unknown')
+            else:
+                X[col] = X[col].fillna(X[col].median())
+
+        # Encode categoricals
+        from sklearn.preprocessing import LabelEncoder, StandardScaler
+        label_encoders: Dict[str, Any] = {}
+        categorical_columns = X.select_dtypes(include=['object', 'category']).columns
+        for col in categorical_columns:
+            le = LabelEncoder()
+            X[col] = le.fit_transform(X[col].astype(str))
+            label_encoders[col] = le
+
+        # Scale numeric
+        scaler = StandardScaler()
+        numeric_cols = X.select_dtypes(include=[np.number]).columns
+        X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
+
+        return {"X": X, "y": y, "encoders": label_encoders, "scaler": scaler}
+
+    def train_multiple_models_by_segment(self, df: pd.DataFrame, target_column: str,
+                                        independent_variables: Optional[List[str]],
+                                        algorithms: List[str],
+                                        segment_column: str = 'segment',
+                                        algorithm_params: Optional[Dict[str, Any]] = None,
+                                        max_iterations: int = 5) -> Dict[str, Any]:
+        """Train and evaluate multiple algorithms for each segment."""
+        from sklearn.model_selection import train_test_split, cross_val_score
+        from sklearn.metrics import (
+            accuracy_score, precision_score, recall_score, f1_score,
+            roc_auc_score, log_loss, r2_score, mean_squared_error, mean_absolute_error
+        )
+        import joblib, uuid
+
+        # Get segments
+        segments = df[segment_column].unique()
+        segments = segments[~pd.isna(segments)]
+
+        if len(segments) == 0:
+            raise ValueError("No valid segments found in the data")
+
+        # Determine problem type using first segment (assuming consistent across segments)
+        first_segment_data = df[df[segment_column] == segments[0]]
+        problem_type = self.detect_problem_type_from_data(first_segment_data, target_column)['problem_type']
+
+        # Preprocess each segment and train models
+        all_results = []
+        os.makedirs('models', exist_ok=True)
+
+        for segment in segments:
+            segment_data = df[df[segment_column] == segment].copy()
+
+            if len(segment_data) < 10:
+                self.logger.warning(f"Skipping segment {segment}: insufficient data ({len(segment_data)} rows)")
+                continue
+
+            self.logger.info(f"Training models for segment {segment} with {len(segment_data)} rows")
+
+            # Preprocess segment data
+            try:
+                pp = self._preprocess_segment(segment_data, target_column, independent_variables)
+                X, y = pp['X'], pp['y']
+            except Exception as e:
+                self.logger.error(f"Preprocessing failed for segment {segment}: {str(e)}")
+                continue
+
+            # Train-test split for this segment
+            stratify = y if (problem_type == 'classification' and y.nunique() <= 10) else None
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=stratify)
+
+            # Build model factory
+            models: Dict[str, Any] = {}
+            try:
+                from xgboost import XGBClassifier, XGBRegressor
+            except Exception:
+                XGBClassifier = XGBRegressor = None
+            try:
+                from lightgbm import LGBMClassifier, LGBMRegressor
+            except Exception:
+                LGBMClassifier = LGBMRegressor = None
+            try:
+                from catboost import CatBoostClassifier, CatBoostRegressor
+            except Exception:
+                CatBoostClassifier = CatBoostRegressor = None
+
+            from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
+            from sklearn.linear_model import LogisticRegression, LinearRegression
+
+            algorithm_params = algorithm_params or {}
+
+            for algo in algorithms:
+                algo_lower = algo.lower()
+                model = None
+
+                if problem_type == 'classification':
+                    if algo_lower in ['xgboost', 'xgb'] and XGBClassifier is not None:
+                        params = algorithm_params.get('xgboost', {})
+                        model = XGBClassifier(
+                            eval_metric='logloss', random_state=42,
+                            max_depth=int(params.get('max_depth', 6)),
+                            min_child_weight=float(params.get('min_child_weight', 1)),
+                            gamma=float(params.get('gamma', 0)),
+                            learning_rate=float(params.get('learning_rate', 0.3)),
+                            n_estimators=int(params.get('n_estimators', 100))
+                        )
+                    elif algo_lower in ['lightgbm','lgbm'] and LGBMClassifier is not None:
+                        params = algorithm_params.get('lightgbm', {})
+                        model = LGBMClassifier(
+                            random_state=42,
+                            max_depth=int(params.get('max_depth', -1)),
+                            num_leaves=int(params.get('num_leaves', 31)),
+                            min_child_samples=int(params.get('min_child_samples', 20)),
+                            min_child_weight=float(params.get('min_child_weight', 1e-3)),
+                            learning_rate=float(params.get('learning_rate', 0.1)),
+                            n_estimators=int(params.get('n_estimators', 100))
+                        )
+                    elif algo_lower in ['catboost','cat'] and CatBoostClassifier is not None:
+                        params = algorithm_params.get('catboost', {})
+                        model = CatBoostClassifier(
+                            verbose=0, random_state=42,
+                            depth=int(params.get('depth', 6)),
+                            learning_rate=float(params.get('learning_rate', 0.03)),
+                            iterations=int(params.get('iterations', 100))
+                        )
+                    elif algo_lower in ['randomforest','random_forest','rf']:
+                        params = algorithm_params.get('random_forest', {})
+                        model = RandomForestClassifier(
+                            random_state=42,
+                            max_depth=None if str(params.get('max_depth', '')).strip()=='' else int(params.get('max_depth')),
+                            min_samples_split=int(params.get('min_samples_split', 2)),
+                            min_samples_leaf=int(params.get('min_samples_leaf', 1)),
+                            max_leaf_nodes=None if str(params.get('max_leaf_nodes', '')).strip()=='' else int(params.get('max_leaf_nodes')),
+                            n_estimators=int(params.get('n_estimators', 100)),
+                            max_features=params.get('max_features', 'sqrt')
+                        )
+                    elif algo_lower in ['logistic','logisticregression','logistic_regression']:
+                        model = LogisticRegression(max_iter=500, solver='liblinear')
+                    elif algo_lower in ['gradientboosting','gb','gradient_boosting']:
+                        model = GradientBoostingClassifier(random_state=42)
+                else:
+                    if algo_lower in ['xgboost','xgb'] and XGBRegressor is not None:
+                        params = algorithm_params.get('xgboost', {})
+                        model = XGBRegressor(
+                            random_state=42,
+                            max_depth=int(params.get('max_depth', 6)),
+                            min_child_weight=float(params.get('min_child_weight', 1)),
+                            gamma=float(params.get('gamma', 0)),
+                            learning_rate=float(params.get('learning_rate', 0.3)),
+                            n_estimators=int(params.get('n_estimators', 100))
+                        )
+                    elif algo_lower in ['lightgbm','lgbm'] and LGBMRegressor is not None:
+                        params = algorithm_params.get('lightgbm', {})
+                        model = LGBMRegressor(
+                            random_state=42,
+                            max_depth=int(params.get('max_depth', -1)),
+                            num_leaves=int(params.get('num_leaves', 31)),
+                            min_child_samples=int(params.get('min_child_samples', 20)),
+                            min_child_weight=float(params.get('min_child_weight', 1e-3)),
+                            learning_rate=float(params.get('learning_rate', 0.1)),
+                            n_estimators=int(params.get('n_estimators', 100))
+                        )
+                    elif algo_lower in ['catboost','cat'] and CatBoostRegressor is not None:
+                        params = algorithm_params.get('catboost', {})
+                        model = CatBoostRegressor(
+                            verbose=0, random_state=42,
+                            depth=int(params.get('depth', 6)),
+                            learning_rate=float(params.get('learning_rate', 0.03)),
+                            iterations=int(params.get('iterations', 100))
+                        )
+                    elif algo_lower in ['randomforest','random_forest','rf']:
+                        params = algorithm_params.get('random_forest', {})
+                        model = RandomForestRegressor(
+                            random_state=42,
+                            max_depth=None if str(params.get('max_depth', '')).strip()=='' else int(params.get('max_depth')),
+                            min_samples_split=int(params.get('min_samples_split', 2)),
+                            min_samples_leaf=int(params.get('min_samples_leaf', 1)),
+                            max_leaf_nodes=None if str(params.get('max_leaf_nodes', '')).strip()=='' else int(params.get('max_leaf_nodes')),
+                            n_estimators=int(params.get('n_estimators', 100)),
+                            max_features=params.get('max_features', 1.0)
+                        )
+                    elif algo_lower in ['linear','linearregression','linear_regression']:
+                        model = LinearRegression()
+                    elif algo_lower in ['gradientboosting','gb','gradient_boosting']:
+                        model = GradientBoostingRegressor(random_state=42)
+
+                if model is not None:
+                    models[algo] = model
+
+            # Train each model for this segment
+            segment_results = []
+            for algo, model in models.items():
+                try:
+                    # Simple fit without hyperparameter tuning for segmentation
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+                    y_proba = model.predict_proba(X_test) if hasattr(model, 'predict_proba') else None
+
+                    # Calculate metrics
+                    metrics: Dict[str, float] = {}
+
+                    if problem_type == 'classification':
+                        metrics['accuracy'] = float(accuracy_score(y_test, y_pred))
+                        metrics['precision'] = float(precision_score(y_test, y_pred, average='weighted', zero_division=0))
+                        metrics['recall'] = float(recall_score(y_test, y_pred, average='weighted', zero_division=0))
+                        metrics['f1'] = float(f1_score(y_test, y_pred, average='weighted', zero_division=0))
+                        if y.nunique() == 2 and y_proba is not None:
+                            metrics['auc'] = float(roc_auc_score(y_test, y_proba[:,1]))
+                            metrics['log_loss'] = float(log_loss(y_test, y_proba))
+                    else:
+                        metrics['r2'] = float(r2_score(y_test, y_pred))
+                        metrics['mae'] = float(mean_absolute_error(y_test, y_pred))
+                        metrics['mse'] = float(mean_squared_error(y_test, y_pred))
+                        metrics['rmse'] = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+
+                    # Calculate cross-validation scores
+                    cv_metric = 'accuracy' if problem_type == 'classification' else 'r2'
+                    try:
+                        cv_scores = cross_val_score(model, X_train, y_train, cv=3, scoring=cv_metric)
+                    except Exception:
+                        cv_scores = np.array([])
+
+                    # Save model
+                    model_id = f"MDL_SEG_{segment}_{algo}_{uuid.uuid4().hex[:8].upper()}"
+                    artifact_path = os.path.join('models', f"{model_id}.pkl")
+                    joblib.dump(model, artifact_path)
+
+                    # Save training results
+                    training_results = {
+                        'model_id': model_id,
+                        'segment': segment,
+                        'algorithm': algo,
+                        'problem_type': problem_type,
+                        'metrics': metrics,
+                        'cv_scores': cv_scores.tolist() if cv_scores.size else [],
+                        'artifact_path': artifact_path,
+                        'segment_row_count': len(segment_data),
+                        'training_time_seconds': 0,
+                        'used_features': list(X.columns)
+                    }
+
+                    results_json_path = os.path.join('models', f"{model_id}_training_results.json")
+                    with open(results_json_path, 'w') as f:
+                        json.dump(training_results, f, indent=2, default=str)
+
+                    segment_results.append({
+                        'model_id': model_id,
+                        'segment': segment,
+                        'algorithm': algo,
+                        'metrics': metrics,
+                        'cv_scores': cv_scores.tolist() if cv_scores.size else [],
+                        'artifact_path': artifact_path,
+                        'segment_row_count': len(segment_data)
+                    })
+
+                except Exception as e:
+                    self.logger.warning(f"Training failed for {algo} in segment {segment}: {str(e)}")
+                    segment_results.append({
+                        'segment': segment,
+                        'algorithm': algo,
+                        'error': str(e)
+                    })
+
+            all_results.extend(segment_results)
+
+        return {
+            'problem_type': problem_type,
+            'results': all_results,
+            'total_models_trained': len(all_results),
+            'segments_processed': len(segments),
+            'used_features': list(X.columns) if 'X' in locals() else []
+        }
+
+
+# Create singleton instance
+segmentation_manual_config_service = ModelTrainingSegmentationManualConfigurationService()

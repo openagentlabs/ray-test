@@ -1,0 +1,54 @@
+# ec2-mt-test one-shot Job chart.
+#
+# replicaCount is intentionally absent - this chart deploys a Job, not a Deployment.
+# Set enabled: false in the Jenkins pipeline to skip deploying this chart entirely.
+enabled: true
+
+image:
+  repository: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# S3 destination bucket and prefix for run_batch.py output data folder.
+s3ResultsBucket: "keith-bucket-test-001"
+s3ResultsPrefix: "results"
+
+# AWS region used by the aws s3 cp inside the container.
+awsRegion: us-east-1
+
+# Name of the Kubernetes ServiceAccount that carries the IRSA annotation.
+# Must match the ServiceAccount created by serviceaccount.yaml.
+serviceAccountName: midas-ec2-mt-test-sa
+
+# IRSA role ARN injected by helm-deploy-releases.sh from Terraform output.
+# Leave empty to disable IRSA (pod will lack S3 credentials).
+irsaRoleArn: ""
+
+rollout:
+  # CI sets this to BUILD_NUMBER so each pipeline run produces a new Job name.
+  suffix: ""
+
+# Resource requests/limits for the batch Job pod.
+# The backend pod consumes ~14600m CPU and ~53Gi RAM on the same node type
+# (m6i.4xlarge, 16 vCPU / 64 GiB). When the backend replica count is 0 the
+# full node is available. Use a conservative shape so the job runs on any free
+# node without requiring the backend to be down.
+resources:
+  requests:
+    cpu: "4000m"
+    memory: "8Gi"
+  limits:
+    cpu: "8000m"
+    memory: "16Gi"
+
+# Kubernetes Job completion/retry policy.
+job:
+  # backoffLimit: 0 means no automatic retry on failure so results are not
+  # duplicated in S3 on transient errors. Raise to 1 for a single auto-retry.
+  backoffLimit: 0
+  # activeDeadlineSeconds: 0 means no hard wall-clock limit (ML training can
+  # take many minutes). Set a positive integer (e.g. 7200) to cap run time.
+  activeDeadlineSeconds: 0
+  # ttlSecondsAfterFinished: clean up completed/failed Jobs automatically.
+  # 86400 = 24 hours. Set 0 to delete immediately (useful in CI).
+  ttlSecondsAfterFinished: 86400

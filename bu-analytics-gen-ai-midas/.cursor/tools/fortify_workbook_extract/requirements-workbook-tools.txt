@@ -1,0 +1,4 @@
+# PDF extraction for Fortify Developer Workbook → CSV / JSON / YAML helpers
+pypdf==6.10.2
+pydantic==2.12.5
+PyYAML==6.0.2

@@ -1,0 +1,207 @@
+# MIDAS overlay for Langfuse helm chart.
+# Account: 811391286931, region: us-east-1, cluster: midas-eks-aigtw-dev.
+#
+# DESIGN: ORD1 Terraform creates K8s secrets with the SAME short names the upstream
+# helm values.yaml expects (db-name, db-password, salt-key, next-auth, redis-host,
+# redis-password, langfuse-postgresql-dev, clickhouse-credentials-dev, langfuse-ee-license,
+# event-bucket, batch-bucket, media-bucket). So this overlay ONLY changes the things
+# that genuinely differ in MIDAS:
+#   - S3 bucket names (account-specific)
+#   - Hostname / nextauth.url (MIDAS hostname)
+#   - Cognito SSO REMOVED (no IdP federation in MIDAS dev — see SOP no-license/no-SSO posture)
+#   - Image repos (MIDAS ECR)
+#   - Telemetry off
+# The ingress ACM/SUBNETS/SG annotations come from /tmp/alb-values.yaml that
+# Jenkinsfile_ORD4_langfuse builds at runtime from the langfuse-alb-config CM.
+
+postgresql:
+  deploy: false
+  secret: { name: langfuse-postgresql-dev }   # ORD1-managed K8s secret
+  # No literal password. Real credentials are injected via DATABASE_URL below
+  # (additionalEnv -> langfuse-postgresql-dev). existingSecret keeps the chart
+  # schema satisfied without a hardcoded string (Fortify: Password Management).
+  auth:
+    existingSecret: langfuse-postgresql-dev
+    existingSecretPasswordKey: password
+
+redis:
+  deploy: false
+  host: ""
+  port: 6379
+  auth: { enabled: false }
+  tls:  { enabled: true }
+
+clickhouse:
+  deploy: false
+  auth:
+    existingSecret: clickhouse-credentials-dev
+    existingSecretKey: password
+  host: clickhouse-clickhouse.clickhouse.svc.cluster.local
+  httpPort: 8123
+  nativePort: 9000
+
+s3:
+  deploy: false
+  eventUpload:
+    enabled: true
+    bucket: "midas-eks-aigtw-dev-langfuse-data-bucket"
+    region: "us-east-1"
+    forcePathStyle: false
+  batchExport:
+    enabled: true
+    bucket: "midas-eks-aigtw-dev-langfuse-data-bucket"
+    region: "us-east-1"
+    forcePathStyle: false
+  mediaUpload:
+    enabled: true
+    bucket: "midas-eks-aigtw-dev-langfuse-media-bucket"
+    region: "us-east-1"
+    forcePathStyle: false
+
+langfuse:
+  serviceAccount:
+    create: false
+    name: langfuse-irsa-account   # ORD1 IRSA-managed SA (matches actual K8s SA name)
+
+  # NOTE: the upstream langfuse-k8s chart has BOTH `langfuse.image.*` AND
+  # `langfuse.web.image.*`. The web Deployment template ALWAYS reads
+  # `langfuse.web.image.repository` (default upstream value: `langfuse/langfuse`),
+  # which takes precedence over the higher-level `langfuse.image.repository`.
+  # Before 2026-04-20 this file only set `langfuse.image.*`, so the web pods
+  # kept pulling `langfuse/langfuse:3.163` from Docker Hub.
+  # Worker was OK because the chart uses `langfuse.worker.image.*` there.
+  # Keep `langfuse.image.tag` for shared fallback and explicitly override the
+  # web repository/tag.
+  image:
+    tag: "3.163"
+    pullPolicy: Always
+
+  web:
+    image:
+      repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-langfuse
+      tag: "3.163"
+      pullPolicy: Always
+    replicas: 2
+
+  worker:
+    image:
+      repository: 811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-aigtw-dev-langfuse-worker
+      tag: "3.163"
+      pullPolicy: Always
+    enabled: true
+    replicas: 2
+
+  ingress:
+    enabled: true
+    className: alb
+    hosts:
+      - host: exldecision-ai-dev-aigw-langfuse.exlservice.com
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: langfuse-web
+                port: { number: 3000 }
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internal
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/group.name: midas-aigtw-langfuse
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/healthcheck-path: /api/public/health
+      alb.ingress.kubernetes.io/healthcheck-port: "3000"
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=600
+      alb.ingress.kubernetes.io/load-balancer-name: midas-aigtw-langfuse-alb-dev
+      alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.type=lb_cookie,stickiness.lb_cookie.duration_seconds=86400
+
+  salt:
+    secretKeyRef: { name: salt-key, key: salt-key }
+
+  nextauth:
+    url: "https://exldecision-ai-dev-aigw-langfuse.exlservice.com"
+    secret:
+      secretKeyRef: { name: next-auth, key: next-auth }
+
+  features: { telemetryEnabled: false }
+
+  podDisruptionBudget: { enabled: true, minAvailable: 1 }
+
+  web:
+    replicas: 2
+    service: { type: ClusterIP, port: 3000 }
+    resources:
+      limits:   { cpu: 1000m, memory: 2Gi }
+      requests: { cpu: 500m,  memory: 1Gi }
+
+  additionalEnv:
+    - name: LANGFUSE_S3_EVENT_UPLOAD_ENABLED
+      value: "true"
+    - name: db_user
+      value: "langfuse_admin"
+    - name: DATABASE_URL
+      valueFrom: { secretKeyRef: { name: langfuse-postgresql-dev, key: DATABASE_URL } }
+    - name: db_name
+      valueFrom: { secretKeyRef: { name: db-name,     key: db-name } }
+    - name: db_password
+      valueFrom: { secretKeyRef: { name: db-password, key: db-password } }
+    - name: event_bucket
+      valueFrom: { secretKeyRef: { name: event-bucket, key: event-bucket } }
+    - name: batch_bucket
+      valueFrom: { secretKeyRef: { name: batch-bucket, key: batch-bucket } }
+    - name: media_bucket
+      valueFrom: { secretKeyRef: { name: media-bucket, key: media-bucket } }
+    - name: redis-host
+      valueFrom: { secretKeyRef: { name: redis-host,     key: redis-host } }
+    - name: redis-password
+      valueFrom: { secretKeyRef: { name: redis-password, key: redis-password } }
+    - name: REDIS_HOST
+      value: "$(redis-host)"
+    - name: REDIS_PASSWORD
+      value: "$(redis-password)"
+    - name: REDIS_CONNECTION_STRING
+      value: "rediss://default:$(redis-password)@$(redis-host):6379/0"
+    # OSS mode — empty license key (see SOP). The K8s secret holds "" (created by ORD1).
+    - name: LANGFUSE_EE_LICENSE_KEY
+      valueFrom: { secretKeyRef: { name: langfuse-ee-license, key: langfuse-ee-license } }
+    - name: AUTH_TRUST_HOST
+      value: "true"
+    # ── SSO: Custom OIDC via AWS Cognito ─────────────────────────────────────
+    # Uses AUTH_CUSTOM_* (generic OIDC provider) so the button label can be
+    # customised ("EXLerate SSO"). Callback path: /api/auth/callback/custom.
+    # Cognito app client "langfuse-observability-dev" (id: 8mdhlij0s7r9eq645u48m1q81)
+    # has callback_urls set to the canonical Langfuse host (exldecision-ai-dev-aigw-langfuse).
+    # K8s secrets langfuse-cognito-client-id / langfuse-cognito-client-secret
+    # are populated by ORD1 Terraform from the Cognito app client outputs.
+    # When the corporate Entra SAML IdP is wired (M-13), the SSO button will
+    # route through Entra → Cognito → Langfuse; until then it routes directly
+    # through the Cognito user directory.
+    - name: AUTH_CUSTOM_CLIENT_ID
+      valueFrom:
+        secretKeyRef: { name: langfuse-cognito-client-id, key: langfuse-cognito-client-id }
+    - name: AUTH_CUSTOM_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef: { name: langfuse-cognito-client-secret, key: langfuse-cognito-client-secret }
+    - name: AUTH_CUSTOM_ISSUER
+      value: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_5JL0dpXwK"
+    - name: AUTH_CUSTOM_NAME
+      value: "EXLerate SSO"
+    - name: AUTH_CUSTOM_ALLOW_ACCOUNT_LINKING
+      value: "true"
+    # NextAuth.js OIDC checks. Must include `nonce` because AWS Cognito (and the
+    # federated upstream IdP) always returns a `nonce` claim in the ID token.
+    # Without this, the first SSO attempt fails with:
+    #   [OAUTH_CALLBACK_ERROR] nonce mismatch, expected undefined, got: <jwt-nonce>
+    # and only the second click succeeds (degraded validation path).
+    # See ai_gateway EP-1906 for the full root-cause analysis.
+    - name: AUTH_CUSTOM_CHECKS
+      value: "pkce,state,nonce"
+    # Keep local email+password enabled until SSO is fully validated end-to-end.
+    # Flip to "true" only after a successful Entra login test (Step H in plan).
+    - name: AUTH_DISABLE_USERNAME_PASSWORD
+      value: "false"
+
+imagePullSecrets: []

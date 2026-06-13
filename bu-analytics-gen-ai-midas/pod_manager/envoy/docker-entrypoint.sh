@@ -1,0 +1,54 @@
+#!/bin/sh
+# Render envoy.yaml from envoy.yaml.template, then exec Envoy (or another command).
+# Override any default via container environment variables.
+set -e
+
+export ENVOY_ADMIN_PORT="${ENVOY_ADMIN_PORT:-9901}"
+export ENVOY_LISTENER_PORT="${ENVOY_LISTENER_PORT:-10000}"
+export ENVOY_HEALTH_LISTENER_PORT="${ENVOY_HEALTH_LISTENER_PORT:-8080}"
+
+export ENVOY_STREAM_IDLE_TIMEOUT="${ENVOY_STREAM_IDLE_TIMEOUT:-300s}"
+export ENVOY_CONNECTION_IDLE_TIMEOUT="${ENVOY_CONNECTION_IDLE_TIMEOUT:-3600s}"
+
+export ENVOY_EXT_AUTHZ_TIMEOUT="${ENVOY_EXT_AUTHZ_TIMEOUT:-0.5s}"
+export ENVOY_EXT_AUTHZ_CONNECT_TIMEOUT="${ENVOY_EXT_AUTHZ_CONNECT_TIMEOUT:-0.5s}"
+export ENVOY_EXT_AUTHZ_HOST="${ENVOY_EXT_AUTHZ_HOST:-127.0.0.1}"
+export ENVOY_EXT_AUTHZ_PORT="${ENVOY_EXT_AUTHZ_PORT:-9000}"
+
+export ENVOY_DFP_DNS_REFRESH_RATE="${ENVOY_DFP_DNS_REFRESH_RATE:-5s}"
+export ENVOY_DFP_HOST_TTL="${ENVOY_DFP_HOST_TTL:-30s}"
+export ENVOY_DFP_CONNECT_TIMEOUT="${ENVOY_DFP_CONNECT_TIMEOUT:-2s}"
+
+ENVOY_SUBST_VARS='\
+$ENVOY_ADMIN_PORT \
+$ENVOY_LISTENER_PORT \
+$ENVOY_HEALTH_LISTENER_PORT \
+$ENVOY_STREAM_IDLE_TIMEOUT \
+$ENVOY_CONNECTION_IDLE_TIMEOUT \
+$ENVOY_EXT_AUTHZ_TIMEOUT \
+$ENVOY_EXT_AUTHZ_CONNECT_TIMEOUT \
+$ENVOY_EXT_AUTHZ_HOST \
+$ENVOY_EXT_AUTHZ_PORT \
+$ENVOY_DFP_DNS_REFRESH_RATE \
+$ENVOY_DFP_HOST_TTL \
+$ENVOY_DFP_CONNECT_TIMEOUT'
+
+GENERATED_CONFIG="${ENVOY_CONFIG_PATH:-/tmp/envoy.yaml}"
+TEMPLATE_PATH="${ENVOY_TEMPLATE_PATH:-/etc/envoy/envoy.yaml.template}"
+
+envsubst "$ENVOY_SUBST_VARS" <"$TEMPLATE_PATH" >"$GENERATED_CONFIG"
+
+if [ "$#" -eq 0 ]; then
+  set -- envoy -c "$GENERATED_CONFIG" --service-cluster "${ENVOY_SERVICE_CLUSTER:-envoy-router}"
+fi
+
+if [ "$1" = "envoy" ]; then
+  shift
+  # Inject generated config path when the caller did not pass -c.
+  if ! echo " $* " | grep -q ' -c '; then
+    set -- -c "$GENERATED_CONFIG" "$@"
+  fi
+  exec envoy "$@"
+fi
+
+exec "$@"

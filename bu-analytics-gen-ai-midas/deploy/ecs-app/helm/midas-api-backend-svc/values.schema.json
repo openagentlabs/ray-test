@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "midas-api-backend-svc",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Backend replica count. Safe to scale > 1 once the Phase 2 Redis cross-pod lock (docs/adr/0003-midas-redis-cross-pod-job-locks.md) is active AND the ALB target group has lb_cookie stickiness enabled (deploy/ecs-app/modules/alb-nlb/main.tf). Cap is 5 to bound node-capacity blast radius for the 53Gi-per-pod backend; raise after validating Karpenter capacity for N x 53Gi."
+    },
+    "awsRegion": {
+      "type": "string",
+      "description": "Literal AWS region for boto3 (overrides midas-app-secret envFrom for AWS_* region keys)."
+    },
+    "rdsPostgresHost": {
+      "type": "string",
+      "description": "RDS endpoint hostname. When non-empty, sets AWS_RDS_POSTGRES_HOST env var so the app loader can resolve the host even when the RDS-managed secret only contains username/password after rotation."
+    },
+    "rdsPostgresPort": {
+      "type": "string",
+      "description": "RDS port (default 5432). When non-empty, sets AWS_RDS_POSTGRES_PORT env var."
+    }
+  }
+}

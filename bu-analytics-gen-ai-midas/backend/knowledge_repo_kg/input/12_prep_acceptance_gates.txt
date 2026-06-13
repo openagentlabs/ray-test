@@ -1,0 +1,29 @@
+kb:
+  prep_acceptance_gates:
+    must_pass:
+    - valid key discovered or surrogate created
+    - no leakage fields in feature set
+    - "missing_rate(feature) \u2264 <MAX_MISS|0.25> OR documented rationale"
+    - 'binning_safety: min_bin_size_pct & min_bad_per_bin satisfied (if label available)'
+    - segment buckets meet min rows & share
+    - no perfect predictors (AUC < 0.99)
+    - feature importance stable across folds (CV < 0.3)
+    qa_checklists:
+      post_preparation:
+      - Feature distributions stable across folds
+      - No perfect predictors
+      - Correlation matrix reviewed
+      - Segment definitions documented
+      - Transformation pipeline serialized
+      - Data dictionary complete
+      pre_modeling:
+      - No future information leakage
+      - Train/valid/test properly split by time
+      - All features have lineage documented
+      - Outliers handled appropriately
+      - Missing values imputed with indicators
+      - Business logic validated with SMEs
+    warn_only:
+    - "PSI(train\u2192valid) \u2208 [<PSI_WARN|0.10>, <PSI_FAIL|0.25>]"
+    - VIF > <VIF|10> but corr < <PAIR_CUT|0.9>
+    - extreme class imbalance (minority < 1%)

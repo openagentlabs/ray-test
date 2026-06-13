@@ -1,0 +1,18 @@
+[project]
+name = "isg-jira-ticket-gen"
+version = "0.1.0"
+description = "Generate grouped JIRA-aligned Bug tickets and a consolidated findings CSV from all ISG scan sources (Fortify, container images, IaC, OSS packages)"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+isg-jira-ticket-gen = "isg_jira_ticket_gen.run:main"
+
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["isg_jira_ticket_gen"]

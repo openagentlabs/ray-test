@@ -1,0 +1,142 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "qs-local-stack",
+      "type": "shell",
+      "command": "./infra/docker/start-local.sh -r -s -d -t",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-stack-no-test",
+      "type": "shell",
+      "command": "./infra/docker/start-local.sh -r -s -d",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-profile",
+      "type": "shell",
+      "command": "source config/deploy/local.env && cd pod_manager_cli && uv sync",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-web",
+      "type": "shell",
+      "command": "cd router.svc/client_ts && npm run build && cd ../../test_client_nextjs && npm install && npm run dev",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-test-local",
+      "type": "shell",
+      "command": "source config/deploy/local.env && ./infra/docker/test-local.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-pool",
+      "type": "shell",
+      "command": "source config/deploy/local.env && cd pod_manager_cli && uv run pod-manager pool",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-e2e",
+      "type": "shell",
+      "command": "source config/deploy/local.env && cd pod_manager_cli && uv run pod-manager e2e --sub alice@example.com",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-local-dev-test",
+      "type": "shell",
+      "command": "source config/deploy/local.env && cd dev_testing && uv sync && uv run dev-test all --target local",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-tf-init",
+      "type": "shell",
+      "command": "make init",
+      "options": { "cwd": "${workspaceFolder}/infra/terraform" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-tf-validate",
+      "type": "shell",
+      "command": "make validate-all",
+      "options": { "cwd": "${workspaceFolder}/infra/terraform" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-tf-plan",
+      "type": "shell",
+      "command": "make plan-dev",
+      "options": { "cwd": "${workspaceFolder}/infra/terraform" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-tf-apply",
+      "type": "shell",
+      "command": "make apply-dev",
+      "options": { "cwd": "${workspaceFolder}/infra/terraform" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-kubeconfig",
+      "type": "shell",
+      "command": "aws eks update-kubeconfig --region us-east-1 --name dev-pod-manager",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-build-push",
+      "type": "shell",
+      "command": "./infra/scripts/build-push-images.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-helm-deploy",
+      "type": "shell",
+      "command": "./infra/scripts/deploy-helm.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-write-profile",
+      "type": "shell",
+      "command": "./infra/scripts/write-aws-profile.sh && source config/deploy/aws.env && echo 'Sourced config/deploy/aws.env'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "qs-aws-dev-test",
+      "type": "shell",
+      "command": "source config/deploy/aws.env && cd dev_testing && uv sync && uv run dev-test all --target aws",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    }
+  ]
+}

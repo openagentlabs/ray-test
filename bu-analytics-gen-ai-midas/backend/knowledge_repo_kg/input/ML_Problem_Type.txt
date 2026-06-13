@@ -1,0 +1,40 @@
+### ML Problem Type (Objectives)
+
+- **Problem Framing**  
+  - Clarify the business question, output granularity, latency tolerance, and success metrics before labeling the problem.  
+  - Map the objective to canonical ML families: supervised (classification/regression), unsupervised (clustering/density estimation), semi-supervised, reinforcement, time-series forecasting, recommendation, or anomaly detection.  
+  - Maintain a decision log that ties the chosen type to data availability, evaluation needs, and deployment constraints.
+
+- **Classification Scenarios**  
+  - *Binary*: churn prediction, fraud detection; emphasize class imbalance handling (weighted loss, SMOTE, focal loss) and domain-specific thresholds optimized for precision/recall or cost-sensitive curves.  
+  - *Multiclass*: product recommendation, diagnosis codes; use macro/micro averaging, confusion-matrix audits per class, hierarchical aggregation when labels follow ontologies.  
+  - *Multilabel*: tagging knowledge articles; prefer sigmoid outputs, label-dependency modeling (classifier chains), and per-label calibration.
+
+- **Regression Scenarios**  
+  - Continuous KPIs (demand forecasting, risk scoring); evaluate with MAE/RMSE/MAPE and prediction intervals.  
+  - Handle heteroscedasticity via quantile regression, Box-Cox transforms, or gradient boosting with variance modeling.  
+  - For limited data, leverage Bayesian regression or regularized GLMs to ensure interpretability.
+
+- **Time-Series / Sequence Tasks**  
+  - Distinguish univariate vs multivariate; capture seasonality, holiday effects, regime shifts.  
+  - Techniques: STL decomposition, Prophet, ARIMA/SARIMA, VAR, state-space models; modern approaches include Temporal Fusion Transformers or N-BEATS.  
+  - Use backtesting (rolling or expanding windows) and enforce recency-weighted error metrics (WAPE, sMAPE).
+
+- **Anomaly Detection**  
+  - For real-time monitoring, combine statistical baselines (z-score, EWMA) with ML detectors (Isolation Forest, One-Class SVM, autoencoders).  
+  - Provide root-cause context by linking anomalies back to upstream features or segments in your knowledge graph.
+
+- **Recommendation / Ranking**  
+  - Identify if problem is pointwise (rating prediction), pairwise (AUC-optimized ranking), or listwise (NDCG, MAP).  
+  - Support cold-start via content-based embeddings or hybrid retrieval (vector + metadata filters).  
+  - Include fairness/coverage metrics to avoid popularity bias.
+
+- **Reinforcement / Sequential Decisioning**  
+  - Clarify reward functions, state observability, and ethical guardrails before training.  
+  - For offline logs, prefer batch/off-policy algorithms with counterfactual evaluation (IPS, doubly robust).  
+  - Maintain a simulation or digital-twin environment for safe policy iteration.
+
+- **Choosing & Documenting Type**  
+  - Create a checklist in your Objectives section: data labels available? temporal dependencies? need for human interpretable rules?  
+  - Attach a “Problem Type Justification” note to each project artifact, explaining alternatives considered and why they were rejected.  
+  - Update downstream workflows (feature engineering, model selection, evaluation) to branch automatically based on the stored problem type metadata.

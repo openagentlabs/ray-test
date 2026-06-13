@@ -1,0 +1,623 @@
+#!groovy
+
+properties([
+    parameters([
+        choice(name: 'CUSTOMER', choices: ['midas'], description: 'Which customer to deploy'),
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'uat', 'prod'], description: 'Target environment'),
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag to deploy'),
+        //string(name: 'GIT_BRANCH', defaultValue: 'develop', description: 'Branch to deploy from'),
+        booleanParam(name: 'ENABLE_HELM_DEPLOY', defaultValue: true, description: 'Run Helm deploy to EKS (requires agent network path to private Kubernetes API; disable if the Jenkins agent cannot reach the cluster API)'),
+        booleanParam(name: 'HELM_WAIT', defaultValue: true, description: 'Wait for Helm resources and kubectl rollout status (fail the stage if new ReplicaSets never become healthy). Disable only for emergencies.'),
+        booleanParam(name: 'HELM_ATOMIC', defaultValue: false, description: 'If HELM_WAIT is on, pass helm --atomic (auto-rollback the Helm release on failed install/upgrade)'),
+        string(name: 'HELM_TIMEOUT', defaultValue: '10m', description: 'Helm --timeout when HELM_WAIT is on'),
+        string(name: 'ROLLOUT_TIMEOUT', defaultValue: '10m', description: 'kubectl rollout status --timeout when HELM_WAIT is on'),
+        booleanParam(name: 'REQUIRE_MANUAL_APPROVAL', defaultValue: true, description: 'When true, pause at the approval step before Terraform apply (ecs-app). Uncheck to skip approval and continue automatically.'),
+        booleanParam(name: 'DEPLOY_ALB_NLB', defaultValue: true, description: 'When checked (default), Terraform creates the private NLB + ALB ingress in front of EKS. Uncheck only to explicitly remove the load balancers.'),
+        string(name: 'ALB_NLB_CERT_ARN', defaultValue: '', description: 'ACM certificate ARN (arn:aws:acm:us-east-1:...) for the ALB HTTPS:443 listener. Supports ACM-issued and imported/self-signed certs. Leave empty to use the value from the environment tfvars file.'),
+        booleanParam(name: 'ENABLE_EC2_MT_TEST_OFFLINE_BUNDLE', defaultValue: false, description: 'Build pip wheelhouse + app code + AWS CLI v2 bundle on Jenkins (internet access), upload all to S3, then SSM-install onto the midas-dev-ec2-ssm-test-clone EC2 instance. Tag: midas:component=ec2-mt-test / bundle_id: MIDAS_EC2_MT_TEST. Disable only for emergencies.'),
+        booleanParam(name: 'EC2_MT_TEST_JOB_ENABLED', defaultValue: false, description: 'When true, build and deploy the midas-ec2-mt-test-svc one-shot batch Job to EKS. The Job copies ec2-mt-test app code, runs run_batch.py --data-dir data, writes timing.txt, and uploads the data folder to s3://keith-bucket-test-001/results/. Intended for capacity/throughput testing. Disable for normal application deploys.'),
+        string(name: 'BACKEND_REPLICA_COUNT', defaultValue: '2', description: 'Replica count for the midas-api-backend Helm Deployment. Set to 0 when EC2_MT_TEST_JOB_ENABLED=true to free the m6i.4xlarge node for the batch Job. Must be 0-5 (values.schema.json cap). Default 2.'),
+    ])
+])
+
+pipeline {
+    agent {
+        label 'cicd'
+    }
+
+    environment {
+        CUSTOMER            = "${params.CUSTOMER}"
+        ENVIRONMENT         = "${params.ENVIRONMENT}"
+        IMAGE_TAG           = "${params.IMAGE_TAG}"
+        GIT_BRANCH          = "develop"
+        //GIT_BRANCH          = "${params.GIT_BRANCH}"
+        GIT_REPO_URL        = "https://ucgithub.exlservice.com/Unified-Cloud-DevOps/bu-analytics-gen-ai-midas.git"
+        OIDC_ROLE_NAME      = "EXLJenkinsCrossAccountRole-BU"
+        DEPLOYER_ROLE_NAME  = "midas-deployer-role"
+        AWS_DEFAULT_REGION  = "us-east-1"
+        AWS_REGION          = "us-east-1"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                sh """
+                    git clone ${GIT_REPO_URL}
+                    (cd bu-analytics-gen-ai-midas && git checkout ${GIT_BRANCH})
+                    ls -la bu-analytics-gen-ai-midas/
+                """
+            }
+        }
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    //def branch = params.GIT_BRANCH?.trim() ?: 'develop'
+                    //if (!params.GIT_BRANCH?.trim()) {
+                    //    echo "GIT_BRANCH was empty — falling back to default: develop"
+                    //    env.GIT_BRANCH = branch
+                    //}
+                    echo "Deploying from branch: ${env.GIT_BRANCH}"
+                    sh """
+                        cd bu-analytics-gen-ai-midas
+                        git rev-parse --verify origin/${env.GIT_BRANCH} \
+                            || { echo "ERROR: branch '${env.GIT_BRANCH}' not found in remote"; exit 1; }
+                    """
+                }
+            }
+        }
+
+        stage('Auth Check') {
+            when { expression { "${ENVIRONMENT}" != "dev" } }
+            steps {
+                sh "chmod +x bu-analytics-gen-ai-midas/deploy/scripts/dev/env-protection.sh && cd bu-analytics-gen-ai-midas/deploy && ./scripts/dev/env-protection.sh deploy"
+            }
+        }
+
+        stage('Get customer mapping') {
+            steps {
+                script {
+                    def helmWait = (params.HELM_WAIT != null) ? params.HELM_WAIT : true
+                    def helmAtomic = (params.HELM_ATOMIC != null) ? params.HELM_ATOMIC : false
+                    def helmTimeout = (params.HELM_TIMEOUT != null) ? params.HELM_TIMEOUT : '10m'
+                    def rolloutTimeout = (params.ROLLOUT_TIMEOUT != null) ? params.ROLLOUT_TIMEOUT : '10m'
+                    def requireApproval = (params.REQUIRE_MANUAL_APPROVAL != null) ? params.REQUIRE_MANUAL_APPROVAL : true
+                    currentBuild.description = "CUSTOMER: ${env.CUSTOMER}\nENVIRONMENT: ${env.ENVIRONMENT}\nIMAGE_TAG: ${env.IMAGE_TAG}\nENABLE_HELM_DEPLOY: ${params.ENABLE_HELM_DEPLOY}\nREQUIRE_MANUAL_APPROVAL: ${requireApproval}\nHELM_WAIT: ${helmWait}\nHELM_ATOMIC: ${helmAtomic}\nHELM_TIMEOUT: ${helmTimeout}\nROLLOUT_TIMEOUT: ${rolloutTimeout}\nBUILT BY: ${env.BUILD_USER_ID}"
+
+                    env.TENANT_ENV = sh(script: "jq -r --arg env '${ENVIRONMENT}' '.[\$env].tenant_env' bu-analytics-gen-ai-midas/deploy/resources/customer-mapping/${CUSTOMER}.json", returnStdout: true).trim()
+                    env.TENANT_ID  = sh(script: "jq -r --arg env '${ENVIRONMENT}' '.[\$env].tenant_id' bu-analytics-gen-ai-midas/deploy/resources/customer-mapping/${CUSTOMER}.json", returnStdout: true).trim()
+                    env.AWS_ACCOUNT_ID = sh(script: "jq -r --arg env '${ENVIRONMENT}' '.[\$env].aws_account_id' bu-analytics-gen-ai-midas/deploy/resources/customer-mapping/${CUSTOMER}.json", returnStdout: true).trim()
+                    env.TERRAFORM_STATE_BUCKET = sh(script: "jq -r --arg env '${ENVIRONMENT}' '.[\$env].terraform_state_bucket' bu-analytics-gen-ai-midas/deploy/resources/customer-mapping/${CUSTOMER}.json", returnStdout: true).trim()
+
+                    env.AWS_ROLE_ARN = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${OIDC_ROLE_NAME}"
+                    env.AWS_DEPLOY_ROLE_ARN = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${DEPLOYER_ROLE_NAME}"
+
+                    echo "ENABLE_HELM_DEPLOY (param): ${params.ENABLE_HELM_DEPLOY}"
+                    echo "REQUIRE_MANUAL_APPROVAL (param): ${requireApproval}"
+                    echo "HELM_WAIT / HELM_ATOMIC / HELM_TIMEOUT / ROLLOUT_TIMEOUT: ${helmWait} / ${helmAtomic} / ${helmTimeout} / ${rolloutTimeout}"
+                    echo "TENANT_ENV: ${env.TENANT_ENV}"
+                    echo "TENANT_ID: ${env.TENANT_ID}"
+                    echo "AWS_ACCOUNT_ID: ${env.AWS_ACCOUNT_ID}"
+                    echo "IMAGE_TAG: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Create deploy role') {
+            // Runs before EC2 MT Test so that any IAM policy changes are live before the deployer
+            // role is assumed for S3 sync operations.
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            cd bu-analytics-gen-ai-midas/deploy/deploy_role
+                            terraform init -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" -backend-config="key=deploy-role-omf/terraform.tfstate" -backend-config="region=${AWS_REGION}"
+                            terraform validate
+                            terraform plan -out=tfplan -var "role_name=${DEPLOYER_ROLE_NAME}" -var "aws_region=${AWS_REGION}"
+                            terraform apply -auto-approve tfplan
+                            ROLE_ARN=\$(terraform output -raw role_arn)
+                            echo "Created role ARN: \${ROLE_ARN}"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('EC2 MT Test - Build and Install Offline Bundle') {
+            // Build the ec2-mt-test offline bundle on Jenkins (internet access), push to S3, then
+            // SSM-install onto midas-dev-ec2-ssm-test-clone.
+            // All artifacts tagged midas:component=ec2-mt-test / bundle_id: MIDAS_EC2_MT_TEST.
+            // To remove: aws s3 rm --recursive s3://keith-bucket-test-001/pip-packages/
+            //             aws s3 rm --recursive s3://keith-bucket-test-001/midas-ec2-mt-test/
+            // Runs after 'Create deploy role' so IAM policy changes are applied before S3 sync.
+            when {
+                expression {
+                    def p = params.ENABLE_EC2_MT_TEST_OFFLINE_BUNDLE
+                    if (p == null) { return true }
+                    if (p instanceof Boolean) { return p }
+                    return p.toString().equalsIgnoreCase('true')
+                }
+            }
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            cd bu-analytics-gen-ai-midas
+                            echo "[MIDAS_EC2_MT_TEST] Building wheelhouse, app bundle, and AWS CLI v2 package..."
+                            chmod +x deploy/scripts/ci/build-ec2-pip-wheelhouse.sh
+                            ./deploy/scripts/ci/build-ec2-pip-wheelhouse.sh \
+                                deploy/scripts/ci/requirements-ec2-wheelhouse.txt \
+                                keith-bucket-test-001
+
+                            echo "[MIDAS_EC2_MT_TEST] Resolving clone instance ID from Terraform outputs..."
+                            cd deploy/ecs-app
+                            CLONE_ID=\$(terraform output -raw ec2_ssm_test_clone_instance_id 2>/dev/null || true)
+                            if [ -z "\$CLONE_ID" ] || [ "\$CLONE_ID" = "null" ]; then
+                                echo "[MIDAS_EC2_MT_TEST] ec2_ssm_test_clone_instance_id is empty or null - skipping SSM install (clone may be disabled or not yet created)."
+                                exit 0
+                            fi
+                            echo "[MIDAS_EC2_MT_TEST] Clone instance: \$CLONE_ID"
+                            cd ../..
+                            chmod +x deploy/scripts/ci/install-ec2-pip-wheelhouse-via-ssm.sh
+                            ./deploy/scripts/ci/install-ec2-pip-wheelhouse-via-ssm.sh "\$CLONE_ID" "${AWS_REGION}"
+                            echo "[MIDAS_EC2_MT_TEST] Bundle installed successfully on \$CLONE_ID"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Terraform plan (ecs-app)') {
+            steps {
+                sh """
+                    set -e
+                    python3 bu-analytics-gen-ai-midas/deploy/scripts/ci/terraform-check-ecs-app-aws-sg-descriptions-ascii.py bu-analytics-gen-ai-midas
+                """
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            cd bu-analytics-gen-ai-midas/deploy/ecs-app
+
+                            # ---------------------------------------------------------------------------
+                            # Pre-flight: remove orphaned ELB resources that block Terraform destroy.
+                            # These are listeners/TGs that may exist in AWS from previous applies but are
+                            # no longer tracked in Terraform state (e.g. old HTTP:80 listener and old NLB
+                            # TCP TG from before the HTTPS-only refactor).
+                            # Also detaches old SGs from the LBs so Terraform can recreate them cleanly.
+                            # The cleanup is idempotent — no-ops if the resources are already gone.
+                            # ---------------------------------------------------------------------------
+                            NLB_ARN=\$(aws elbv2 describe-load-balancers --region "${AWS_REGION}" \
+                              --query "LoadBalancers[?LoadBalancerName=='midas-${TENANT_ENV}-nlb'].LoadBalancerArn" \
+                              --output text 2>/dev/null || true)
+                            ALB_ARN=\$(aws elbv2 describe-load-balancers --region "${AWS_REGION}" \
+                              --query "LoadBalancers[?LoadBalancerName=='midas-${TENANT_ENV}-alb'].LoadBalancerArn" \
+                              --output text 2>/dev/null || true)
+
+                            # Remove any NLB listeners that are NOT TCP:443 (orphaned TCP:80 etc.)
+                            if [ -n "\$NLB_ARN" ] && [ "\$NLB_ARN" != "None" ]; then
+                              OLD_NLB_LISTENERS=\$(aws elbv2 describe-listeners --region "${AWS_REGION}" \
+                                --load-balancer-arn "\$NLB_ARN" \
+                                --output json 2>/dev/null \
+                                | python3 -c "import sys,json;[print(l['ListenerArn']) for l in json.load(sys.stdin).get('Listeners',[]) if l.get('Port') != 443]" || true)
+                              for LARN in \$OLD_NLB_LISTENERS; do
+                                echo "[cleanup] Deleting orphaned NLB listener: \$LARN"
+                                aws elbv2 delete-listener --region "${AWS_REGION}" --listener-arn "\$LARN" 2>/dev/null || true
+                              done
+                            fi
+
+                            # Remove any ALB listeners that are NOT HTTPS:443 (orphaned HTTP:80 etc.)
+                            if [ -n "\$ALB_ARN" ] && [ "\$ALB_ARN" != "None" ]; then
+                              OLD_ALB_LISTENERS=\$(aws elbv2 describe-listeners --region "${AWS_REGION}" \
+                                --load-balancer-arn "\$ALB_ARN" \
+                                --output json 2>/dev/null \
+                                | python3 -c "import sys,json;[print(l['ListenerArn']) for l in json.load(sys.stdin).get('Listeners',[]) if l.get('Port') != 443]" || true)
+                              for LARN in \$OLD_ALB_LISTENERS; do
+                                echo "[cleanup] Deleting orphaned ALB listener: \$LARN"
+                                aws elbv2 delete-listener --region "${AWS_REGION}" --listener-arn "\$LARN" 2>/dev/null || true
+                              done
+                            fi
+
+                            # Detach old orphaned security groups (sg-04b9db95f904d47bd = old NLB SG,
+                            # sg-081477994a0163348 = old ALB SG) from the LBs so Terraform can delete them.
+                            # Get current SG IDs from the LBs and remove any SG that is NOT in the Terraform
+                            # plan outputs (i.e. not the one Terraform just created). This is safe because
+                            # Terraform creates new SGs first, then tries to delete old ones.
+                            OLD_NLB_SGS="sg-04b9db95f904d47bd"
+                            OLD_ALB_SGS="sg-081477994a0163348"
+
+                            if [ -n "\$NLB_ARN" ] && [ "\$NLB_ARN" != "None" ]; then
+                              CURRENT_NLB_SGS=\$(aws elbv2 describe-load-balancers --region "${AWS_REGION}" \
+                                --load-balancer-arns "\$NLB_ARN" \
+                                --output json 2>/dev/null \
+                                | python3 -c "import sys,json; d=json.load(sys.stdin); [print(s) for lb in d.get('LoadBalancers',[]) for s in lb.get('SecurityGroups',[])]" || true)
+                              NEW_NLB_SGS=\$(echo "\$CURRENT_NLB_SGS" | grep -v "\$OLD_NLB_SGS" || true)
+                              if echo "\$CURRENT_NLB_SGS" | grep -q "\$OLD_NLB_SGS" && [ -n "\$NEW_NLB_SGS" ]; then
+                                echo "[cleanup] Removing old NLB SG \$OLD_NLB_SGS from NLB"
+                                SG_LIST=\$(echo "\$NEW_NLB_SGS" | tr '\n' ' ')
+                                aws elbv2 set-security-groups --region "${AWS_REGION}" \
+                                  --load-balancer-arn "\$NLB_ARN" \
+                                  --security-groups \$SG_LIST 2>/dev/null || true
+                              fi
+                            fi
+
+                            if [ -n "\$ALB_ARN" ] && [ "\$ALB_ARN" != "None" ]; then
+                              CURRENT_ALB_SGS=\$(aws elbv2 describe-load-balancers --region "${AWS_REGION}" \
+                                --load-balancer-arns "\$ALB_ARN" \
+                                --output json 2>/dev/null \
+                                | python3 -c "import sys,json; d=json.load(sys.stdin); [print(s) for lb in d.get('LoadBalancers',[]) for s in lb.get('SecurityGroups',[])]" || true)
+                              NEW_ALB_SGS=\$(echo "\$CURRENT_ALB_SGS" | grep -v "\$OLD_ALB_SGS" || true)
+                              if echo "\$CURRENT_ALB_SGS" | grep -q "\$OLD_ALB_SGS" && [ -n "\$NEW_ALB_SGS" ]; then
+                                echo "[cleanup] Removing old ALB SG \$OLD_ALB_SGS from ALB"
+                                SG_LIST=\$(echo "\$NEW_ALB_SGS" | tr '\n' ' ')
+                                aws elbv2 set-security-groups --region "${AWS_REGION}" \
+                                  --load-balancer-arn "\$ALB_ARN" \
+                                  --security-groups \$SG_LIST 2>/dev/null || true
+                              fi
+                            fi
+                            # ---------------------------------------------------------------------------
+
+                            terraform init \\
+                                -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                -backend-config="key=app-deploy-omf-${TENANT_ENV}/${TENANT_ID}/terraform.tfstate" \\
+                                -backend-config="region=${AWS_REGION}"
+
+                            # midas-apps + midas-app-secret may already exist (Helm/kubectl). Terraform must adopt the secret or create fails.
+                            if command -v kubectl >/dev/null 2>&1; then
+                              EKS_NAME="midas-eks-${TENANT_ENV}"
+                              KCFG="\$(mktemp)"
+                              export KUBECONFIG="\$KCFG"
+                              aws eks update-kubeconfig --name "\$EKS_NAME" --region "${AWS_REGION}" --kubeconfig "\$KCFG"
+                              kubectl create namespace midas-apps --dry-run=client -o yaml | kubectl apply -f - --kubeconfig "\$KCFG"
+                              if kubectl get secret midas-app-secret -n midas-apps --kubeconfig "\$KCFG" >/dev/null 2>&1; then
+                                # state show takes only the address; -var/-var-file are invalid here and force a false "not in state".
+                                if ! terraform state show 'kubernetes_secret_v1.midas_app[0]' >/dev/null 2>&1; then
+                                  terraform import -input=false \\
+                                    -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                    -var "aws_account_id=${AWS_ACCOUNT_ID}" \\
+                                    -var "environment=${TENANT_ENV}" \\
+                                    -var "terraform_state_bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                    -var "aws_region=${AWS_REGION}" \\
+                                    'kubernetes_secret_v1.midas_app[0]' midas-apps/midas-app-secret
+                                fi
+                              fi
+                              rm -f "\$KCFG"
+                              unset KUBECONFIG
+                            fi
+
+                            # midas-dev-us-east-1/frontend may exist in AWS but not in state (e.g. first run
+                            # after module was added, or state was reset). Import once so apply does not fail
+                            # with ResourceExistsException.
+                            # aws_secretsmanager_secret import requires the full ARN, not the friendly name.
+                            FRONTEND_SECRET_NAME="midas-${TENANT_ENV}-${AWS_REGION}/frontend"
+                            FRONTEND_SECRET_ARN=\$(aws secretsmanager describe-secret --secret-id "\${FRONTEND_SECRET_NAME}" --region "${AWS_REGION}" --query 'ARN' --output text 2>/dev/null || true)
+                            if [ -n "\${FRONTEND_SECRET_ARN}" ] && [ "\${FRONTEND_SECRET_ARN}" != "None" ]; then
+                              if ! terraform state show 'module.secretsmanager_frontend.aws_secretsmanager_secret.frontend' >/dev/null 2>&1; then
+                                terraform import -input=false \\
+                                  -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                  -var "aws_account_id=${AWS_ACCOUNT_ID}" \\
+                                  -var "environment=${TENANT_ENV}" \\
+                                  -var "terraform_state_bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                  -var "aws_region=${AWS_REGION}" \\
+                                  'module.secretsmanager_frontend.aws_secretsmanager_secret.frontend' \\
+                                  "\${FRONTEND_SECRET_ARN}"
+                              fi
+                            fi
+
+                            # aws-load-balancer-controller helm release may already exist in the cluster
+                            # (e.g. prior manual install or state reset). Import once so apply does not
+                            # fail with "cannot re-use a name that is still in use".
+                            # Detection uses kubectl (already proven on this agent) rather than helm CLI,
+                            # which may not be on PATH. Helm stores release metadata as a k8s secret with
+                            # label owner=helm and name=sh.helm.release.v1.aws-load-balancer-controller.*.
+                            if command -v kubectl >/dev/null 2>&1; then
+                              ALB_EKS_NAME="midas-eks-${TENANT_ENV}"
+                              ALB_KCFG="\$(mktemp)"
+                              aws eks update-kubeconfig --name "\$ALB_EKS_NAME" --region "${AWS_REGION}" --kubeconfig "\$ALB_KCFG"
+                              ALB_HELM_SECRET=\$(kubectl --kubeconfig "\$ALB_KCFG" get secret -n kube-system \
+                                -l "owner=helm,name=aws-load-balancer-controller" \
+                                --no-headers -o name 2>/dev/null | head -1 || true)
+                              rm -f "\$ALB_KCFG"
+                              if [ -n "\$ALB_HELM_SECRET" ]; then
+                                if ! terraform state show 'helm_release.aws_load_balancer_controller[0]' >/dev/null 2>&1; then
+                                  terraform import -input=false \\
+                                    -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                    -var "aws_account_id=${AWS_ACCOUNT_ID}" \\
+                                    -var "environment=${TENANT_ENV}" \\
+                                    -var "terraform_state_bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                    -var "aws_region=${AWS_REGION}" \\
+                                    -var "alb_nlb_enabled=true" \\
+                                    'helm_release.aws_load_balancer_controller[0]' kube-system/aws-load-balancer-controller
+                                fi
+                              fi
+                            fi
+
+                            # EKS managed node group may exist in AWS but not in Terraform state (e.g. state
+                            # repair, drift, or partial migration). Without import, apply fails with:
+                            # ResourceInUseException: NodeGroup already exists with name ... (HTTP 409).
+                            EKS_IMPORT_CLUSTER="midas-eks-${TENANT_ENV}"
+                            EKS_IMPORT_NG="midas-eks-${TENANT_ENV}-ng"
+                            if aws eks describe-nodegroup \\
+                                --cluster-name "\$EKS_IMPORT_CLUSTER" \\
+                                --nodegroup-name "\$EKS_IMPORT_NG" \\
+                                --region "${AWS_REGION}" >/dev/null 2>&1; then
+                              if ! terraform state show 'module.eks.aws_eks_node_group.this' >/dev/null 2>&1; then
+                                echo "[import] Adopting existing EKS node group \$EKS_IMPORT_NG into Terraform state"
+                                terraform import -input=false \\
+                                  -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                  -var-file=tfvars/${TENANT_ENV}.tfvars \\
+                                  -var "aws_account_id=${AWS_ACCOUNT_ID}" \\
+                                  -var "environment=${TENANT_ENV}" \\
+                                  -var "terraform_state_bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                  -var "aws_region=${AWS_REGION}" \\
+                                  -var "alb_nlb_enabled=${params.DEPLOY_ALB_NLB != null ? params.DEPLOY_ALB_NLB : true}" \\
+                                  ${params.ALB_NLB_CERT_ARN ? "-var \"alb_nlb_certificate_arn=${params.ALB_NLB_CERT_ARN}\"" : ""} \\
+                                  'module.eks.aws_eks_node_group.this' \\
+                                  "\${EKS_IMPORT_CLUSTER}:\${EKS_IMPORT_NG}"
+                              fi
+                            fi
+
+                            terraform plan -out=tfplan \\
+                                -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                -var-file=tfvars/${TENANT_ENV}.tfvars \\
+                                -var "aws_account_id=${AWS_ACCOUNT_ID}" \\
+                                -var "environment=${TENANT_ENV}" \\
+                                -var "terraform_state_bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                -var "aws_region=${AWS_REGION}" \\
+                                -var "alb_nlb_enabled=${params.DEPLOY_ALB_NLB != null ? params.DEPLOY_ALB_NLB : true}" \\
+                                ${params.ALB_NLB_CERT_ARN ? "-var \"alb_nlb_certificate_arn=${params.ALB_NLB_CERT_ARN}\"" : ""}
+
+                            # Unset WARM_ENI_TARGET and set WARM_IP_TARGET=2 and MINIMUM_IP_TARGET=14
+                            if command -v kubectl >/dev/null 2>&1; then
+                              ALB_KCFG="\$(mktemp)"
+                              aws eks update-kubeconfig --name midas-eks-${env.TENANT_ENV} --region ${env.AWS_REGION} --kubeconfig "\$ALB_KCFG"
+                              kubectl --kubeconfig "\$ALB_KCFG" -n kube-system set env daemonset aws-node WARM_IP_TARGET=2 || true
+                              kubectl --kubeconfig "\$ALB_KCFG" -n kube-system set env daemonset aws-node MINIMUM_IP_TARGET=14 || true
+                              rm -f "\$ALB_KCFG"
+                            fi
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Approve deploy?') {
+            when {
+                expression {
+                    // Default true if parameter missing (e.g. replay of older job config).
+                    return params.REQUIRE_MANUAL_APPROVAL != false
+                }
+            }
+            steps {
+                script {
+                    // Enforce named approvers for UAT and prod from deploy/resources/approvers/<env>.txt.
+                    // For dev the file may be absent or empty — any user can approve.
+                    def approverFile = "bu-analytics-gen-ai-midas/deploy/resources/approvers/${env.ENVIRONMENT}.txt"
+                    def submitterList = ""
+                    if (fileExists(approverFile)) {
+                        submitterList = readFile(approverFile)
+                            .split('\n')
+                            .findAll { it.trim() && !it.trim().startsWith('#') }
+                            .join(',')
+                    }
+                    def cfg = [
+                        message: "Deploy to ${env.ENVIRONMENT}? (triggered by ${env.BUILD_USER_ID})",
+                        ok: 'Deploy'
+                    ]
+                    if (submitterList) {
+                        cfg.submitter = submitterList
+                    }
+                    input(cfg)
+                    echo "Deployment approved. Environment: ${env.ENVIRONMENT}"
+                }
+            }
+        }
+
+        stage('Terraform apply (ecs-app)') {
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            cd bu-analytics-gen-ai-midas/deploy/ecs-app
+
+                            # When instance_types changes Terraform plans destroy+create (forces-new).
+                            # Apply fails with 409 (ResourceInUseException) because the old node group
+                            # still exists when Terraform tries to create the replacement.
+                            # Fix: if the plan replaces the node group, delete it from AWS first,
+                            # remove from state, then re-plan so the saved tfplan is fresh before apply.
+                            NG_CLUSTER="midas-eks-${TENANT_ENV}"
+                            NG_NAME="midas-eks-${TENANT_ENV}-ng"
+                            if terraform show -json tfplan 2>/dev/null | \\
+                               python3 -c "
+import sys,json
+p=json.load(sys.stdin)
+for rc in p.get('resource_changes',[]):
+    if rc.get('address')=='module.eks.aws_eks_node_group.this':
+        actions=rc.get('change',{}).get('actions',[])
+        if 'create' in actions and 'delete' in actions:
+            sys.exit(0)
+sys.exit(1)
+"; then
+                              echo "[ng-replace] Plan includes node-group replacement. Deleting old node group before apply."
+                              # Delete from AWS first (while still in state so AWS CLI can describe it)
+                              if aws eks describe-nodegroup --cluster-name "\$NG_CLUSTER" --nodegroup-name "\$NG_NAME" --region "${AWS_REGION}" >/dev/null 2>&1; then
+                                echo "[ng-replace] Deleting node group \$NG_NAME ..."
+                                aws eks delete-nodegroup --cluster-name "\$NG_CLUSTER" --nodegroup-name "\$NG_NAME" --region "${AWS_REGION}"
+                                aws eks wait nodegroup-deleted --cluster-name "\$NG_CLUSTER" --nodegroup-name "\$NG_NAME" --region "${AWS_REGION}"
+                                echo "[ng-replace] Node group deleted."
+                              fi
+                              # Remove from state after deletion so the re-plan sees it as a net-new create
+                              terraform state rm 'module.eks.aws_eks_node_group.this' || true
+                              # Re-plan: state changed so the previous tfplan is stale; generate a fresh one
+                              echo "[ng-replace] Re-generating tfplan after state change."
+                              terraform plan -out=tfplan \\
+                                  -var-file=tfvars/midas-cross-network-db-access.tfvars \\
+                                  -var-file=tfvars/${TENANT_ENV}.tfvars \\
+                                  -var "aws_account_id=${AWS_ACCOUNT_ID}" \\
+                                  -var "environment=${TENANT_ENV}" \\
+                                  -var "terraform_state_bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                  -var "aws_region=${AWS_REGION}" \\
+                                  -var "alb_nlb_enabled=${params.DEPLOY_ALB_NLB != null ? params.DEPLOY_ALB_NLB : true}" \\
+                                  ${params.ALB_NLB_CERT_ARN ? "-var \"alb_nlb_certificate_arn=${params.ALB_NLB_CERT_ARN}\"" : ""}
+                            fi
+
+                            # -parallelism=1 avoids ELBv2 races when listeners, target
+                            # groups, and attachments are destroyed in the same graph
+                            # (e.g. NLB+ALB refactors, cert_ready toggles, alb_nlb_enabled).
+                            terraform apply -input=false -auto-approve -parallelism=1 tfplan
+
+                            # Unset WARM_ENI_TARGET and set WARM_IP_TARGET=2 and MINIMUM_IP_TARGET=14
+                            if command -v kubectl >/dev/null 2>&1; then
+                              ALB_KCFG="\$(mktemp)"
+                              aws eks update-kubeconfig --name midas-eks-${env.TENANT_ENV} --region ${env.AWS_REGION} --kubeconfig "\$ALB_KCFG"
+                              kubectl --kubeconfig "\$ALB_KCFG" -n kube-system set env daemonset aws-node WARM_IP_TARGET=2 || true
+                              kubectl --kubeconfig "\$ALB_KCFG" -n kube-system set env daemonset aws-node MINIMUM_IP_TARGET=14 || true
+                              rm -f "\$ALB_KCFG"
+                            fi
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Terraform init - ecs-app (outputs only)') {
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            mkdir -p bu-analytics-gen-ai-midas/deploy/.ci
+                            cd bu-analytics-gen-ai-midas/deploy/ecs-app
+                            terraform init \\
+                                -backend-config="bucket=${TERRAFORM_STATE_BUCKET}" \\
+                                -backend-config="key=app-deploy-omf-${TENANT_ENV}/${TENANT_ID}/terraform.tfstate" \\
+                                -backend-config="region=${AWS_REGION}"
+                            OUT=../.ci/terraform-env.sh
+                            echo "# Generated by Jenkins - do not commit" > "\$OUT"
+                            echo "export ECR_URL_midas_web_frontend_svc=\$(terraform output -raw ecr_midas_web_frontend_svc_repository_url)" >> "\$OUT"
+                            echo "export ECR_URL_midas_api_backend_svc=\$(terraform output -raw ecr_midas_api_backend_svc_repository_url)" >> "\$OUT"
+                            echo "export ECR_URL_midas_graph_svc=\$(terraform output -raw ecr_midas_graph_svc_repository_url)" >> "\$OUT"
+                            echo "export ECR_URL_midas_ec2_mt_test_svc=\$(terraform output -raw ecr_midas_ec2_mt_test_svc_repository_url)" >> "\$OUT"
+                            echo "export ECR_URL_midas_router_svc=\$(terraform output -raw ecr_router_svc_repository_url)" >> "\$OUT"
+                            echo "export ECR_URL_midas_envoy_router=\$(terraform output -raw ecr_envoy_router_repository_url)" >> "\$OUT"
+                            echo "export EC2_MT_TEST_IRSA_ROLE_ARN=\$(terraform output -raw ec2_mt_test_irsa_role_arn)" >> "\$OUT"
+                            echo "export EKS_CLUSTER_NAME=\$(terraform output -raw eks_cluster_name)" >> "\$OUT"
+                            echo "export SKIP_K8S_APP_SECRET_SYNC=\$(terraform output -raw midas_app_secret_kubernetes_managed_by_terraform)" >> "\$OUT"
+                            cat "\$OUT"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Verify Secrets Manager') {
+            // backend/.env is gitignored - not present in CI.
+            // Secrets must be pre-populated manually from a developer machine:
+            //   ./deploy/scripts/ci/populate-secrets.sh dev
+            // This stage just confirms the secret exists in Secrets Manager before proceeding.
+            // midas-app-secret: Terraform may apply kubernetes_secret_v1 when
+            // terraform_sync_app_secret_to_kubernetes is true; otherwise helm-deploy-releases.sh
+            // syncs SM→K8s after aws eks update-kubeconfig.
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            SECRET_NAME="midas-${ENVIRONMENT}-${AWS_REGION}/app"
+                            echo "=== Verifying secret exists: \${SECRET_NAME} ==="
+                            aws secretsmanager describe-secret \
+                                --secret-id "\${SECRET_NAME}" \
+                                --region "${AWS_REGION}" \
+                                --query 'Name' \
+                                --output text
+                            echo "Secret verified."
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Docker build - MIDAS images') {
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            cd bu-analytics-gen-ai-midas
+                            export IMAGE_TAG=${IMAGE_TAG}
+                            export ENVIRONMENT=${TENANT_ENV}
+                            export AWS_REGION=${AWS_REGION}
+                            chmod +x deploy/scripts/ci/docker-build-matrix.sh
+                            ./deploy/scripts/ci/docker-build-matrix.sh
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Push images to ECR') {
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            cd bu-analytics-gen-ai-midas
+                            . deploy/.ci/terraform-env.sh
+                            export IMAGE_TAG=${IMAGE_TAG}
+                            export AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
+                            export TENANT_ENV=${TENANT_ENV}
+                            chmod +x deploy/scripts/ci/push-images-ecr.sh
+                            ./deploy/scripts/ci/push-images-ecr.sh
+                            chmod +x deploy/scripts/ci/mirror-addon-images-ecr.sh
+                            ./deploy/scripts/ci/mirror-addon-images-ecr.sh
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Helm deploy - EKS') {
+            when {
+                // booleanParam is usually Boolean; Rebuild copies prior build params (can stay false after defaultValue:true in SCM).
+                expression {
+                    def h = params.ENABLE_HELM_DEPLOY
+                    if (h == null) {
+                        return true
+                    }
+                    if (h instanceof Boolean) {
+                        return h
+                    }
+                    return h.toString().equalsIgnoreCase('true')
+                }
+            }
+            steps {
+                withAWS(role: "${AWS_DEPLOY_ROLE_ARN}", useNode: true) {
+                    ansiColor('xterm') {
+                        sh """
+                            set -e
+                            cd bu-analytics-gen-ai-midas
+                            . deploy/.ci/terraform-env.sh
+                            export IMAGE_TAG=${IMAGE_TAG}
+                            export HELM_WAIT=${params.HELM_WAIT != null ? params.HELM_WAIT : true}
+                            export HELM_ATOMIC=${params.HELM_ATOMIC != null ? params.HELM_ATOMIC : false}
+                            export HELM_TIMEOUT=${params.HELM_TIMEOUT != null ? params.HELM_TIMEOUT : ''}
+                            export ROLLOUT_TIMEOUT=${params.ROLLOUT_TIMEOUT != null ? params.ROLLOUT_TIMEOUT : ''}
+                            export EC2_MT_TEST_JOB_ENABLED=${params.EC2_MT_TEST_JOB_ENABLED != null ? params.EC2_MT_TEST_JOB_ENABLED : false}
+                            export BACKEND_REPLICA_COUNT=${(params.EC2_MT_TEST_JOB_ENABLED == true) ? (params.BACKEND_REPLICA_COUNT != null ? params.BACKEND_REPLICA_COUNT : '0') : (params.BACKEND_REPLICA_COUNT != null ? params.BACKEND_REPLICA_COUNT : '2')}
+                            chmod +x deploy/scripts/ci/helm-deploy-releases.sh
+                            ./deploy/scripts/ci/helm-deploy-releases.sh
+                            #./deploy/scripts/ci/deploy-helm.sh
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            deleteDir()
+        }
+    }
+}

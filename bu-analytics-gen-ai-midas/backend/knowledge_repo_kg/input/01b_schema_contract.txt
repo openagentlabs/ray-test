@@ -1,0 +1,28 @@
+kb:
+  schema_contract:
+    alternative_names:
+      account_id:
+      - acct_id
+      - account_number
+      - acct_num
+      balance:
+      - outstanding_balance
+      - current_balance
+      - bal
+      customer_id:
+      - cust_id
+      - client_id
+      - borrower_id
+      payment_amount:
+      - pmt_amt
+      - payment
+      - amount_paid
+    fields: []
+    on_violation: '<STRICT_MODE|true> ? fail : warn'
+    rules:
+      allow_casting:
+      - "int\u2192float"
+      - "string\u2192date(iso)"
+      enforce_bounds: true
+      enforce_dtype: true
+      enforce_units: true

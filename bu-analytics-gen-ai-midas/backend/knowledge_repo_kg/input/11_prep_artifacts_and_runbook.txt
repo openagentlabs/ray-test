@@ -1,0 +1,90 @@
+kb:
+  agent_runbook_prep_only:
+    01_profile_and_schema:
+      actions:
+      - infer roles
+      - enforce schema_contract
+      - discover uniqueness key
+      error_handling: '@kb.error_recovery.data_issues'
+    02_snapshot_and_leakage_guard:
+      actions:
+      - drop forbidden fields
+      - assert time-safety
+      - validate_causality
+    03_dq_checks:
+      actions:
+      - completeness
+      - validity
+      - consistency
+      - cardinality
+      - outliers
+      parallel: true
+    04_segment_selection:
+      actions:
+      - evaluate candidate segments
+      - "choose \u22642 keys or GLOBAL"
+      - validate_segment_stability
+    05_imputation_selection:
+      actions:
+      - evaluate OOF candidates per feature
+      - choose & log method
+      - write imputation_summary
+      checkpoint: true
+    06_feature_derivation:
+      actions:
+      - derive allowed features
+      - apply transforms
+      - compute_interactions
+      - update lineage
+    07_feature_selection:
+      actions:
+      - filter_low_variance
+      - remove_multicollinear
+      - rank_by_importance
+      - select_top_k
+    08_binning_and_encoding:
+      actions:
+      - build bins
+      - apply safety (merge/min-bad)
+      - compute IV/WOE OOF
+      - enforce_monotonicity
+    09_eda_and_drift:
+      actions:
+      - generate plots/tables
+      - hypothesis_tests
+      - write eda_overview.html & drift report
+    10_final_validation:
+      actions:
+      - run_acceptance_gates
+      - generate_documentation
+      - create_pipeline_artifact
+    experiment_tracking:
+      lineage:
+        dag_visualization: true
+        track_transformations: true
+      reproducibility:
+        docker_container: true
+        requirements_lock: true
+        seed_everything: true
+      versioning:
+        code_version: git_commit
+        config_version: yaml_hash
+        data_version: hash_based
+  artifacts_to_produce:
+    datasets:
+    - <OUT_DIR|artifacts>/df_pd_train_transformed.parquet
+    - <OUT_DIR|artifacts>/df_pd_valid_transformed.parquet
+    - <OUT_DIR|artifacts>/df_pd_test_transformed.parquet
+    - <OUT_DIR|artifacts>/df_pd_oot_transformed.parquet
+    dictionaries:
+    - <OUT_DIR|artifacts>/data_dictionary.csv
+    - <OUT_DIR|artifacts>/feature_lineage.yaml
+    - <OUT_DIR|artifacts>/transformation_pipeline.pkl
+    reports:
+    - <OUT_DIR|artifacts>/eda_overview.html
+    - <OUT_DIR|artifacts>/dq_audit.json
+    - <OUT_DIR|artifacts>/drift_report.json
+    - <OUT_DIR|artifacts>/imputation_summary.json
+    - <OUT_DIR|artifacts>/binning_summary.json
+    - <OUT_DIR|artifacts>/feature_derivation_report.json
+    - <OUT_DIR|artifacts>/feature_importance_report.json

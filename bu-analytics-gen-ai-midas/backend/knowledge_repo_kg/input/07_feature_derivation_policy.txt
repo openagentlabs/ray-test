@@ -1,0 +1,109 @@
+kb:
+  feature_derivation:
+    acceptance:
+      max_psi_train_valid: <PSI_WARN|0.10>
+      min_coverage: 0.8
+      min_delta_auc_probe: 0.005
+    derivations:
+      ages_tenures:
+      - formula: months_between(<AS_OF_DATE>, earliest_trade_date)
+        name: months_since_first_trade
+      - formula: months_between(<AS_OF_DATE>, employment_start_date)
+        name: months_at_employer
+      - formula: months_between(<AS_OF_DATE>, address_start_date)
+        name: months_at_address
+      categorical_groupings:
+      - column_pattern: '*purpose*'
+        min_share: <RARE_FLOOR|0.005>
+        rare_bucket: __OTHER__
+      counts_indicators:
+      - formula: count(events.inquiry_date in last 6 months)
+        name: num_recent_inquiries_6m
+      - formula: max(dpd>=1 in last 12 months)
+        name: any_delinquency_12m
+      - formula: count(account_open_date in last 12 months)
+        name: num_accounts_opened_12m
+      forbidden:
+      - pattern: '*_to_date'
+      - pattern: post_*
+      - pattern: '*future*'
+      ratios:
+      - formula: installment / income
+        name: payment_to_income
+        notes: clip [0, 2]; add zero_flag if installment=0
+      - formula: balance / limit
+        name: balance_to_limit
+        notes: interpreted as utilization; clip [0, 3]
+      - formula: total_debt / income
+        name: debt_to_income
+        notes: clip [0, 10]
+      transforms:
+      - apply: log1p
+        to_patterns:
+        - '*amount*'
+        - '*balance*'
+        - income
+      - apply: winsorize_p1_p99
+        to_patterns:
+        - '*amount*'
+        - '*balance*'
+        - '*ratio*'
+        - '*util*'
+      - apply: standardize
+        to_patterns:
+        - '*score*'
+        - '*age*'
+    feature_interactions:
+      discovery:
+        max_degree: 2
+        methods:
+        - multiplication
+        - division_safe
+        - polynomial
+        top_k_base_features: 30
+      examples:
+      - "utilization \xD7 months_on_book"
+      - payment_amount / balance
+      - "score_change \xD7 delinquency_flag"
+      - "income \xD7 debt_to_income"
+      validation:
+        max_vif_with_base: 5.0
+        min_interaction_gain: <INTERACTION_GAIN|0.01>
+    guardrails:
+      max_pairwise_corr: <PAIR_CUT|0.9>
+      max_vif: <VIF|10>
+      min_rows_for_new_feature: 5000
+      no_future_windows: true
+      time_safe: "use only \u2264 <AS_OF_DATE>"
+    time_series_features:
+      change_points:
+        methods:
+        - cusum
+        - binseg
+        significance_level: 0.05
+      rolling_windows:
+        aggregations:
+        - mean
+        - std
+        - trend
+        - volatility
+        - min
+        - max
+        features:
+        - payment_amount
+        - balance
+        - utilization
+        windows_days:
+        - 7
+        - 14
+        - 30
+        - 60
+        - 90
+        - 180
+      seasonality:
+        decomposition: STL
+        detect_period: true
+        features_to_extract:
+        - trend
+        - seasonal
+        - residual

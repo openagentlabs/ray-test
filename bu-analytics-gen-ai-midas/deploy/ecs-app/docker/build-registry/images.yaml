@@ -1,0 +1,32 @@
+# Build matrix for MIDAS container images (us-east-1 ECR). Consumed by deploy/scripts/ci/docker-build-matrix.sh
+version: 1
+images:
+  - service: midas-web-frontend-svc
+    context: frontend
+    dockerfile: Dockerfile
+    ecr_repository_suffix: midas-web-frontend-svc
+  - service: midas-api-backend-svc
+    context: backend
+    dockerfile: Dockerfile
+    ecr_repository_suffix: midas-api-backend-svc
+  - service: midas-graph-svc
+    # Build context is repo root because Dockerfile.graphrag uses COPY backend/graphrag_service/...
+    context: .
+    dockerfile: backend/Dockerfile.graphrag
+    ecr_repository_suffix: midas-graph-svc
+  - service: midas-ec2-mt-test-svc
+    # Build context is repo root so COPY ec2-mt-test/ works relative to the root.
+    context: .
+    dockerfile: deploy/ecs-app/docker/midas-ec2-mt-test-svc/Dockerfile
+    ecr_repository_suffix: midas-ec2-mt-test-svc
+  # dockerfile is resolved relative to context (BUILD_CTX/dockerfile), so it must
+  # be just the filename here, not the repo-root path, or the context prefix gets
+  # duplicated (e.g. pod_manager/router.svc/pod_manager/router.svc/Dockerfile).
+  - service: router-svc
+    context: pod_manager/router.svc
+    dockerfile: Dockerfile
+    ecr_repository_suffix: midas/router-svc
+  - service: envoy-router
+    context: pod_manager/envoy
+    dockerfile: Dockerfile
+    ecr_repository_suffix: midas/envoy-router

@@ -1,0 +1,180 @@
+# Default values for routing-tier.
+# After `terraform apply`, set image repositories from output `ecr_repository_urls`
+# and `serviceAccount.roleArn` from `pod_manager_irsa_role_arn`.
+
+nameOverride: ""
+fullnameOverride: envoy-router
+
+namespace: midas-apps
+createNamespace: true
+
+serviceName: router-svc
+
+global:
+  awsRegion: us-east-1
+  deployTarget: local
+
+serviceAccount:
+  create: true
+  name: pod-manager
+  annotations: {}
+  roleArn: ""
+
+rbac:
+  create: true
+
+replicaCount: 3
+
+imagePullSecrets: []
+
+envoy:
+  image:
+    repository: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  # Optional — passed to envoy/docker-entrypoint.sh (see envoy/envoy.yaml.template)
+  env: {}
+    # ENVOY_EXT_AUTHZ_TIMEOUT: "0.5s"
+    # ENVOY_EXT_AUTHZ_PORT: "9000"
+
+podManager:
+  image:
+    repository: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  grpcPort: 8804
+  extAuthzPort: 9000
+  logLevel: INFO
+  env: {}
+  appSecret:
+    enabled: false
+    name: midas-app-secret
+  kubernetes:
+    podLabelSelector: app=backend-pool-node
+    headlessServiceName: backend-pool-node
+    backendPort: 8000
+  reconciliation:
+    enabled: true
+    intervalSec: 30
+  auth:
+    devMode: true
+    devSubHeader: x-test-sub
+    sessionCookieName: pod_manager_user
+  loginPodPool:
+    routingUpstream: login-pod:8000
+  reaper:
+    enabled: true
+    intervalSec: 60
+    idleTtlSec: 900
+  cognito:
+    enabled: false
+    issuer: ""
+    audience: ""
+    jwksUri: ""
+  envoyManagement:
+    enabled: false
+  dynamodb:
+    tableSuffixes:
+      backendPool: backend-pool
+      loginPodPool: login-pod-pool
+      userAssignments: user-assignments
+      assignmentEvents: assignment-events
+      solutionDocuments: solution-documents
+      serviceConfig: service-config
+
+podAnnotations: {}
+podLabels: {}
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: topology.kubernetes.io/zone
+  whenUnsatisfiable: ScheduleAnyway
+
+service:
+  trafficPort: 80
+  trafficTargetPort: 10000
+  healthPort: 8080
+
+ingress:
+  enabled: false
+  className: alb
+  scheme: internal
+  listeners:
+    http:
+      enabled: true
+      port: 80
+    https:
+      enabled: false
+      port: 443
+      certificateArn: ""
+      sslRedirect: false
+  annotations: {}
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+
+grpcIngress:
+  enabled: false
+  type: nlb
+  port: 8804
+  scheme: internal
+
+backendPool:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 60
+
+pdb:
+  enabled: true
+  minAvailable: 2
+
+loginPool:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ""
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  servicePort: 8000
+  sessionCookieName: pod_manager_user
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+terminationGracePeriodSeconds: 30

@@ -1,0 +1,43 @@
+# Inventory of the 7 ORD pipelines created by `jenkins_tools.py create-job` from the template.
+# All jobs live under exlerate/exlerate-solutions/MIDAS/.
+
+repo_url: https://ucgithub.exlservice.com/Unified-Cloud-DevOps/bu-analytics-gen-ai-midas.git
+branch: develop
+git_credentials_id: midas-jenkins-git
+github_project_url: https://ucgithub.exlservice.com/Unified-Cloud-DevOps/bu-analytics-gen-ai-midas/
+
+jobs:
+  - name: midas-ai-gateway-tf-deploy-ORD1
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD1 — Terraform deploy of dedicated AWS infra (account 811391286931). MIDAS-owned. Read-only on submodule."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD1_terraform
+
+  - name: midas-ai-gateway-image-bootstrap-ORD2
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD2 — pull public images via Netskope + build Control API from source; push all to MIDAS ECR. ZERO JFrog at runtime."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD2_image_bootstrap
+
+  - name: midas-ai-gateway-clickhouse-ORD3
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD3 — Helm install ClickHouse (Langfuse dependency) into midas-eks-aigtw-dev."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD3_clickhouse
+
+  - name: midas-ai-gateway-langfuse-ORD4
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD4 — Helm install Langfuse (depends on ORD3 ClickHouse + ORD1 RDS)."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD4_langfuse
+
+  - name: midas-ai-gateway-litellm-ORD5
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD5 — Helm install LiteLLM (depends on ORD1 RDS+IRSA, ORD2 image)."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD5_litellm
+
+  - name: midas-ai-gateway-control-api-ORD6
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD6 — Helm install Control API (depends on ORD1, ORD2, ORD4, ORD5)."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD6_control_api
+
+  - name: midas-ai-gateway-orchestrator-ORD7
+    folder: exlerate/exlerate-solutions/MIDAS
+    description: "AI Gateway ORD7 — orchestrator: invokes ORD1→ORD6 in strict order with input gates."
+    jenkinsfile_path: deploy/ai_gateway/jenkinsfiles/Jenkinsfile_ORD7_orchestrator

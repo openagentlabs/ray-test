@@ -1,0 +1,184 @@
+# =============================================================================
+# Routing tier deployment. Apply order doesn't matter (kubectl sorts kinds).
+# Replace <ACCOUNT>, <REGION>, <ACM_CERT_ARN>, namespace, and image tags.
+#
+# Topology:
+#   ALB  ->  Ingress (target-type: ip)  ->  Envoy pods :10000
+#   ALB health check  ->  Envoy pods :8080 /health
+#   Envoy  ->  router.svc ext_authz gRPC 127.0.0.1:9000  (decision)
+#   Envoy  ->  backend-N.backend.<ns>.svc.cluster.local:8080  (forward)
+#
+# Envoy config is rendered at pod start from envoy.yaml.template (envoy/Dockerfile).
+# Tune via ENVOY_* env vars on the envoy container (see envoy/docker-entrypoint.sh).
+# Full static override (bypasses template): mount a ConfigMap as /etc/envoy/envoy.yaml
+# and set args to ["envoy", "-c", "/etc/envoy/envoy.yaml", "--service-cluster", "envoy-router"].
+# =============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-router
+  namespace: routing
+  labels: { app: envoy-router }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: envoy-router }
+  template:
+    metadata:
+      labels: { app: envoy-router }
+    spec:
+      # spread replicas across AZs so an AZ loss doesn't take the tier down
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: envoy-router }
+      containers:
+        # ---- Envoy: the data plane (build: docker build -t envoy-router:tag ./envoy) ----
+        - name: envoy
+          image: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/envoy-router:0.1.0
+          ports:
+            - { name: traffic, containerPort: 10000 }
+            - { name: health,  containerPort: 8080 }
+            - { name: admin,   containerPort: 9901 }
+          # Optional tuning (defaults match envoy/docker-entrypoint.sh):
+          # env:
+          #   - { name: ENVOY_EXT_AUTHZ_TIMEOUT, value: "0.5s" }
+          #   - { name: ENVOY_DFP_DNS_REFRESH_RATE, value: "5s" }
+          #   - { name: ENVOY_DFP_HOST_TTL, value: "30s" }
+          #   - { name: ENVOY_STREAM_IDLE_TIMEOUT, value: "300s" }
+          # If you change listener ports, update containerPort / Service / Ingress too.
+          # ENVOY_EXT_AUTHZ_PORT must match pod-manager POD_MANAGER_EXT_AUTHZ_GRPC_PORT.
+          # Optional: mount a ConfigMap to replace rendered config entirely (see header).
+          # volumeMounts:
+          #   - { name: envoy-config, mountPath: /etc/envoy }
+          readinessProbe:
+            httpGet: { path: /ready, port: 9901 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /ready, port: 9901 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              # graceful drain: let in-flight requests finish before SIGTERM
+              exec: { command: ["/bin/sh", "-c", "sleep 15"] }
+          resources:
+            requests: { cpu: "250m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "512Mi" }
+
+        # ---- router.svc: gRPC control plane + ext_authz (DS-1, PM-4) ----
+        - name: pod-manager
+          image: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/router-svc:0.1.0
+          ports:
+            - { name: ext-authz, containerPort: 9000 }   # envoy.service.auth.v3.Authorization
+            - { name: grpc,      containerPort: 8804 }   # claim/release/operator RPCs
+          env:
+            - name: SOLUTIONS_SERVICE_GRPC_PORT
+              value: "8804"
+            # Bind Check on this port (must match ENVOY_EXT_AUTHZ_PORT on the envoy container).
+            - name: POD_MANAGER_EXT_AUTHZ_GRPC_PORT
+              value: "9000"
+          readinessProbe:
+            tcpSocket: { port: 8804 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 8804 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+      terminationGracePeriodSeconds: 30
+      # volumes:
+      #   - name: envoy-config
+      #     configMap: { name: envoy-router-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-router
+  namespace: routing
+spec:
+  selector: { app: envoy-router }
+  ports:
+    - { name: traffic, port: 80, targetPort: 10000 }
+    - { name: health,  port: 8080, targetPort: 8080 }
+---
+# AWS Load Balancer Controller provisions/uses the ALB from this Ingress.
+# target-type: ip => ALB sends traffic straight to Envoy pod IPs (no NodePort hop).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: envoy-router
+  namespace: routing
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing      # or internal
+    alb.ingress.kubernetes.io/target-type: ip
+    # HTTP :80 enabled by default; add HTTPS :443 when ACM cert is available:
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # alb.ingress.kubernetes.io/certificate-arn: <ACM_CERT_ARN>
+    # health check goes to the bypass listener, not the proxy listener:
+    alb.ingress.kubernetes.io/healthcheck-port: '8080'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: envoy-router
+                port: { number: 80 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: envoy-router
+  namespace: routing
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: envoy-router
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: envoy-router
+  namespace: routing
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app: envoy-router }
+---
+# =============================================================================
+# EXAMPLE backend (your app). The headless Service is what gives each pod a
+# stable DNS name that ext_authz can return:
+#   backend-0.backend.routing.svc.cluster.local
+#   backend-1.backend.routing.svc.cluster.local  ...
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: routing
+spec:
+  clusterIP: None            # headless => per-pod DNS via StatefulSet
+  selector: { app: backend }
+  ports:
+    - { name: http, port: 8080, targetPort: 8080 }

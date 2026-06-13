@@ -1,0 +1,118 @@
+Model Interpretability - AI Explainability
+
+
+
+Scope
+
+- Applies to complex tabular, time-series, CV, and NLP models where stakeholders need transparent reasoning.
+
+- Targets governance checkpoints: model approval, bias review, production monitoring.
+
+
+
+Decision-Tree Surrogate
+
+- Concept: train a shallow CART/C4.5 tree on the same feature inputs and model predictions (not true labels) to approximate the black-box behavior.
+
+- Workflow:
+
+  1. Split data into train/validation; reserve test data for fidelity checks.
+
+  2. Collect predictions from the primary model; use them as labels for the surrogate.
+
+  3. Train with max_depth ≤ 4 to keep the rules human-consumable; prune via cost-complexity pruning.
+
+  4. Evaluate fidelity: accuracy, macro-F1, and R² between surrogate predictions and black-box outputs (target ≥0.9 when feasible).
+
+- Usage scenarios: credit underwriting rule review, regulated pricing models, feature policy audits.
+
+- Treatments:
+
+  • If fidelity is poor, cluster the prediction space and train multiple local surrogates per cluster.
+
+  • For sparse data, apply feature binning (WOE, quantile bins) before tree training to stabilize splits.
+
+  • Log every extracted rule with coverage %, confidence, and mapped policy IDs for audit trails.
+
+
+
+Attention Maps
+
+- Applicable models: transformers, seq2seq, vision transformers, attention-based tabular nets.
+
+- Techniques:
+
+  • Raw attention visualization: aggregate head-wise attention matrices; highlight top-k tokens or image patches driving the prediction.
+
+  • Grad-CAM / Rollout: combine gradient-based saliency with attention weights for more faithful explanations.
+
+- Operational guidance:
+
+  1. Normalize attention heatmaps per layer to prevent bias toward longer sequences.
+
+  2. Mask sensitive tokens (PII) during visualization for compliance.
+
+  3. Store heatmap tensors for sampled production inferences to support post-hoc investigations.
+
+- Edge cases & fixes:
+
+  • If attention is diffuse (no clear hotspots), switch to Integrated Gradients or SHAP to corroborate.
+
+  • Multi-modal inputs: project attention scores back to each modality separately (text vs image) to avoid misleading overlays.
+
+  • Performance impact: cache intermediate activations only for explainability batches to avoid GPU memory blowups.
+
+
+
+Anchor Explanations
+
+- Definition: high-precision rule snippets (IF conditions) that guarantee the model prediction with ≥95% precision within the covered region.
+
+- Implementation steps:
+
+  1. Use the Anchor algorithm (Ribeiro et al.) with perturbation sampling that respects feature types (categorical frequency sampling, numeric jitter + plausibility constraints).
+
+  2. Configure coverage vs precision trade-off: start with precision threshold 0.95, minimum coverage 3%.
+
+  3. For tabular data, restrict anchor clauses to business-approved feature groups (e.g., demographic, behavioral, risk).
+
+- Monitoring & governance:
+
+  • Track anchor stability over time: recompute weekly on fresh production slices, compare Jaccard similarity with prior anchors.
+
+  • Flag drift when anchors change materially (coverage drop >30% or new clause introduction), triggering model review.
+
+  • Store anchors with metadata: precision, coverage, sample size, mean prediction, associated fairness metrics.
+
+- Treatment strategies:
+
+  • Low coverage anchors: expand perturbation radius or allow multi-valued categorical clauses.
+
+  • Conflicting anchors (same region, different predictions): cluster by latent segments and retrain specialized local models.
+
+  • For text data, combine anchors with n-gram constraints plus attention evidence to ensure linguistic interpretability.
+
+
+
+Cross-Technique Best Practices
+
+- Align artifacts with the dq_feature_lexicon taxonomy: tag each explanation record with `topic_tag=Model Interpretability | AI Explainability`.
+
+- Integrate outputs into community reporting:
+
+  • Document `Decision Tree Surrogate → Model Training` relationships to show oversight flows.
+
+  • Link `Anchors` to compliance requirements, `Attention Maps` to monitoring dashboards.
+
+- Validation:
+
+  • Run counterfactual tests: flip conditions identified by anchors or high-attention tokens to verify model sensitivity.
+
+  • Compare explanations across protected groups to uncover disparate treatment; log disparity metrics with every report.
+
+- Tooling:
+
+  • Use SHAP/Alibi for anchors, Captum/Grad-CAM for attention, scikit-learn for surrogates.
+
+  • Automate via pipelines that trigger explanation generation after every model retrain or drift alert.
+

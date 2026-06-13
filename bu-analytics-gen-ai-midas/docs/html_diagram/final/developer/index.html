@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EXL Decision — Developer Architecture Diagram</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --page-bg:#e8eef5;
+      --font:'Segoe UI','Inter',system-ui,sans-serif;
+      --txt:#1e293b;
+      --muted:#64748b;
+      --border:#cbd5e1;
+
+      /* palette aligned to classic/layered pages */
+      --z-clients:#dce8f5;   --z-clients-b:#6ea8d4;
+      --z-ingress:#d5f0ea;   --z-ingress-b:#4db8a8;
+      --z-identity:#fdf0d5;  --z-identity-b:#d4a820;
+      --z-biz:#d5ecd8;       --z-biz-b:#50a060;
+      --z-agent:#f5d5f5;     --z-agent-b:#c060b8;
+      --z-agents-layer:#f3e8ff;  --z-agents-layer-b:#7c3aed;
+      --z-data:#fde8d5;      --z-data-b:#d47820;
+      --z-compute:#d5eeee;   --z-compute-b:#20a0a0;
+      --z-stores:#ede0f5;    --z-stores-b:#9060c0;
+      --z-platform:#e0f0fa;  --z-platform-b:#93c5fd;
+      --z-ai-agent-platform:#ede9fe;  --z-ai-agent-platform-b:#5b21b6;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--page-bg);color:var(--txt);font-size:13px;line-height:1.45}
+    .page-wrap{display:flex;min-height:100vh}
+
+    /* sidebar */
+    .sidebar{width:230px;min-width:230px;background:#1a1d27;border-right:1px solid #2e3350;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0}
+    .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid #2e3350;margin-bottom:16px}
+    .sidebar-logo h1{font-size:15px;font-weight:700;color:#4f8ef7}
+    .sidebar-logo p{font-size:10px;color:#94a3b8;margin-top:3px}
+    .nav-section{padding:6px 20px 2px;font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
+    .nav-item{display:block;padding:6px 20px;color:#94a3b8;text-decoration:none;font-size:12px;border-left:2px solid transparent;transition:all .15s}
+    .nav-item:hover{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.07)}
+    .nav-item.active{color:#e2e8f0;border-left-color:#4f8ef7;background:rgba(79,142,247,.1);font-weight:600}
+
+    /* main */
+    .main{flex:1;overflow-x:auto;background:var(--page-bg)}
+    .page-header{background:#1e293b;padding:20px 36px 16px;border-bottom:3px solid #2563eb}
+    .page-header h1{font-size:22px;font-weight:900;color:#fff;letter-spacing:1.2px;text-transform:uppercase}
+    .page-header p{color:#94a3b8;font-size:11px;margin-top:5px;max-width:980px}
+    .page-header .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+    .badge{background:#2e3350;border:1px solid #3a4060;color:#94a3b8;font-size:10px;padding:2px 9px;border-radius:10px}
+    .hint-bar{background:#fff8e1;border-bottom:1px solid #fbbf24;padding:7px 36px;font-size:11px;color:#78350f;display:flex;gap:6px;align-items:center}
+    .hint-bar strong{color:#b45309}
+
+    .canvas{padding:24px 28px 60px;min-width:1320px}
+    .legend{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.07);font-size:11px}
+    .leg{display:flex;align-items:center;gap:6px}
+    .leg-b{width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(0,0,0,.12)}
+
+    /* zones + boxes */
+    .zone{border-radius:14px;border:2px solid;padding:12px 12px 14px;position:relative;background:#fff}
+    .zone.has-zone-tt{cursor:help}
+    #diagram .zone.has-zone-tt .box{cursor:pointer}
+    .zone-title{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;padding:2px 14px;border-radius:10px}
+    .zrow{display:grid;grid-template-columns:220px 150px 1fr 250px;gap:14px;align-items:start}
+    .topbar{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+
+    .box{border-radius:10px;border:1.5px solid rgba(0,0,0,.15);padding:10px 10px;cursor:pointer;user-select:none;transition:filter .14s,transform .12s,box-shadow .15s;text-align:center;background:#fff}
+    .box:hover{filter:brightness(1.07);transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+    .bi{font-size:18px;display:block;margin-bottom:3px}
+    .bn{font-size:11px;font-weight:800;color:#1e293b;line-height:1.3}
+    .bs{font-size:9px;color:#475569;margin-top:2px;line-height:1.35}
+    .bp{font-size:8px;color:#64748b;margin-top:2px}
+    .btag{display:inline-block;font-size:8px;font-weight:800;padding:1px 6px;border-radius:10px;margin-top:4px;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.1)}
+    .stack{display:flex;flex-direction:column;gap:10px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .ai-agent-platform-stack{display:grid;grid-template-rows:auto auto;gap:10px;min-width:0;margin-top:20px}
+    .agents-layer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+
+    /* arrow overlay */
+    #diagram{position:relative}
+    #arrow-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:8}
+
+    /* tooltip + details (reuse layered styling) */
+    #tt{position:fixed;pointer-events:none;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;font-size:11px;color:#e2e8f0;max-width:360px;box-shadow:0 8px 28px rgba(0,0,0,.4);z-index:9999;display:none;line-height:1.65}
+    #tt .tt-t{font-weight:700;font-size:12px;margin-bottom:4px;color:#fff}
+    #tt .tt-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-bottom:5px;margin-right:4px}
+    #tt .tt-r{color:#94a3b8;margin-bottom:2px}
+    #tt .tt-lnk{margin-top:6px;color:#4f8ef7;font-size:10px}
+
+    #detail-panel{display:none;margin-top:22px;background:#fff;border:2px solid #2563eb;border-radius:14px;padding:22px 28px 26px;box-shadow:0 4px 24px rgba(37,99,235,.13);position:relative}
+    #detail-panel .dp-close{position:absolute;top:14px;right:16px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;color:#64748b;display:flex;align-items:center;justify-content:center}
+    #detail-panel h2{font-size:17px;font-weight:900;color:#1e293b;margin-bottom:6px}
+    #detail-panel .dp-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+    #detail-panel .dp-badge{font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px}
+    #detail-panel .dp-section h3{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid #e2e8f0}
+    #detail-panel p{font-size:12px;color:#374151;line-height:1.65}
+    #detail-panel .dp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+    #detail-panel .dp-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px}
+    #detail-panel .dp-card h4{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    #detail-panel .dp-jump{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:5px 14px;background:#2563eb;color:#fff;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none}
+
+    .tag-new{background:#dcfce7;color:#14532d}
+    .tag-refactor{background:#fef9c3;color:#713f12}
+    .tag-aws{background:#dbeafe;color:#1e40af}
+    .tag-rest{background:#dbeafe;color:#1e40af}
+    .tag-grpc{background:#ede9fe;color:#5b21b6}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <nav class="sidebar">
+  <div class="sidebar-logo"><h1>EXL Decision</h1><p>Architecture Explorer</p></div>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item" href="../../start-here/index.html">👋 Overview</a>
+
+      <div class="nav-section">Current state</div>
+      <a class="nav-item" href="../../current/index.html">🏛️ Current Architecture (Simplified)</a>
+
+      <div class="nav-section">Future state</div>
+      <a class="nav-item" href="../../future/developer/index.html">🧑‍💻 Developer Architecture Diagram</a>
+      <a class="nav-item" href="../../future/requirements/index.html">📜 Requirements</a>
+      <a class="nav-item" href="../../future/decisions/index.html">⚖️ Architectural decisions</a>
+
+      <div class="nav-section">This diagram</div>
+      <a class="nav-item active" href="index.html">🧑‍💻 Final — Developer Architecture Diagram</a>
+</nav>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Developer Architecture Diagram</h1>
+        <p>Same services/components as the other future-state diagrams, but arranged as a developer-friendly architecture view (central fabrics + orbiting services). Hover for quick summaries, click to expand details.</p>
+        <div class="badges">
+          <span class="badge">14 Microservices</span>
+          <span class="badge">Data Fabric + Compute Fabric centered</span>
+          <span class="badge">Istio mTLS</span>
+          <span class="badge">gRPC internal · REST external</span>
+        </div>
+      </div>
+      <div class="hint-bar">
+        <strong>🖱️ Hover</strong> for quick summary &nbsp;·&nbsp;
+        <strong>🖱️ Click</strong> to expand full details below &nbsp;·&nbsp;
+        <strong>🔗</strong> Use “Open in System Layer Diagram” for canonical detail
+      </div>
+
+      <div class="canvas">
+        <div class="legend">
+          <strong style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.5px">Legend:</strong>
+          <div class="leg"><div class="leg-b" style="background:var(--z-clients);border-color:var(--z-clients-b)"></div>Clients</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-ingress);border-color:var(--z-ingress-b)"></div>Ingress</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-identity);border-color:var(--z-identity-b)"></div>Identity Auth RBAC</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-biz);border-color:var(--z-biz-b)"></div>Business logic</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-ai-agent-platform);border-color:var(--z-ai-agent-platform-b)"></div>AI Agent Platform</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-agents-layer);border-color:var(--z-agents-layer-b)"></div>AI AGENTS</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-agent);border-color:var(--z-agent-b)"></div>AI Agent Fabric</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-data);border-color:var(--z-data-b)"></div>Data Fabric</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-compute);border-color:var(--z-compute-b)"></div>Computation</div>
+          <div class="leg"><div class="leg-b" style="background:var(--z-stores);border-color:var(--z-stores-b)"></div>Stores</div>
+        </div>
+
+        <div id="diagram">
+          <svg id="arrow-svg">
+            <defs>
+              <marker id="a-rest" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#2563eb"/></marker>
+              <marker id="a-grpc" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#7c3aed"/></marker>
+            </defs>
+          </svg>
+
+          <!-- top: platform managed services -->
+          <div class="zone has-zone-tt" style="border-color:var(--z-platform-b);background:var(--z-platform);margin-bottom:18px" data-tt-title="Platform Services (AWS managed)" data-tt-summary="Shared AWS capabilities referenced from the diagram top band: AgentCore runtime anchor, Kubeflow/Argo orchestration, Cognito IdP—not the domain microservices column.">
+            <div class="zone-title" style="background:var(--z-platform-b);color:#1e3a6e">Platform Services (AWS managed)</div>
+            <div class="topbar">
+              <div class="box" id="d-agentcore" style="min-width:190px;border-color:#7c3aed;background:#ede9fe"
+                   data-target="../index.html#agent-platform"
+                   data-tt-title="AWS Bedrock AgentCore"
+                   data-tt-grpc="CreateAgentRuntime · InvokeAgentRuntime (stream)"
+                   data-tt-note="PrivateLink · microVM per session"
+                   data-detail-title="AWS Bedrock AgentCore"
+                   data-detail-status="new"
+                   data-detail-desc="Managed AWS runtime for isolated AI agent execution (microVM per session) and agent memory."
+                   data-detail-components="AgentCoreAdapter (midas-common) — NEW; agentcore_service.py (agent-platform-service) — NEW"
+                   data-detail-endpoints="Runtime: CreateAgentRuntime, InvokeAgentRuntime (stream), DeleteAgentRuntime | Memory: store/retrieve long-term facts"
+                   data-detail-tech="AWS Bedrock AgentCore · PrivateLink · microVM isolation"
+                   data-detail-notes="Abstracted by AgentRuntimePort for cloud portability.">
+                <span class="bi">🧠</span><div class="bn">Bedrock AgentCore</div><div class="bs">Runtime · Memory</div><span class="btag tag-new">NEW</span>
+              </div>
+
+              <div class="box" id="d-kubeflow" style="min-width:190px;border-color:var(--z-compute-b);background:var(--z-compute)"
+                   data-target="../index.html#layer-diagram"
+                   data-tt-title="Kubeflow + Argo"
+                   data-tt-note="Pipelines on EKS · step pods"
+                   data-detail-title="Kubeflow Pipelines + Argo Workflows"
+                   data-detail-status="new"
+                   data-detail-desc="Pipeline orchestration platform used by computation-service to execute ML workflows as step pods."
+                   data-detail-components="kubeflow namespace; argo workflow controller; pipeline step images in ECR"
+                   data-detail-endpoints="Internal KFP API endpoints; run scheduling and status APIs"
+                   data-detail-tech="Kubeflow Pipelines SDK · Argo Workflows"
+                   data-detail-notes="Replaces BackgroundJobManager threads and SQS worker pattern.">
+                <span class="bi">☸️</span><div class="bn">Kubeflow + Argo</div><div class="bs">Pipelines</div>
+              </div>
+
+              <div class="box" id="d-cognito" style="min-width:170px;border-color:var(--z-identity-b);background:var(--z-identity)"
+                   data-target="../index.html#layer-diagram"
+                   data-tt-title="AWS Cognito"
+                   data-tt-note="PKCE OAuth2 · identity-service only"
+                   data-detail-title="AWS Cognito User Pool"
+                   data-detail-status="new"
+                   data-detail-desc="Managed IdP used by identity-service for PKCE OAuth2 authentication flows."
+                   data-detail-components="cognito_service.py (identity-service) — NEW"
+                   data-detail-endpoints="OAuth2 token exchange + hosted UI endpoints (identity-service only)"
+                   data-detail-tech="AWS Cognito · PKCE OAuth2 · PrivateLink"
+                   data-detail-notes="Cognito access_token is not forwarded to downstream services.">
+                <span class="bi">🪪</span><div class="bn">AWS Cognito</div><div class="bs">PKCE OAuth2</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- main grid -->
+          <div class="zrow">
+            <!-- clients -->
+            <div class="zone has-zone-tt" style="border-color:var(--z-clients-b);background:var(--z-clients)" data-tt-title="Clients" data-tt-summary="Human browser and automation/CLI clients—same REST boundary through Istio. No direct datastore access.">
+              <div class="zone-title" style="background:var(--z-clients-b);color:#1e3a6e">Clients</div>
+              <div class="stack" style="margin-top:10px">
+                <div class="box" id="d-browser" style="background:#dbeafe;border-color:#2563eb"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="Web Browser (React SPA)"
+                     data-tt-rest="HTTPS :443 → WAF → ALB → Istio"
+                     data-tt-note="JWT bearer · SSE streams"
+                     data-detail-title="Web Browser — React SPA"
+                     data-detail-status="existing"
+                     data-detail-desc="External client consuming REST APIs via the Istio Gateway."
+                     data-detail-components="React SPA (frontend)"
+                     data-detail-endpoints="REST /api/v1/* via HTTPS :443; SSE streams for progress/output"
+                     data-detail-tech="HTTPS · REST · SSE"
+                     data-detail-notes="No direct gRPC or data-store access from browser.">
+                  <span class="bi">🌐</span><div class="bn">Web Browser</div><div class="bs">React SPA</div><div class="bp">HTTPS :443</div>
+                </div>
+                <div class="box" id="d-cli" style="background:#dbeafe;border-color:#2563eb"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="Developer / CLI"
+                     data-tt-rest="HTTPS :443"
+                     data-tt-note="curl / SDK"
+                     data-detail-title="Developer / CLI"
+                     data-detail-status="existing"
+                     data-detail-desc="CLI / automation client consuming the same REST boundary as the browser."
+                     data-detail-components="Developer scripts / future SDK"
+                     data-detail-endpoints="REST /api/v1/*"
+                     data-detail-tech="REST"
+                     data-detail-notes="Useful for automation and testing.">
+                  <span class="bi">💻</span><div class="bn">Developer / CLI</div><div class="bs">curl · SDK</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ingress -->
+            <div class="zone has-zone-tt" style="border-color:var(--z-ingress-b);background:var(--z-ingress)" data-tt-title="Ingress" data-tt-summary="North–south edge path: WAF → ALB → Istio Gateway (TLS, routing, JWT validation before mesh).">
+              <div class="zone-title" style="background:var(--z-ingress-b);color:#0e4a4a">Ingress</div>
+              <div class="stack" style="margin-top:10px">
+                <div class="box" id="d-waf" style="background:#ccf0ea;border-color:#4db8a8"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="AWS WAF"
+                     data-tt-rest="OWASP · rate limit"
+                     data-tt-note="Blocks bad traffic early"
+                     data-detail-title="AWS WAF"
+                     data-detail-status="existing"
+                     data-detail-desc="WAF in front of ALB."
+                     data-detail-components="Managed WAF rules"
+                     data-detail-endpoints="Protects ALB listener"
+                     data-detail-tech="AWS WAF"
+                     data-detail-notes="OWASP CRS + rate limiting.">
+                  <span class="bi">🔒</span><div class="bn">AWS WAF</div><div class="bs">OWASP · Rate</div>
+                </div>
+                <div class="box" id="d-alb" style="background:#ccf0ea;border-color:#4db8a8"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="AWS ALB"
+                     data-tt-rest="TLS :443 → HTTP :80"
+                     data-tt-note="Entry LB"
+                     data-detail-title="AWS ALB"
+                     data-detail-status="existing"
+                     data-detail-desc="TLS termination and routing to Istio Gateway."
+                     data-detail-components="ALB listener + target group"
+                     data-detail-endpoints=":443 → :80 forward"
+                     data-detail-tech="AWS ALB"
+                     data-detail-notes="Private VPC routing.">
+                  <span class="bi">⚖️</span><div class="bn">AWS ALB</div><div class="bs">TLS terminate</div>
+                </div>
+                <div class="box" id="d-istio" style="background:#ede9fe;border-color:#7c3aed"
+                     data-target="../index.html#layer-diagram"
+                     data-tt-title="Istio Gateway"
+                     data-tt-rest="JWT validation · routing"
+                     data-tt-note="mTLS mesh"
+                     data-detail-title="Istio Ingress Gateway"
+                     data-detail-status="refactor"
+                     data-detail-desc="Ingress gateway + mesh policies (JWT validation, routing)."
+                     data-detail-components="Istio Gateway/VirtualService/RequestAuthentication"
+                     data-detail-endpoints="Routes /api/v1/* to services; upgrades to gRPC internally"
+                     data-detail-tech="Istio · Envoy · mTLS"
+                     data-detail-notes="Coarse traffic policy in mesh; RBAC via authz-service.">
+                  <span class="bi">🕸️</span><div class="bn">Istio Gateway</div><div class="bs">Route · JWT</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- core platform: central fabrics + orbiting services -->
+            <div class="zone has-zone-tt" style="border-color:#94a3b8;background:#f0f4f8" data-tt-title="EXLDecision Services" data-tt-summary="Primary product microservices grid: Identity &amp; RBAC, central Data Fabric, Business Logic, AI Agent Platform (agents + fabric), Compute Fabric below—implements MIDAS behaviour behind the mesh.">
+              <div class="zone-title" style="background:#94a3b8;color:#0f172a">EXLDecision Services</div>
+              <div style="margin-top:12px;display:grid;grid-template-columns:240px 1fr 240px;gap:12px;align-items:start">
+                <!-- left: identity/authz -->
+                <div class="zone has-zone-tt" style="border-color:var(--z-identity-b);background:var(--z-identity)" data-tt-title="Identity · Auth · RBAC" data-tt-summary="identity-service (AuthN), authz-service (RBAC), project-service (workspace anchor). Mutations require authz CheckPermission.">
+                  <div class="zone-title" style="background:var(--z-identity-b);color:#6b3000">Identity Auth RBAC</div>
+                  <div class="stack" style="margin-top:10px">
+                    <div class="box" id="d-identity" style="background:var(--z-identity);border-color:var(--z-identity-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="identity-service"
+                         data-tt-rest="/api/v1/identity/*"
+                         data-tt-grpc="VerifyToken"
+                         data-tt-note="Cognito PKCE + sessions"
+                         data-detail-title="identity-service"
+                         data-detail-status="refactor"
+                         data-detail-desc="Authentication and session service."
+                         data-detail-components="login_routes.py, session_routes.py, jwks_routes.py; identity_servicer.py"
+                         data-detail-endpoints="REST /api/v1/identity/*; gRPC VerifyToken, GetUser"
+                         data-detail-tech="Cognito, Redis, DynamoDB, Secrets Manager"
+                         data-detail-notes="Does not make permission decisions.">
+                      <span class="bi">🪪</span><div class="bn">identity-service</div><div class="bs">AuthN · sessions</div><div class="bp">REST+gRPC</div>
+                    </div>
+                    <div class="box" id="d-authz" style="background:var(--z-identity);border-color:var(--z-identity-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="authz-service (NEW)"
+                         data-tt-grpc="CheckPermission"
+                         data-tt-note="RBAC engine"
+                         data-detail-title="authz-service"
+                         data-detail-status="new"
+                         data-detail-desc="Central RBAC authorisation service."
+                         data-detail-components="authz_servicer.py; rbac_service.py; cache_service.py"
+                         data-detail-endpoints="gRPC CheckPermission, GetUserPermissions"
+                         data-detail-tech="DynamoDB RBAC tables + Redis cache"
+                         data-detail-notes="All services call this for permission checks.">
+                      <span class="bi">🛂</span><div class="bn">authz-service</div><div class="bs">RBAC</div><span class="btag tag-new">NEW</span>
+                    </div>
+                    <div class="box" id="d-project" style="background:var(--z-identity);border-color:var(--z-identity-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="project-service"
+                         data-tt-rest="/api/v1/projects"
+                         data-tt-grpc="GetProject"
+                         data-tt-note="Project CRUD"
+                         data-detail-title="project-service"
+                         data-detail-status="refactor"
+                         data-detail-desc="Project CRUD and ownership."
+                         data-detail-components="project_routes.py; project_servicer.py"
+                         data-detail-endpoints="REST /api/v1/projects; gRPC GetProject"
+                         data-detail-tech="DynamoDB midas-projects"
+                         data-detail-notes="Anchor entity for datasets and training.">
+                      <span class="bi">📁</span><div class="bn">project-service</div><div class="bs">Projects</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- center: data fabric + business (Compute Fabric full-width row below 3-col grid, aligned with future diagram) -->
+                <div style="display:grid;grid-template-rows:auto auto;gap:12px">
+                  <div class="zone has-zone-tt" style="border-color:var(--z-data-b);background:var(--z-data)" data-tt-title="Data Fabric (central)" data-tt-summary="Governed dataset lifecycle in this column: data-fabric-service, upload, download—single StoragePort ownership pattern (REQ-FS-014).">
+                      <div class="zone-title" style="background:var(--z-data-b);color:#7c2d00">Data Fabric (central)</div>
+                      <div class="grid2" style="margin-top:10px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+                      <div class="box" id="d-datafabric" style="background:#fff7ed;border-color:var(--z-data-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="data-fabric-service (NEW)"
+                           data-tt-rest="/api/v1/data/*"
+                           data-tt-grpc="GetDataframe · RegisterArtefact"
+                           data-tt-note="Only owner of S3/S3 Files"
+                           data-detail-title="data-fabric-service"
+                           data-detail-status="new"
+                           data-detail-desc="Single owner of all data lifecycle (upload, splits, artefacts, lineage)."
+                           data-detail-components="data_routes.py; data_fabric_servicer.py; upload_service.py; catalogue_service.py"
+                           data-detail-endpoints="REST /api/v1/data/*; gRPC GetDataframe, RegisterArtefact"
+                           data-detail-tech="S3 + S3 Files + DynamoDB + Redis df cache"
+                           data-detail-notes="No other service reads/writes S3 directly.">
+                        <span class="bi">🗂️</span><div class="bn">data-fabric-service</div><div class="bs">Datasets · Artefacts</div><span class="btag tag-new">NEW</span>
+                      </div>
+                      <div class="box" id="d-dataupload" style="background:#fff7ed;border-color:var(--z-data-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="data-upload-service (NEW)"
+                           data-tt-rest="/api/v1/data-upload/*"
+                           data-tt-grpc="Resumable sessions → data-fabric"
+                           data-tt-note="Fast ingress · policy"
+                           data-detail-title="data-upload-service"
+                           data-detail-status="new"
+                           data-detail-desc="High-performance uploads (multipart/resumable) with authz, quotas, audit; commits via data-fabric-service."
+                           data-detail-components="upload_ingress_routes.py; resumable_session_service.py"
+                           data-detail-endpoints="REST /api/v1/data-upload/*; internal to data-fabric-service"
+                           data-detail-tech="authz-service · data-fabric-service"
+                           data-detail-notes="No direct S3 from clients; StoragePort remains via data-fabric.">
+                        <span class="bi">⬆️</span><div class="bn">data-upload-service</div><div class="bs">Fast upload</div><span class="btag tag-new">NEW</span>
+                      </div>
+                      <div class="box" id="d-datadownload" style="background:#fff7ed;border-color:var(--z-data-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="data-download-service (NEW)"
+                           data-tt-rest="/api/v1/data-download/*"
+                           data-tt-grpc="Stream · presigned → data-fabric"
+                           data-tt-note="Fast egress · audit"
+                           data-detail-title="data-download-service"
+                           data-detail-status="new"
+                           data-detail-desc="High-performance downloads (streaming, ranged, bulk export) with signed access and audit; mediated through data-fabric-service."
+                           data-detail-components="download_egress_routes.py; transfer_policy_service.py"
+                           data-detail-endpoints="REST /api/v1/data-download/*; internal to data-fabric-service"
+                           data-detail-tech="data-fabric-service · CloudWatch audit"
+                           data-detail-notes="Symmetric transfer plane with data-upload-service.">
+                        <span class="bi">⬇️</span><div class="bn">data-download-service</div><div class="bs">Fast download</div><span class="btag tag-new">NEW</span>
+                      </div>
+                      </div>
+                  </div>
+
+                  <div class="zone has-zone-tt" style="border-color:var(--z-biz-b);background:var(--z-biz)" data-tt-title="Business Logic Services" data-tt-summary="Domain services: analytics, llm-service, documentation, evaluation, GraphRAG—stateless HTTP handlers with persistence in owning stores.">
+                    <div class="zone-title" style="background:var(--z-biz-b);color:#14532d">Business Logic Services</div>
+                    <div class="grid2" style="margin-top:10px">
+                      <div class="box" id="d-analytics" style="background:#d1fae5;border-color:var(--z-biz-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="analytics-service"
+                           data-tt-rest="/api/v1/analytics/*"
+                           data-tt-grpc="RunQC"
+                           data-tt-note="Calls data-fabric GetDataframe"
+                           data-detail-title="analytics-service"
+                           data-detail-status="refactor"
+                           data-detail-desc="Stateless QC/DQS + statistics."
+                           data-detail-components="dqs_service.py; variable_review_service.py; analytics_routes.py"
+                           data-detail-endpoints="REST /api/v1/analytics/*; gRPC RunQC/GetResult"
+                           data-detail-tech="DynamoDB results; data-fabric gRPC"
+                           data-detail-notes="Calls authz CheckPermission."
+                      ><span class="bi">📊</span><div class="bn">analytics-service</div><div class="bs">QC · DQS</div></div>
+
+                      <div class="box" id="d-llm" style="background:#d1fae5;border-color:var(--z-biz-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="llm-service"
+                           data-tt-rest="/api/v1/chat/*"
+                           data-tt-grpc="Chat(stream)"
+                           data-tt-note="Calls AI Gateway + GraphRAG"
+                           data-detail-title="llm-service"
+                           data-detail-status="refactor"
+                           data-detail-desc="Single llm-service microservice: `LLMService` + Gateway. Chat persistence and RAG; domain callers move to named **logical agents** on the AI AGENTS band (conversation & routing, data & insights, knowledge graph, embeddings) per REQ-FS-051—not scattered direct imports. AgentCore orchestration stays in agent-platform-service."
+                           data-detail-components="llm_service.py; llm_routing.py; llm_selection.py"
+                           data-detail-endpoints="REST /api/v1/chat/*; gRPC Chat"
+                           data-detail-tech="AI Gateway PrivateLink; DynamoDB messages; Redis selection"
+                           data-detail-notes="REQ-FS-051; agent-platform-service for Bedrock/MCP runs."
+                      ><span class="bi">🤖</span><div class="bn">llm-service</div><div class="bs">Chat · RAG</div></div>
+
+                      <div class="box" id="d-docs" style="background:#d1fae5;border-color:var(--z-biz-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="documentation-service"
+                           data-tt-rest="/api/v1/documentation/*"
+                           data-tt-note="Async jobs"
+                           data-detail-title="documentation-service"
+                           data-detail-status="refactor"
+                           data-detail-desc="LLM-driven documentation generation."
+                           data-detail-components="documentation_routes.py"
+                           data-detail-endpoints="REST /api/v1/documentation/*"
+                           data-detail-tech="S3/S3 Files outputs; DynamoDB jobs"
+                           data-detail-notes="Calls llm-service."
+                      ><span class="bi">📄</span><div class="bn">documentation-service</div><div class="bs">Doc gen</div></div>
+
+                      <div class="box" id="d-eval" style="background:#d1fae5;border-color:var(--z-biz-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="evaluation-service"
+                           data-tt-rest="/api/v1/evaluation/*"
+                           data-tt-grpc="StoreEvaluation"
+                           data-tt-note="Called by pipeline pods"
+                           data-detail-title="evaluation-service"
+                           data-detail-status="refactor"
+                           data-detail-desc="Stores and computes evaluation payloads."
+                           data-detail-components="model_evaluation_service.py"
+                           data-detail-endpoints="REST /api/v1/evaluation/*; gRPC StoreEvaluation"
+                           data-detail-tech="DynamoDB + S3 Files"
+                           data-detail-notes="Consumes pipeline outputs."
+                      ><span class="bi">📈</span><div class="bn">evaluation-service</div><div class="bs">MEEA</div></div>
+
+                      <div class="box" id="d-graphrag" style="grid-column:span 2;background:#d1fae5;border-color:var(--z-biz-b)"
+                           data-target="../index.html#layer-diagram"
+                           data-tt-title="graphrag-service"
+                           data-tt-rest="/api/v1/graphrag/*"
+                           data-tt-grpc="VectorSearch"
+                           data-tt-note="OpenSearch Serverless"
+                           data-detail-title="graphrag-service"
+                           data-detail-status="refactor"
+                           data-detail-desc="Knowledge graph + vector search for RAG."
+                           data-detail-components="graphrag_service.py; vector_store.py (FAISS→OpenSearch)"
+                           data-detail-endpoints="REST /api/v1/graphrag/*; gRPC VectorSearch"
+                           data-detail-tech="OpenSearch Serverless; S3 Files; DynamoDB metadata"
+                           data-detail-notes="Replaces FAISS on local disk."
+                      ><span class="bi">🕸️</span><div class="bn">graphrag-service</div><div class="bs">KG · Vector search</div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- right: AI Agent Platform (AI AGENTS + AI Agent Fabric) -->
+                <div class="zone has-zone-tt" style="border-color:var(--z-ai-agent-platform-b);background:linear-gradient(180deg,var(--z-ai-agent-platform) 0%,#f5f3ff 100%);min-width:0" data-tt-title="AI Agent Platform" data-tt-summary="AI AGENTS band: shipped OOB catalogue (REQ-FS-048) plus four llm-service logical agents (REQ-FS-051). Below: AI Agent Fabric—agent-platform-service. Not a second copy of business-logic services.">
+                  <div class="zone-title" style="background:linear-gradient(90deg,var(--z-ai-agent-platform-b),#6d28d9);color:#fff">AI Agent Platform</div>
+                <div class="ai-agent-platform-stack">
+                <div class="zone has-zone-tt" style="border-color:var(--z-agents-layer-b);background:var(--z-agents-layer)" data-tt-title="AI AGENTS" data-tt-summary="Shipped OOB agent definitions in the catalogue (REQ-FS-048; run via agent-platform-service) beside four logical agents inside llm-service—conversation & routing, data & insights, knowledge graph, embeddings (REQ-FS-051). Two different concerns on one band.">
+                  <div class="zone-title" style="background:var(--z-agents-layer-b);color:#fff">AI AGENTS</div>
+                  <div class="agents-layer-grid" style="margin-top:10px">
+                    <div class="box" id="d-oob-agents" style="background:#faf5ff;border-color:var(--z-agents-layer-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="Shipped agent definitions (OOB)"
+                         data-tt-summary="Not a separate microservice—first-party agent types seeded in the agent catalogue (`is_ootb`) and executed through agent-platform-service like any registered agent (REQ-FS-048; product requirement AGENT-008 / §10.6 in backend reference)."
+                         data-tt-note="Same runtime as custom agents"
+                         data-detail-title="Shipped OOB agent definitions"
+                         data-detail-status="new"
+                         data-detail-desc="Programme-owned agent archetypes (e.g. data QA, train, insight, documentation, pipeline-builder) that ship with the product and appear in the catalogue for tenants. Persistence and invocation go through **agent-platform-service** / AgentCore and MCP tools—this diagram tile marks **product catalogue scope**, not an extra deployable next to the fabric."
+                         data-detail-components="DynamoDB catalogue rows · manifests · CI-published agent images"
+                         data-detail-endpoints="REST/SSE via agent-platform-service (same path as other catalogue agents)"
+                         data-detail-tech="Catalogue in DynamoDB; execution on AI Agent Fabric"
+                         data-detail-notes="REQ-FS-048. Distinct from the four **logical agents** in llm-service (REQ-FS-051)."
+                    ><span class="bi">📦</span><div class="bn">Shipped OOB agents</div><div class="bs">Catalogue</div><span class="btag tag-new">NEW</span></div>
+                    <div class="box" id="d-llm-agent-chat" style="background:#faf5ff;border-color:var(--z-agents-layer-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="Conversation & routing agent (logical)"
+                         data-detail-title="Conversation & routing agent (logical)"
+                         data-detail-desc="Logical llm-service surface: chat, routing, guardrails (`llm_service.py` + `llm_routing`). REQ-FS-051."
+                    ><span class="bi">💬</span><div class="bn">Conversation & routing agent</div><div class="bs">Chat · guard · intent</div><span class="btag tag-refactor">REFACTOR</span></div>
+                    <div class="box" id="d-llm-agent-data" style="background:#faf5ff;border-color:var(--z-agents-layer-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="Data & insights agent (logical)"
+                         data-detail-title="Data & insights agent (logical)"
+                         data-detail-desc="Data narratives, insights, DQS—grouped methods in llm-service. REQ-FS-051."
+                    ><span class="bi">📊</span><div class="bn">Data & insights agent</div><div class="bs">Stats · DQS · narratives</div><span class="btag tag-refactor">REFACTOR</span></div>
+                    <div class="box" id="d-llm-agent-kg" style="background:#faf5ff;border-color:var(--z-agents-layer-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="Knowledge graph build agent (logical)"
+                         data-detail-title="Knowledge graph build agent (logical)"
+                         data-detail-desc="KG generation batch path in llm-service. REQ-FS-051."
+                    ><span class="bi">🕸️</span><div class="bn">Knowledge graph agent</div><div class="bs">Build KG · validate</div><span class="btag tag-refactor">REFACTOR</span></div>
+                    <div class="box" id="d-llm-agent-embed" style="background:#faf5ff;border-color:var(--z-agents-layer-b)"
+                         data-target="../index.html#layer-diagram"
+                         data-tt-title="Embeddings agent (logical)"
+                         data-detail-title="Embeddings agent (logical)"
+                         data-detail-desc="Embeddings only (`get_embeddings`). REQ-FS-051."
+                    ><span class="bi">🔢</span><div class="bn">Embeddings agent</div><div class="bs">Text → vectors</div><span class="btag tag-refactor">REFACTOR</span></div>
+                  </div>
+                </div>
+                <div class="zone has-zone-tt" style="border-color:var(--z-agent-b);background:var(--z-agent)" data-tt-title="AI Agent Fabric" data-tt-summary="agent-platform-service: AgentCore sessions, tools, RBAC before side effects. Single tile here in this view.">
+                  <div class="zone-title" style="background:var(--z-agent-b);color:#701a75">AI Agent Fabric</div>
+                  <div class="stack" style="margin-top:10px">
+                    <div class="box" id="d-agent" style="background:#fae8ff;border-color:var(--z-agent-b)"
+                         data-target="../index.html#agent-platform"
+                         data-tt-title="agent-platform-service (NEW)"
+                         data-tt-rest="/api/v1/agents/*"
+                         data-tt-grpc="InvokeAgent(stream)"
+                         data-tt-note="24 MCP tools"
+                         data-detail-title="agent-platform-service"
+                         data-detail-status="new"
+                         data-detail-desc="AI Agent Fabric: AgentCore runtime, tool registry, sessions—implements fabric APIs for the AI AGENTS above."
+                         data-detail-components="agent_routes.py, tool_routes.py, memory_routes.py; tool_registry; tools/*.py"
+                         data-detail-endpoints="REST /api/v1/agents/*; gRPC InvokeAgent"
+                         data-detail-tech="AgentCore; DynamoDB agent tables; Redis agent keys"
+                         data-detail-notes="RBAC enforced on every tool call."
+                    ><span class="bi">🧠</span><div class="bn">agent-platform-service</div><div class="bs">Runtime · Tools</div><span class="btag tag-new">NEW</span></div>
+                  </div>
+                </div>
+                </div>
+                </div>
+              </div>
+
+              <!-- Compute Fabric: below AI Agent Platform, above Data Stores (mirrors future: below AI Agent Platform envelope, above network/data stack) -->
+              <div class="zone compute-fabric-band has-zone-tt" style="border-color:var(--z-compute-b);background:var(--z-compute);margin-top:12px;width:100%;box-sizing:border-box" data-tt-title="Compute Fabric" data-tt-summary="computation-service facade over Kubeflow/Argo: pipelines and runs as pods on EKS.">
+                <div class="zone-title" style="background:var(--z-compute-b);color:#0e4a4a">Compute Fabric</div>
+                <div class="topbar" style="margin-bottom:0;justify-content:center">
+                  <div class="box" id="d-computation" style="min-width:240px;max-width:min(100%,520px);background:#cffafa;border-color:var(--z-compute-b)"
+                       data-target="../index.html#layer-diagram"
+                       data-tt-title="computation-service (NEW)"
+                       data-tt-rest="/api/v1/computation/*"
+                       data-tt-grpc="SubmitRun · GetRunStatus"
+                       data-tt-note="Kubeflow facade"
+                       data-detail-title="computation-service"
+                       data-detail-status="new"
+                       data-detail-desc="Pipeline authoring + run orchestration facade over Kubeflow."
+                       data-detail-components="pipeline_routes.py; component_routes.py; run_routes.py; kubeflow_service.py"
+                       data-detail-endpoints="REST /api/v1/computation/*; gRPC SubmitRun"
+                       data-detail-tech="Kubeflow Pipelines + Argo Workflows; DynamoDB catalog; Redis progress"
+                       data-detail-notes="Replaces thread-based ML execution.">
+                    <span class="bi">⚡</span><div class="bn">computation-service</div><div class="bs">Pipelines · Runs</div><span class="btag tag-new">NEW</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- stores -->
+            <div class="zone has-zone-tt" style="border-color:var(--z-stores-b);background:var(--z-stores)" data-tt-title="Data Stores" data-tt-summary="Durable stores used across services: DynamoDB, Redis, S3 in this band—each microservice owns its tables/buckets via ports.">
+              <div class="zone-title" style="background:var(--z-stores-b);color:#4a1060">Data Stores</div>
+              <div class="stack" style="margin-top:10px">
+                <div class="box" id="d-dynamo" style="background:#f3e8ff;border-color:var(--z-stores-b)"
+                     data-target="../index.html#storage"
+                     data-tt-title="DynamoDB"
+                     data-tt-note="16 tables"
+                     data-detail-title="DynamoDB"
+                     data-detail-status="existing"
+                     data-detail-desc="Primary durable database for all services."
+                     data-detail-components="NoSQLPort + DynamoDBAdapter"
+                     data-detail-endpoints="16 tables (users, roles, data-catalog, pipelines, agents, ...)"
+                     data-detail-tech="AWS DynamoDB · PrivateLink"
+                     data-detail-notes="Each service owns its tables; no direct cross-service table reads."
+                ><span class="bi">🗃️</span><div class="bn">DynamoDB</div><div class="bs">16 tables</div></div>
+
+                <div class="box" id="d-redis" style="background:#cffafa;border-color:#0891b2"
+                     data-target="../index.html#storage"
+                     data-tt-title="ElastiCache Redis"
+                     data-tt-note="sessions · authz · df cache"
+                     data-detail-title="ElastiCache Redis"
+                     data-detail-status="existing"
+                     data-detail-desc="Caching and pub/sub."
+                     data-detail-components="CachePort + RedisAdapter"
+                     data-detail-endpoints="session:{jti}, authz:{uid}:{res}, df:{id}:{scope}, train:progress:{id}"
+                     data-detail-tech="AWS ElastiCache Redis"
+                     data-detail-notes="Replaces all in-process caching for correctness."
+                ><span class="bi">⚡</span><div class="bn">ElastiCache Redis</div><div class="bs">Cache · Pub/Sub</div></div>
+
+                <div class="box" id="d-s3" style="background:#fff7ed;border-color:#ea580c"
+                     data-target="../index.html#storage"
+                     data-tt-title="S3 + S3 Files"
+                     data-tt-note="raw · parquet · artefacts"
+                     data-detail-title="S3 + S3 Files"
+                     data-detail-status="existing"
+                     data-detail-desc="Object + file storage owned by data-fabric-service."
+                     data-detail-components="StoragePort + S3Adapter + S3FilesAdapter"
+                     data-detail-endpoints="midas-raw/, midas-datasets/, midas-artefacts/"
+                     data-detail-tech="AWS S3 · AWS S3 Files"
+                     data-detail-notes="Only data-fabric-service reads/writes directly."
+                ><span class="bi">🪣</span><div class="bn">S3 + S3 Files</div><div class="bs">Raw · Artefacts</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- details panel -->
+          <div id="detail-panel" aria-live="polite">
+            <div class="dp-close" title="Close">✕</div>
+            <h2 id="dp-title">Component details</h2>
+            <div class="dp-badges" id="dp-badges"></div>
+            <div class="dp-section">
+              <h3>What it is</h3>
+              <p id="dp-desc"></p>
+            </div>
+            <div class="dp-grid">
+              <div class="dp-card"><h4>Software components</h4><p id="dp-components"></p></div>
+              <div class="dp-card"><h4>Endpoints / APIs</h4><p id="dp-endpoints"></p></div>
+            </div>
+            <div class="dp-grid">
+              <div class="dp-card"><h4>Technology</h4><p id="dp-tech"></p></div>
+              <div class="dp-card"><h4>Notes</h4><p id="dp-notes"></p></div>
+            </div>
+            <div class="dp-section" id="dp-req-wrap">
+              <h3>Requirements</h3>
+              <p id="dp-req-line"></p>
+              <a class="dp-jump" id="dp-req-link" href="#" style="background:#059669;margin-top:4px">View requirements for this component</a>
+            </div>
+            <a class="dp-jump" id="dp-jump" href="../index.html#layer-diagram">Open in System Layer Diagram</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="tt"></div>
+
+  <script src="../requirements/requirements-data.js"></script>
+  <script>
+    // tooltip
+    const tt = document.getElementById('tt');
+    function showTt(e, el){
+      const title = el.dataset.ttTitle || '';
+      const rest  = el.dataset.ttRest  || '';
+      const grpc  = el.dataset.ttGrpc  || '';
+      const note  = el.dataset.ttNote  || '';
+      const status = (el.dataset.detailStatus || '').toLowerCase();
+      const shortDesc = el.dataset.detailDesc || '';
+      let h = `<div class="tt-t">${title}</div>`;
+      if(status){
+        const cls = status === 'new' ? 'tag-new' : (status === 'refactor' ? 'tag-refactor' : 'tag-aws');
+        h += `<div class="tt-badge ${cls}">${status.toUpperCase()}</div>`;
+      }
+      if(shortDesc) h += `<div class="tt-r">${shortDesc}</div>`;
+      if(rest) h += `<div class="tt-r"><span style="color:#93c5fd">REST:</span> ${rest.replace(/\n/g,'<br/>')}</div>`;
+      if(grpc) h += `<div class="tt-r"><span style="color:#a78bfa">gRPC:</span> ${grpc.replace(/\n/g,'<br/>')}</div>`;
+      if(note) h += `<div class="tt-r">${note.replace(/\n/g,'<br/>')}</div>`;
+      h += `<div class="tt-lnk">🖱️ Click → Expand details below</div>`;
+      tt.innerHTML = h; tt.style.display = 'block'; moveTt(e);
+    }
+    function hideTt(){ tt.style.display = 'none'; }
+    function moveTt(e){
+      const x=e.clientX+14,y=e.clientY+14,tw=tt.offsetWidth,th=tt.offsetHeight;
+      tt.style.left=(x+tw>window.innerWidth?e.clientX-tw-14:x)+'px';
+      tt.style.top =(y+th>window.innerHeight?e.clientY-th-14:y)+'px';
+    }
+
+    // details panel
+    const dp=document.getElementById('detail-panel');
+    const dpTitle=document.getElementById('dp-title');
+    const dpBadges=document.getElementById('dp-badges');
+    const dpDesc=document.getElementById('dp-desc');
+    const dpComponents=document.getElementById('dp-components');
+    const dpEndpoints=document.getElementById('dp-endpoints');
+    const dpTech=document.getElementById('dp-tech');
+    const dpNotes=document.getElementById('dp-notes');
+    const dpJump=document.getElementById('dp-jump');
+
+    function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+    function ttFmtZone(s){ return escapeHtml(s||'').replace(/\n/g,'<br/>'); }
+    function showZoneTt(e, el){
+      const title = el.dataset.ttTitle || '';
+      const rest  = el.dataset.ttRest  || '';
+      const note  = el.dataset.ttNote  || '';
+      const hoverSummary = (el.dataset.ttSummary || '').trim();
+      let h = `<div class="tt-t">${escapeHtml(title)} <span style="font-size:9px;font-weight:700;opacity:.72;text-transform:uppercase;letter-spacing:.06em">Layer</span></div>`;
+      if(hoverSummary){
+        h += `<div class="tt-r" style="color:#cbd5e1;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">What this group is</div>`;
+        h += `<div class="tt-r">${ttFmtZone(hoverSummary)}</div>`;
+      }
+      if(rest) h += `<div class="tt-r"><span style="color:#93c5fd">Note:</span> ${rest.replace(/\n/g,'<br/>')}</div>`;
+      if(note) h += `<div class="tt-r">${note.replace(/\n/g,'<br/>')}</div>`;
+      tt.innerHTML = h; tt.style.display = 'block'; moveTt(e);
+    }
+    function fmt(s){return escapeHtml(s||'').replace(/\n/g,'<br/>').replace(/\s\|\s/g,'<br/>');}
+    function statusBadge(status){
+      const st=(status||'').toLowerCase(); if(!st) return '';
+      const cls=st==='new'?'tag-new':(st==='refactor'?'tag-refactor':'tag-aws');
+      return `<span class="dp-badge ${cls}">${st.toUpperCase()}</span>`;
+    }
+    function openDetail(el){
+      const title=el.dataset.detailTitle||el.dataset.ttTitle||'Component';
+      const status=el.dataset.detailStatus||'';
+      dpTitle.textContent=title;
+      dpBadges.innerHTML=statusBadge(status)+`<span class="dp-badge tag-rest">REST boundary</span><span class="dp-badge tag-grpc">gRPC internal</span>`;
+      dpDesc.innerHTML=fmt(el.dataset.detailDesc||'');
+      dpComponents.innerHTML=fmt(el.dataset.detailComponents||'');
+      dpEndpoints.innerHTML=fmt(el.dataset.detailEndpoints||el.dataset.ttRest||'');
+      dpTech.innerHTML=fmt(el.dataset.detailTech||'');
+      dpNotes.innerHTML=fmt(el.dataset.detailNotes||el.dataset.ttNote||'');
+      dpJump.setAttribute('href', el.dataset.target || '../index.html#layer-diagram');
+      const rw=document.getElementById('dp-req-wrap');
+      const rl=document.getElementById('dp-req-line');
+      const rlk=document.getElementById('dp-req-link');
+      const nid=el.id||'';
+      if(rw&&rl&&rlk){
+        if(!nid){rw.style.display='none';}
+        else{
+          rw.style.display='block';
+          const regs=window.MIDAS_REQUIREMENTS||[];
+          const n=regs.filter(function(r){return r.nodeIds.indexOf(nid)!==-1;}).length;
+          if(n===0){
+            rl.textContent='No requirements are mapped to this component in the register yet.';
+            rlk.style.display='none';
+          }else{
+            rl.textContent=n+' related requirement'+(n===1?'':'s')+' in the register.';
+            rlk.style.display='inline-flex';
+            rlk.setAttribute('href','../requirements/index.html?node='+encodeURIComponent(nid));
+          }
+        }
+      }
+      dp.style.display='block';
+      dp.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    dp.querySelector('.dp-close').addEventListener('click',()=>dp.style.display='none');
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') dp.style.display='none'; });
+
+    document.querySelectorAll('.box').forEach(el=>{
+      el.addEventListener('mouseenter',e=>showTt(e,el));
+      el.addEventListener('mousemove',moveTt);
+      el.addEventListener('mouseleave',hideTt);
+      el.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openDetail(el);});
+    });
+
+    (function zoneTooltips(){
+      const diag=document.getElementById('diagram');
+      if(!diag) return;
+      diag.addEventListener('mousemove',function(e){
+        if(e.target.closest&&e.target.closest('.box')) return;
+        const z=e.target.closest&&e.target.closest('.zone.has-zone-tt');
+        if(!z){ hideTt(); return; }
+        showZoneTt(e,z);
+      });
+      diag.addEventListener('mouseleave',hideTt);
+    })();
+
+    // arrows (minimal, key flows)
+    window.addEventListener('load',drawArrows);
+    window.addEventListener('resize',drawArrows);
+    function drawArrows(){
+      const svg=document.getElementById('arrow-svg');
+      [...svg.children].forEach(c=>{ if(c.tagName!=='defs') c.remove(); });
+      const diag=document.getElementById('diagram'); if(!diag) return;
+      const dr=diag.getBoundingClientRect();
+      const mid=(id)=>{const el=document.getElementById(id); if(!el) return null; const r=el.getBoundingClientRect(); return {cx:r.left-dr.left+r.width/2, cy:r.top-dr.top+r.height/2, l:r.left-dr.left, r:r.right-dr.left};};
+      const arrows=[
+        {f:'d-browser', t:'d-waf', type:'rest', label:'HTTPS'},
+        {f:'d-istio', t:'d-identity', type:'rest', label:'/api/v1'},
+        {f:'d-istio', t:'d-datafabric', type:'rest', label:''},
+        {f:'d-istio', t:'d-computation', type:'rest', label:''},
+        {f:'d-analytics', t:'d-datafabric', type:'grpc', label:'GetDataframe'},
+        {f:'d-computation', t:'d-kubeflow', type:'grpc', label:'kfp'},
+        {f:'d-agent', t:'d-agentcore', type:'grpc', label:'runtime'},
+      ];
+      const colors={rest:'#2563eb',grpc:'#7c3aed'};
+      const markers={rest:'a-rest',grpc:'a-grpc'};
+      arrows.forEach(a=>{
+        const f=mid(a.f),t=mid(a.t); if(!f||!t) return;
+        const x1=f.r, y1=f.cy, x2=t.l, y2=t.cy;
+        const mx=(x1+x2)/2;
+        const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+        p.setAttribute('d',`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+        p.setAttribute('fill','none');
+        p.setAttribute('stroke',colors[a.type]);
+        p.setAttribute('stroke-width','1.6');
+        p.setAttribute('stroke-opacity','0.65');
+        p.setAttribute('marker-end',`url(#${markers[a.type]})`);
+        svg.appendChild(p);
+        if(a.label){
+          const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+          tx.setAttribute('x',mx); tx.setAttribute('y',(y1+y2)/2-4);
+          tx.setAttribute('text-anchor','middle');
+          tx.setAttribute('fill',colors[a.type]);
+          tx.setAttribute('font-size','8');
+          tx.setAttribute('opacity','0.85');
+          tx.textContent=a.label;
+          svg.appendChild(tx);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+

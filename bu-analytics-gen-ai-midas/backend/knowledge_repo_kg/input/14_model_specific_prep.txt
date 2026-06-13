@@ -1,0 +1,34 @@
+kb:
+  model_specific_prep:
+    lightgbm:
+      categorical_features: auto
+      early_stopping_rounds: 100
+      encoding: none
+      missing_value_handling: native
+      monotonic_constraints: true
+    logistic_regression:
+      binning: woe_transformation
+      handle_multicollinearity: true
+      polynomial_features:
+        degree: 2
+        interaction_only: true
+      regularization: elastic_net
+      scaling: standard
+    neural_networks:
+      batch_normalization: true
+      dropout_rate: 0.2
+      embedding_dims:
+        formula: min(50, cardinality//2)
+      numerical_binning: quantile
+      scaling: minmax
+    random_forest:
+      bootstrap_features: true
+      encoding: ordinal
+      handle_missing: separate_category
+      max_cardinality: 100
+    xgboost:
+      categorical_features: category_dtype
+      encoding: label
+      interaction_constraints: based_on_domain
+      missing_value_handling: native
+      monotonic_constraints_mapping: true

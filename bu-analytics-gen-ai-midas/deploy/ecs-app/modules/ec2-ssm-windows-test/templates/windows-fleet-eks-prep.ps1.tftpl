@@ -1,0 +1,76 @@
+# First-boot prep for Fleet Manager Remote Desktop (DCV) and optional EKS kubectl (Ubuntu jumpbox parity).
+# Fleet Manager requires SSM Agent 3.0.222.0+, default RDP listener on 3389, and PSReadLine 2.2.2+ on Windows Server 2022.
+# See: https://docs.aws.amazon.com/systems-manager/latest/userguide/fleet-rdp.html
+# Your console IAM identity must also allow ssm-guiconnect:StartConnection, GetConnection, CancelConnection, ListConnections.
+$ErrorActionPreference = "Continue"
+
+function Write-BootstrapLog {
+  param([string]$Message)
+  Write-Host "[windows-ssm-eks-prep] $Message"
+}
+
+try {
+  Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0 -ErrorAction Stop
+  Enable-NetFirewallRule -DisplayGroup "Remote Desktop" -ErrorAction SilentlyContinue
+  Set-Service -Name TermService -StartupType Automatic -ErrorAction SilentlyContinue
+  Start-Service -Name TermService -ErrorAction SilentlyContinue
+  Write-BootstrapLog "Remote Desktop service and firewall rules enabled for Fleet Manager."
+} catch {
+  Write-BootstrapLog "WARN: RDP enable step: $($_.Exception.Message)"
+}
+
+try {
+  $agentMsi = "$env:TEMP\AmazonSSMAgentSetup.exe"
+  Invoke-WebRequest -Uri "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/windows_amd64/AmazonSSMAgentSetup.exe" -OutFile $agentMsi -UseBasicParsing
+  Start-Process -FilePath $agentMsi -ArgumentList "/quiet" -Wait -NoNewWindow
+  Remove-Item -Force $agentMsi -ErrorAction SilentlyContinue
+  Write-BootstrapLog "SSM Agent install or upgrade attempted from Amazon S3 build."
+} catch {
+  Write-BootstrapLog "WARN: SSM Agent upgrade: $($_.Exception.Message)"
+}
+
+try {
+  Restart-Service -Name "AmazonSSMAgent" -Force -ErrorAction Stop
+  Write-BootstrapLog "Amazon SSM Agent service restarted so a new agent version is active."
+} catch {
+  Write-BootstrapLog "WARN: SSM Agent restart: $($_.Exception.Message)"
+}
+
+try {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers | Out-Null
+  Install-Module -Name PSReadLine -MinimumVersion 2.2.2 -Force -Scope AllUsers -AllowClobber -Repository PSGallery
+  Write-BootstrapLog "PSReadLine module updated for Fleet Manager keyboard support."
+} catch {
+  Write-BootstrapLog "WARN: PSReadLine install: $($_.Exception.Message)"
+}
+
+%{ if enable_eks_client_tools ~}
+try {
+  $awsExe = "C:\Program Files\Amazon\AWSCLIV2\aws.exe"
+  if (-not (Test-Path $awsExe)) {
+    $cliMsi = "$env:TEMP\AWSCLIV2.msi"
+    Invoke-WebRequest -Uri "https://awscli.amazonaws.com/AWSCLIV2/AWSCLIV2.msi" -OutFile $cliMsi -UseBasicParsing
+    Start-Process -FilePath msiexec.exe -ArgumentList @("/i", $cliMsi, "/qn") -Wait -NoNewWindow
+    Remove-Item -Force $cliMsi -ErrorAction SilentlyContinue
+    Write-BootstrapLog "AWS CLI v2 installed."
+  }
+  $kubectlUrl = "https://dl.k8s.io/release/v${kubernetes_version}/bin/windows/amd64/kubectl.exe"
+  $kubectlDir = "C:\Program Files\Kubernetes"
+  $kubectlExe = Join-Path $kubectlDir "kubectl.exe"
+  New-Item -ItemType Directory -Force -Path $kubectlDir | Out-Null
+  Invoke-WebRequest -Uri $kubectlUrl -OutFile $kubectlExe -UseBasicParsing
+  $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+  foreach ($p in @("C:\Program Files\Amazon\AWSCLIV2", $kubectlDir)) {
+    if ((Test-Path $p) -and ($machinePath -notlike "*$p*")) {
+      $machinePath = "$machinePath;$p"
+    }
+  }
+  [Environment]::SetEnvironmentVariable("Path", $machinePath, "Machine")
+  Write-BootstrapLog "kubectl v${kubernetes_version} installed."
+} catch {
+  Write-BootstrapLog "WARN: EKS client install: $($_.Exception.Message)"
+}
+%{ endif ~}
+
+Write-BootstrapLog "Bootstrap finished."

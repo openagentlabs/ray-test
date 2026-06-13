@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAA Excel Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .excel-container {
+            background: white;
+            border: 1px solid #d4d4d4;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .sheet-tabs {
+            background: #f0f0f0;
+            border-bottom: 1px solid #d4d4d4;
+            padding: 0;
+            display: flex;
+            overflow-x: auto;
+        }
+        .sheet-tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-right: 1px solid #d4d4d4;
+            background: #e8e8e8;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .sheet-tab:hover {
+            background: #ddd;
+        }
+        .sheet-tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        .sheet-content {
+            display: none;
+            padding: 0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .sheet-content.active {
+            display: block;
+        }
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .excel-table th {
+            background: #4472c4;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #365899;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .excel-table td {
+            padding: 6px 8px;
+            border: 1px solid #d4d4d4;
+            vertical-align: top;
+        }
+        .excel-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .excel-table tr:hover {
+            background: #e3f2fd;
+        }
+        .section-header {
+            background: #2c5aa0 !important;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        .subsection-header {
+            background: #5b9bd5 !important;
+            color: white;
+            font-weight: bold;
+        }
+        .category-cell {
+            background: #dce6f1;
+            font-weight: bold;
+        }
+        .code-cell {
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            font-size: 11px;
+        }
+        .parameter-cell {
+            background: #fdf2e9;
+        }
+        .output-cell {
+            background: #e8f5e8;
+        }
+        .methodology-cell {
+            background: #f3e5f5;
+        }
+        .download-btn {
+            margin: 10px 0;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .download-btn:hover {
+            background: #218838;
+        }
+        .cell-wide {
+            max-width: 400px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="excel-container">
+        <div class="sheet-tabs">
+            <div class="sheet-tab active" onclick="showSheet(0)">Overview</div>
+            <div class="sheet-tab" onclick="showSheet(1)">Agent Definition</div>
+            <div class="sheet-tab" onclick="showSheet(2)">Methodologies</div>
+            <div class="sheet-tab" onclick="showSheet(3)">Workflow Steps</div>
+            <div class="sheet-tab" onclick="showSheet(4)">Implementation</div>
+            <div class="sheet-tab" onclick="showSheet(5)">Integration</div>
+            <div class="sheet-tab" onclick="showSheet(6)">Parameters</div>
+        </div>
+
+        <!-- Overview Sheet -->
+        <div class="sheet-content active">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%">Component</th>
+                        <th style="width: 75%">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="2" class="section-header">SEGMENTATION ANALYSIS AGENT (SAA) OVERVIEW</td></tr>
+                    <tr>
+                        <td class="category-cell">Purpose</td>
+                        <td>Identify heterogeneous sub-populations within data and determine if building specialized local models will improve predictive accuracy compared to a single global model</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Primary Objective</td>
+                        <td>Maximize predictive performance of supervised classification models by proposing optimal segmentation strategy, balancing accuracy gains against increased model complexity</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Key Decision</td>
+                        <td>Adopt Segmentation vs. Use Global Model (based on performance uplift threshold)</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Workflow Position</td>
+                        <td>Between Feature Engineering Agent and Model Training Agent(s)</td>
+                    </tr>
+                    <tr><td colspan="2" class="section-header">CORE CAPABILITIES</td></tr>
+                    <tr>
+                        <td class="category-cell">Segmentation Methods</td>
+                        <td>• Supervised Decision Trees (CART/CHAID)<br>• Residual Analysis (Error Detection)<br>• Interaction Analysis (SHAP-based)</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Evaluation Approach</td>
+                        <td>Cross-validated performance comparison between global model and weighted local models with statistical significance testing</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Dynamic Adaptation</td>
+                        <td>If segmentation recommended: triggers parallel model training paths<br>If global recommended: continues with single model path</td>
+                    </tr>
+                    <tr><td colspan="2" class="section-header">SUCCESS METRICS</td></tr>
+                    <tr>
+                        <td class="category-cell">Performance Metrics</td>
+                        <td>AUC, F1-Score, Gini Coefficient (user-configurable)</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Minimum Uplift</td>
+                        <td>Configurable threshold to justify segmentation complexity</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Segment Viability</td>
+                        <td>Statistical significance testing + minimum segment size enforcement</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Agent Definition Sheet -->
+        <div class="sheet-content">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%">Category</th>
+                        <th style="width: 25%">Item</th>
+                        <th style="width: 55%">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="section-header">INPUTS</td></tr>
+                    <tr>
+                        <td class="category-cell" rowspan="4">Core Data</td>
+                        <td>Training Dataset</td>
+                        <td>Cleaned and feature-engineered data with features (X) and target (y)</td>
+                    </tr>
+                    <tr>
+                        <td>Target Variable Identifier</td>
+                        <td>Name/column identifier of the classification target variable</td>
+                    </tr>
+                    <tr>
+                        <td>Optimization Metric</td>
+                        <td>Key metric to maximize: AUC, F1-Score, Gini, Precision, Recall</td>
+                    </tr>
+                    <tr>
+                        <td>Model Algorithm</td>
+                        <td>Algorithm for final model (XGBoost, Logistic Regression, Random Forest, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell" rowspan="3">Configuration</td>
+                        <td class="parameter-cell">min_segment_size</td>
+                        <td>Minimum threshold (absolute count or percentage) for viable segment</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">max_segments</td>
+                        <td>Maximum number of segments allowed to control complexity</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">min_uplift_threshold</td>
+                        <td>Minimum performance improvement required to justify segmentation</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">OUTPUTS</td></tr>
+                    <tr>
+                        <td class="category-cell" rowspan="2">Decision</td>
+                        <td class="output-cell">Recommendation</td>
+                        <td>Binary decision: "Adopt Segmentation" or "Use Global Model"</td>
+                    </tr>
+                    <tr>
+                        <td class="output-cell">Justification</td>
+                        <td>Performance uplift calculation and statistical significance results</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell" rowspan="3">Segmentation Details<br>(if recommended)</td>
+                        <td class="output-cell">Segmentation Scheme</td>
+                        <td>Set of interpretable rules defining data point assignment to segments</td>
+                    </tr>
+                    <tr>
+                        <td class="output-cell">Performance Uplift</td>
+                        <td>Quantified expected improvement in optimization metric</td>
+                    </tr>
+                    <tr>
+                        <td class="output-cell">Segment Profiles</td>
+                        <td>Detailed characteristics, target distribution, and feature importance per segment</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Methodologies Sheet -->
+        <div class="sheet-content">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%">Methodology</th>
+                        <th style="width: 35%">Description</th>
+                        <th style="width: 40%">Implementation Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="section-header">CORE SEGMENTATION METHODOLOGIES</td></tr>
+                    <tr>
+                        <td class="methodology-cell">Supervised Decision Trees<br><strong>(Primary Approach)</strong></td>
+                        <td>Uses decision trees (CART/CHAID) to partition data by maximizing target variable purity within each partition</td>
+                        <td>• Shallow trees (depth 2-4) for interpretability<br>• Leaves represent segments<br>• Path from root provides segmentation rules<br>• min_samples_leaf constraint for robust segments</td>
+                    </tr>
+                    <tr>
+                        <td class="methodology-cell">Residual Analysis<br><strong>(Error Detection)</strong></td>
+                        <td>Identifies segments where baseline global model performs poorly by analyzing prediction errors</td>
+                        <td>• Train global model first<br>• Analyze residuals (errors)<br>• Train secondary model to predict errors<br>• Segments from "error model" highlight global model failures</td>
+                    </tr>
+                    <tr>
+                        <td class="methodology-cell">Interaction Analysis<br><strong>(Explainability-based)</strong></td>
+                        <td>Identifies features with varying effects on target across different ranges or in combination with other features</td>
+                        <td>• Utilize SHAP interaction plots<br>• Detect when Feature A impact changes based on Feature B<br>• Segment by features showing strong interactions<br>• Focus on interpretable feature interactions</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">METHODOLOGY SELECTION CRITERIA</td></tr>
+                    <tr>
+                        <td class="category-cell">Data Size</td>
+                        <td>Large datasets (>10K samples)</td>
+                        <td>All three methodologies applicable</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Data Size</td>
+                        <td>Medium datasets (1K-10K samples)</td>
+                        <td>Focus on Decision Trees + Interaction Analysis</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Data Size</td>
+                        <td>Small datasets (<1K samples)</td>
+                        <td>Decision Trees only, with higher min_segment_size</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Feature Count</td>
+                        <td>High-dimensional (>100 features)</td>
+                        <td>Prioritize Residual Analysis + feature selection</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Interpretability Requirement</td>
+                        <td>High interpretability needed</td>
+                        <td>Decision Trees + Interaction Analysis preferred</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Workflow Steps Sheet -->
+        <div class="sheet-content">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%">Step</th>
+                        <th style="width: 25%">Phase</th>
+                        <th style="width: 60%">Detailed Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="section-header">SAA INTERNAL WORKFLOW</td></tr>
+                    <tr>
+                        <td class="category-cell">Step 1</td>
+                        <td class="subsection-header">Establish Baseline</td>
+                        <td>1. Train global model using specified algorithm on entire dataset<br>2. Use robust cross-validation (5-fold or 10-fold)<br>3. Calculate baseline performance metric<br>4. Store model for later comparison</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Step 2</td>
+                        <td class="subsection-header">Segmentation Discovery</td>
+                        <td>1. Apply all three methodologies in parallel:<br>&nbsp;&nbsp;• Train shallow decision tree for segments<br>&nbsp;&nbsp;• Analyze global model residuals<br>&nbsp;&nbsp;• Calculate SHAP interaction values<br>2. Extract candidate segmentation schemes<br>3. Apply constraints (min_segment_size, max_segments)<br>4. Rank schemes by initial promise</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Step 3</td>
+                        <td class="subsection-header">Segment Profiling</td>
+                        <td>1. <strong>Profiling:</strong> Calculate size, event rate, feature distributions<br>2. <strong>Statistical Testing:</strong> Chi-squared tests for target distribution differences<br>3. <strong>Interpretability Check:</strong> Verify rules are logical and implementable<br>4. <strong>Stability Test:</strong> Cross-validation on segment assignments<br>5. Filter out non-viable segments</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Step 4</td>
+                        <td class="subsection-header">Impact Assessment</td>
+                        <td>1. <strong>Train Local Models:</strong> Separate model per segment with hyperparameter optimization<br>2. <strong>Local Performance:</strong> Cross-validate within each segment<br>3. <strong>Weighted Performance:</strong> Combine local model results weighted by segment size<br>4. <strong>Calculate Uplift:</strong> (Weighted Segmented Performance) - (Baseline Global Performance)<br>5. <strong>Significance Test:</strong> Statistical test for meaningful improvement</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Step 5</td>
+                        <td class="subsection-header">Recommendation</td>
+                        <td>1. <strong>Threshold Check:</strong> Compare uplift vs min_uplift_threshold<br>2. <strong>Complexity Assessment:</strong> Evaluate operational implementation complexity<br>3. <strong>Final Decision:</strong> Recommend segmentation if threshold exceeded<br>4. <strong>Report Generation:</strong> Comprehensive output with justification<br>5. <strong>Workflow Signal:</strong> Send decision to Orchestrator Agent</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">QUALITY ASSURANCE CHECKPOINTS</td></tr>
+                    <tr>
+                        <td class="category-cell">After Step 2</td>
+                        <td>Segmentation Viability</td>
+                        <td>• Minimum 2 segments found<br>• Each segment meets size requirements<br>• Segmentation rules are interpretable</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">After Step 3</td>
+                        <td>Statistical Validity</td>
+                        <td>• Significant differences in target distribution<br>• Segment stability across CV folds<br>• No data leakage between segments</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">After Step 4</td>
+                        <td>Performance Validation</td>
+                        <td>• Local models converge properly<br>• No overfitting in small segments<br>• Uplift calculation verified</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Implementation Sheet -->
+        <div class="sheet-content">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%">Component</th>
+                        <th style="width: 30%">Technology/Library</th>
+                        <th style="width: 50%">Implementation Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="section-header">TECHNOLOGY STACK</td></tr>
+                    <tr>
+                        <td class="category-cell">Data Manipulation</td>
+                        <td>Pandas, NumPy</td>
+                        <td>Core data handling, feature manipulation, segment assignment</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Machine Learning</td>
+                        <td>Scikit-learn</td>
+                        <td>Decision trees, cross-validation, metrics calculation, preprocessing</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Advanced Algorithms</td>
+                        <td>XGBoost, LightGBM, CatBoost</td>
+                        <td>High-performance gradient boosting for local model training</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Explainability</td>
+                        <td>SHAP</td>
+                        <td>Feature interaction analysis, model interpretation, segment profiling</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Statistical Testing</td>
+                        <td>SciPy.stats</td>
+                        <td>Chi-squared tests, significance testing, distribution comparisons</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">CODE STRUCTURE</td></tr>
+                    <tr>
+                        <td class="category-cell">Main Class</td>
+                        <td class="code-cell">SegmentationAnalysisAgent</td>
+                        <td>Primary agent class implementing the 5-step workflow</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Core Methods</td>
+                        <td class="code-cell">discover_tree_segments()<br>analyze_residuals()<br>find_interactions()</td>
+                        <td>Three main segmentation discovery methods</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Evaluation</td>
+                        <td class="code-cell">evaluate_segments()<br>calculate_uplift()</td>
+                        <td>Performance assessment and uplift calculation</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Utilities</td>
+                        <td class="code-cell">profile_segments()<br>validate_segments()<br>generate_rules()</td>
+                        <td>Supporting functions for segment analysis and rule generation</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">EXAMPLE IMPLEMENTATION - TREE SEGMENTATION</td></tr>
+                    <tr>
+                        <td colspan="3" class="code-cell">
+from sklearn.tree import DecisionTreeClassifier, export_text<br>
+import pandas as pd<br><br>
+def discover_tree_segments(X, y, min_segment_size=0.05, max_depth=3):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"""Uses shallow decision tree to identify candidate segments."""<br>
+&nbsp;&nbsp;&nbsp;&nbsp;segmenter = DecisionTreeClassifier(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;max_depth=max_depth,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;min_samples_leaf=min_segment_size,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;criterion='gini',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;random_state=42<br>
+&nbsp;&nbsp;&nbsp;&nbsp;)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;segmenter.fit(X, y)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;segments = segmenter.apply(X)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;rules = export_text(segmenter, feature_names=list(X.columns))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return segments, rules
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Integration Sheet -->
+        <div class="sheet-content">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%">Integration Point</th>
+                        <th style="width: 35%">Description</th>
+                        <th style="width: 40%">Implementation Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="section-header">AGENTIC WORKFLOW INTEGRATION</td></tr>
+                    <tr>
+                        <td class="category-cell">Positioning</td>
+                        <td>SAA operates between Feature Engineering Agent and Model Training Agent(s)</td>
+                        <td>• Receives processed dataset from Feature Engineering<br>• Sends segmentation decision to Orchestrator<br>• Triggers appropriate model training strategy</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Input Interface</td>
+                        <td>Receives standardized data package from upstream agents</td>
+                        <td>• Training dataset (X, y)<br>• Feature metadata<br>• Target variable specification<br>• Model algorithm preference<br>• Performance requirements</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Output Interface</td>
+                        <td>Provides structured recommendation and segmentation details</td>
+                        <td>• Decision flag (segment vs global)<br>• Segmentation scheme (if applicable)<br>• Performance uplift estimate<br>• Segment profiles and rules</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">WORKFLOW ADAPTATION SCENARIOS</td></tr>
+                    <tr>
+                        <td class="category-cell">Segmentation Recommended</td>
+                        <td>Orchestrator creates parallel model training paths</td>
+                        <td>1. Split dataset by segmentation rules<br>2. Launch separate Model Training Agent per segment<br>3. Implement Model Aggregation step<br>4. Manage ensemble of local models</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Global Model Recommended</td>
+                        <td>Workflow continues with single model path</td>
+                        <td>1. Pass full dataset to Model Training Agent<br>2. Continue standard single-model workflow<br>3. No additional complexity introduced</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">AGENT COMMUNICATION PROTOCOL</td></tr>
+                    <tr>
+                        <td class="category-cell">Message Format</td>
+                        <td>Standardized JSON structure for agent communication</td>
+                        <td class="code-cell">{<br>&nbsp;"agent_id": "SAA_001",<br>&nbsp;"decision": "segment|global",<br>&nbsp;"confidence": 0.85,<br>&nbsp;"uplift_estimate": 0.12,<br>&nbsp;"segments": [...],<br>&nbsp;"rules": {...}<br>}</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Error Handling</td>
+                        <td>Graceful degradation when segmentation fails</td>
+                        <td>• If no viable segments found → recommend global model<br>• If insufficient data → recommend global model<br>• If technical errors → log and recommend global model<br>• Always provide fallback recommendation</td>
+                    </tr>
+                    <tr><td colspan="3" class="section-header">ORCHESTRATOR RESPONSIBILITIES</td></tr>
+                    <tr>
+                        <td class="category-cell">Resource Management</td>
+                        <td>Allocate computational resources based on SAA recommendation</td>
+                        <td>• Single model path: standard resource allocation<br>• Segmented path: parallel processing setup<br>• Dynamic scaling based on segment count</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Workflow Control</td>
+                        <td>Adapt pipeline based on segmentation decision</td>
+                        <td>• Route data appropriately<br>• Coordinate parallel training<br>• Manage model aggregation<br>• Handle deployment strategy</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Parameters Sheet -->
+        <div class="sheet-content">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%">Parameter</th>
+                        <th style="width: 15%">Type</th>
+                        <th style="width: 20%">Default</th>
+                        <th style="width: 45%">Description & Guidelines</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="4" class="section-header">CORE CONFIGURATION PARAMETERS</td></tr>
+                    <tr>
+                        <td class="parameter-cell">min_segment_size</td>
+                        <td>float/int</td>
+                        <td>0.05 (5%)<br>or 500 samples</td>
+                        <td><strong>Purpose:</strong> Minimum viable segment size<br><strong>Guidelines:</strong><br>• Use percentage (0.05) for large datasets<br>• Use absolute count for small datasets<br>• Consider statistical power requirements<br>• Increase for high-variance targets</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">max_segments</td>
+                        <td>int</td>
+                        <td>5</td>
+                        <td><strong>Purpose:</strong> Control model complexity<br><strong>Guidelines:</strong><br>• 2-5 segments for most use cases<br>• Increase only with very large datasets<br>• Consider operational complexity<br>• Balance interpretability vs performance</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">min_uplift_threshold</td>
+                        <td>float</td>
+                        <td>0.02 (2%)</td>
+                        <td><strong>Purpose:</strong> Minimum performance improvement to justify segmentation<br><strong>Guidelines:</strong><br>• 1-2% for mature models<br>• 3-5% for new domains<br>• Consider business impact<br>• Account for operational overhead</td>
+                    </tr>
+                    <tr><td colspan="4" class="section-header">ALGORITHM-SPECIFIC PARAMETERS</td></tr>
+                    <tr>
+                        <td class="parameter-cell">max_depth</td>
+                        <td>int</td>
+                        <td>3</td>
+                        <td><strong>Decision Tree Depth:</strong> Controls segmentation complexity<br>• Depth 2: Simple binary splits<br>• Depth 3-4: Standard recommendation<br>• Depth >4: Risk of overfitting</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">criterion</td>
+                        <td>string</td>
+                        <td>'gini'</td>
+                        <td><strong>Tree Splitting Criterion:</strong><br>• 'gini': Good for balanced datasets<br>• 'entropy': Better for imbalanced datasets<br>• Affects segment boundary decisions</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">cv_folds</td>
+                        <td>int</td>
+                        <td>5</td>
+                        <td><strong>Cross-validation Folds:</strong><br>• 5-fold: Standard for most datasets<br>• 10-fold: More robust for smaller datasets<br>• 3-fold: For very large datasets</td>
+                    </tr>
+                    <tr><td colspan="4" class="section-header">PERFORMANCE & EVALUATION PARAMETERS</td></tr>
+                    <tr>
+                        <td class="parameter-cell">optimization_metric</td>
+                        <td>string</td>
+                        <td>'auc'</td>
+                        <td><strong>Primary Optimization Metric:</strong><br>• 'auc': Area Under ROC Curve<br>• 'f1': F1-Score (precision-recall balance)<br>• 'gini': Gini coefficient<br>• 'precision': Precision focus<br>• 'recall': Recall focus</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">significance_level</td>
+                        <td>float</td>
+                        <td>0.05</td>
+                        <td><strong>Statistical Significance Threshold:</strong><br>• 0.05: Standard statistical significance<br>• 0.01: More conservative testing<br>• Used for segment viability testing</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">random_state</td>
+                        <td>int</td>
+                        <td>42</td>
+                        <td><strong>Reproducibility Seed:</strong><br>• Ensures consistent results<br>• Important for A/B testing<br>• Set to None for true randomization</td>
+                    </tr>
+                    <tr><td colspan="4" class="section-header">BUSINESS CONTEXT PARAMETERS</td></tr>
+                    <tr>
+                        <td class="parameter-cell">interpretability_weight</td>
+                        <td>float</td>
+                        <td>0.3</td>
+                        <td><strong>Interpretability vs Performance Trade-off:</strong><br>• 0.0: Pure performance focus<br>• 0.5: Balanced approach<br>• 1.0: Maximum interpretability<br>• Affects segmentation method selection</td>
+                    </tr>
+                    <tr>
+                        <td class="parameter-cell">operational_complexity_limit</td>
+                        <td>string</td>
+                        <td>'medium'</td>
+                        <td><strong>Operational Complexity Tolerance:</strong><br>• 'low': Prefer simple global models<br>• 'medium': Standard segmentation acceptable<br>• 'high': Complex segmentation schemes OK</td>
+                    </tr>
+                    <tr><td colspan="4" class="section-header">RECOMMENDED PARAMETER COMBINATIONS</td></tr>
+                    <tr>
+                        <td class="category-cell">Conservative Setup</td>
+                        <td colspan="3">min_segment_size=0.1, max_segments=3, min_uplift_threshold=0.03, max_depth=2</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Balanced Setup</td>
+                        <td colspan="3">min_segment_size=0.05, max_segments=5, min_uplift_threshold=0.02, max_depth=3</td>
+                    </tr>
+                    <tr>
+                        <td class="category-cell">Aggressive Setup</td>
+                        <td colspan="3">min_segment_size=0.03, max_segments=7, min_uplift_threshold=0.01, max_depth=4</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <button class="download-btn" onclick="downloadAsCSV()">Download as CSV Files</button>
+
+    <script>
+        function showSheet(index) {
+            // Hide all sheets
+            const contents = document.querySelectorAll('.sheet-content');
+            const tabs = document.querySelectorAll('.sheet-tab');
+            
+            contents.forEach(content => content.classList.remove('active'));
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected sheet
+            contents[index].classList.add('active');
+            tabs[index].classList.add('active');
+        }
+
+        function downloadAsCSV() {
+            // This would typically trigger a download of CSV files
+            // For now, we'll show an alert with instructions
+            alert('Excel Implementation Guide:\n\n' +
+                  '1. Copy each sheet content into separate Excel worksheets\n' +
+                  '2. Format headers with background colors as shown\n' +
+                  '3. Apply freeze panes to header rows\n' +
+                  '4. Set column widths as specified\n' +
+                  '5. Add data validation for parameter sheets\n\n' +
+                  'Sheet names: Overview, Agent Definition, Methodologies, Workflow Steps, Implementation, Integration, Parameters');
+        }
+    </script>
+</body>
+</html>

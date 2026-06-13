@@ -1,0 +1,19 @@
+{
+  "commands": [
+    "export AWS_DEFAULT_REGION=us-east-1",
+    "export KUBECONFIG=/root/.kube/config",
+    "aws eks update-kubeconfig --region us-east-1 --name midas-eks-dev",
+    "echo \"Context: $(kubectl config current-context)\"",
+    "echo '=== Pods matching backend|api-backend (wide) ==='",
+    "kubectl get pods -A -o wide 2>&1 | grep -iE 'backend|api-backend' || echo '(no row match)'",
+    "echo ''",
+    "echo '=== First 50 pods (if no backend string in name) ==='",
+    "kubectl get pods -A -o wide 2>&1 | head -50",
+    "echo ''",
+    "echo '=== kubectl top pods -A ==='",
+    "kubectl top pods -A 2>&1 | head -40",
+    "echo ''",
+    "echo '=== Describe backend-named pods ==='",
+    "kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}{\" \"}{.metadata.name}{\"\\n\"}{end}' 2>/dev/null | while read -r NS POD; do case \"$POD\" in *backend*|*api-backend*) echo \"----- $NS $POD -----\"; kubectl describe pod -n \"$NS\" \"$POD\" 2>&1 | grep -iE 'Name:|Namespace:|Restart|Last State|Reason:|Exit Code|OOM|Limits:|Requests:|memory:|Memory:|State:|Warning|Killed|Allocated resources'; echo '';; esac; done"
+  ]
+}

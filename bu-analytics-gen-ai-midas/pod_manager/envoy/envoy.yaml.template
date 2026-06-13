@@ -1,0 +1,156 @@
+# =============================================================================
+# Envoy routing tier - STATIC config (no xDS, no control plane).
+# Per-request routing is decided by the ext_authz call-out, NOT by config
+# changes, so this file never changes per user / per login.
+#
+# At container start, docker-entrypoint.sh substitutes $ENVOY_* variables
+# (defaults apply when unset). See docker-entrypoint.sh for the full list.
+#
+# Validate before shipping:   docker build .  (runs envoy --mode validate)
+# Pin a real version in your image (e.g. envoyproxy/envoy:v1.34.x).
+# Field names below are Envoy v3 API.
+#
+# Listeners (traffic path):
+#   :$ENVOY_LISTENER_PORT     ALB / user API traffic  -> ext_authz -> DFP
+#   :$ENVOY_HEALTH_LISTENER_PORT  /health (no JWT; RT-8)
+#   :$ENVOY_ADMIN_PORT         admin /ready (kubelet probes only)
+# =============================================================================
+
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: $ENVOY_ADMIN_PORT }
+
+static_resources:
+
+  listeners:
+
+    - name: listener_main
+      address:
+        socket_address: { address: 0.0.0.0, port_value: $ENVOY_LISTENER_PORT }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                codec_type: AUTO
+
+                stream_idle_timeout: $ENVOY_STREAM_IDLE_TIMEOUT
+                request_timeout: 0s
+                common_http_protocol_options:
+                  idle_timeout: $ENVOY_CONNECTION_IDLE_TIMEOUT
+
+                upgrade_configs:
+                  - upgrade_type: websocket
+
+                use_remote_address: true
+
+                http_filters:
+                  - name: envoy.filters.http.header_mutation
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutation
+                      mutations:
+                        request_mutations:
+                          - remove: x-route-upstream
+                          - remove: x-user-sub
+
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      failure_mode_allow: false
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: ext_authz
+                        timeout: $ENVOY_EXT_AUTHZ_TIMEOUT
+                      allowed_headers:
+                        patterns:
+                          - exact: authorization
+                          - exact: cookie
+                          # Local/dev only; ignored when pod_manager auth.dev_mode is false.
+                          - exact: x-test-sub
+
+                  - name: envoy.filters.http.dynamic_forward_proxy
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.FilterConfig
+                      dns_cache_config:
+                        name: dfp_cache
+                        dns_lookup_family: V4_ONLY
+                        dns_refresh_rate: $ENVOY_DFP_DNS_REFRESH_RATE
+                        host_ttl: $ENVOY_DFP_HOST_TTL
+
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+                route_config:
+                  name: main_routes
+                  virtual_hosts:
+                    - name: all
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route:
+                            cluster: dfp_cluster
+                            timeout: 0s
+                          typed_per_filter_config:
+                            envoy.filters.http.dynamic_forward_proxy:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.PerRouteConfig
+                              host_rewrite_header: x-route-upstream
+
+    - name: listener_health
+      address:
+        socket_address: { address: 0.0.0.0, port_value: $ENVOY_HEALTH_LISTENER_PORT }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: health
+                route_config:
+                  name: health_routes
+                  virtual_hosts:
+                    - name: health
+                      domains: ["*"]
+                      routes:
+                        - match: { path: "/health" }
+                          direct_response:
+                            status: 200
+                            body: { inline_string: "ok" }
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+
+    # STRICT_DNS: host may be a Docker/K8s service name (e.g. pod-manager) or 127.0.0.1 sidecar.
+    - name: ext_authz
+      type: STRICT_DNS
+      connect_timeout: $ENVOY_EXT_AUTHZ_CONNECT_TIMEOUT
+      dns_lookup_family: V4_ONLY
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: ext_authz
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      { address: $ENVOY_EXT_AUTHZ_HOST, port_value: $ENVOY_EXT_AUTHZ_PORT }
+
+    - name: dfp_cluster
+      lb_policy: CLUSTER_PROVIDED
+      connect_timeout: $ENVOY_DFP_CONNECT_TIMEOUT
+      cluster_type:
+        name: envoy.clusters.dynamic_forward_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
+          dns_cache_config:
+            name: dfp_cache
+            dns_lookup_family: V4_ONLY
+            dns_refresh_rate: $ENVOY_DFP_DNS_REFRESH_RATE
+            host_ttl: $ENVOY_DFP_HOST_TTL

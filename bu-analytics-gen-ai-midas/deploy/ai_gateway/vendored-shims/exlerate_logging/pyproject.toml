@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+# Drop-in replacement for the corporate JFrog package `exlerate-logging`.
+#
+# The MIDAS architecture rule is "zero JFrog at build and runtime" (see
+# `.cursor/scratch/sop-capture-2026-04-19_1529.md`, decision Q15.2 and Step 35
+# ROOT CAUSE / ORD6 blocker discussion). The upstream c1-api source imports
+# `from exlerate_logging import get_logger`; this package supplies exactly
+# that surface — a thin wrapper over Python's stdlib `logging` — so the
+# source tree can be installed without any corporate Artifactory access.
+name = "exlerate-logging"
+version = "0.0.0+midas.shim"
+description = "MIDAS shim for exlerate_logging (stdlib-backed)"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["exlerate_logging"]

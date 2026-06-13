@@ -1,0 +1,99 @@
+## Model Architecture Knowledge Notes
+
+- **Purpose of the artifact**  
+  - Capture the end-to-end design of the model: inputs, preprocessing, feature layers, core learner, post-processing.  
+  - Provide a single reference that explains *why* each architectural decision was made so reviewers can reason about trade‑offs (accuracy vs latency vs explainability).
+
+- **Recommended structure for the document**  
+  - Executive summary: problem statement, target metric, deployment constraints.  
+  - Data pipeline overview: sources, frequency, validation gates, feature lineage.  
+  - Model topology: textual walkthrough plus diagram for preprocessing layers, encoder/backbone, task head(s), ensembles.  
+  - Hyperparameters and training recipe: tables broken into categories (data sampling, optimizer, regularization, model-specific knobs).  
+  - Evaluation harness: datasets, slicing strategy, metrics, drift/robustness tests.  
+  - Operational considerations: monitoring probes, fallback logic, retraining cadence.
+
+---
+
+### Model Summary Section
+
+- **Scenario coverage**  
+  - Baseline: single model path (e.g., tabular XGBoost).  
+  - Ensemble scenario: stacking or champion/challenger logic.  
+  - Multi-modal or multi-task scenario: describe branching: text encoder + tabular head, or shared layers with multiple outputs.  
+  - Online adaptation scenario: show how incremental trainers or feature stores feed near-real-time updates.
+
+- **Content to include**  
+  - ASCII architecture diagram or UML-like block diagram showing data flow.  
+  - Table mapping each module to purpose, key dependencies, and potential failure modes.  
+  - Explicit assumptions (e.g., “categorical cardinality < 50 for one-hot path”).  
+  - Links to code modules, notebooks, and experiment tracking IDs.
+
+---
+
+### Hyperparameters Section
+
+- **Organization**  
+  - Optimizer: learning rate schedules, momentum, beta params, weight decay.  
+  - Regularization: dropout rates, early stopping patience, L1/L2, label smoothing.  
+  - Architecture-specific: tree depth, min_child_weight, gamma, number of estimators, layer sizes, activation types.  
+  - Data sampling: class weights, SMOTE ratios, window sizes for time series, augmentation recipes.  
+  - Search strategy metadata: whether values are fixed, grid searched, Bayesian tuned, or adaptive (AutoML). Include best-found config IDs and score deltas.
+
+- **Technical practices**  
+  - Store default vs tuned values, with rationale for deviations (e.g., “depth=6 chosen to prevent overfitting on segment X”).  
+  - Capture resource impacts (GPU hours, memory footprint) per hyperparameter family.  
+  - Note coupling constraints: e.g., “if max_depth>8, increase min_child_weight to ≥5 to stabilize.”  
+  - Provide sensitivity plots/ICE curves for the most influential hyperparameters.
+
+---
+
+### Architecture Diagram Section
+
+- **Diagram guidelines**  
+  - One high-level view (input → feature store → transformation → model → output).  
+  - Focus diagrams for tricky components: e.g., feature engineering pipeline, attention blocks, segmentation gating network.  
+  - Show interfaces: APIs, message queues, model registry, monitoring hooks.  
+  - Annotate latency and data size at each edge and highlight parallel paths or feature crosses.
+
+- **Tools & formats**  
+  - Maintain editable source (Mermaid, draw.io, PlantUML) plus exported PNG/SVG. Store version in repo.  
+  - Embed key metrics near nodes (parameter count, FLOPs, expected output shape).  
+  - Color-code components by ownership (data engineering vs modeling vs MLOps) and by runtime environment (batch vs real-time).
+
+---
+
+### Documentation Best Practices
+
+- **Versioning**  
+  - Tie every doc snapshot to a Git tag/model registry entry. Include semantic version, training date, dataset hash, and commit SHA.  
+  - Maintain change log describing architectural shifts (e.g., “v1.3: replaced Random Forest with LightGBM for lower latency”).
+
+- **Traceability & lineage**  
+  - Cross-link to `dq_feature_lexicon` entries, data schemas, and QA checklists.  
+  - Embed references to experiment tracking (MLflow/W&B run IDs) and deployment tickets.
+
+- **Technical debt tracking**  
+  - Document known gaps (e.g., “attention maps not yet available for multilingual data”) and mitigation plans.  
+  - Include monitoring dashboards and alert thresholds for latency, accuracy, drift.
+
+- **Accessibility**  
+  - Provide tiered views: executive summary, engineer deep dive, ops runbook.  
+  - Keep diagrams and hyperparameter tables machine-readable (CSV/JSON attachments) for automation.
+
+---
+
+### Scenario-Specific Guidance
+
+- **Highly regulated deployments**  
+  - Add compliance mapping: which architectural components enforce regulatory requirements (e.g., PHI anonymization layer).  
+  - Store signed approvals and audit evidence alongside the doc.
+
+- **Segment-specific models**  
+  - Document gating logic and fallback order; show how segment models share feature engineering code but diverge in hyperparameters.  
+  - Provide per-segment performance tables and rationale for architecture differences.
+
+- **Explainability-heavy use cases**  
+  - Highlight how the architecture produces artifacts for SHAP/LIME/attention visualization.  
+  - Detail constraints the architecture imposes to remain interpretable (e.g., monotonic GBM constraints).
+
+---

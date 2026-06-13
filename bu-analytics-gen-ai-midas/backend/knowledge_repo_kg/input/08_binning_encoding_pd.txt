@@ -1,0 +1,68 @@
+kb:
+  binning_encoding:
+    code_template: "def compute_woe(df, feature, target, bins=10):\n    \"\"\"Compute\
+      \ Weight of Evidence for a feature\"\"\"\n    import numpy as np\n    \n   \
+      \ # Create bins\n    if df[feature].dtype in ['object', 'category']:\n     \
+      \   bins_df = df.groupby(feature)[target].agg(['sum', 'count'])\n    else:\n\
+      \        df['bin'] = pd.qcut(df[feature], bins, duplicates='drop')\n       \
+      \ bins_df = df.groupby('bin')[target].agg(['sum', 'count'])\n    \n    # Calculate\
+      \ WOE\n    bins_df['bad_rate'] = bins_df['sum'] / bins_df['count']\n    bins_df['good']\
+      \ = bins_df['count'] - bins_df['sum']\n    \n    total_bad = bins_df['sum'].sum()\n\
+      \    total_good = bins_df['good'].sum()\n    \n    bins_df['bad_dist'] = bins_df['sum']\
+      \ / total_bad\n    bins_df['good_dist'] = bins_df['good'] / total_good\n   \
+      \ \n    # Add smoothing to avoid log(0)\n    epsilon = 0.0001\n    bins_df['woe']\
+      \ = np.log(\n        (bins_df['good_dist'] + epsilon) / \n        (bins_df['bad_dist']\
+      \ + epsilon)\n    )\n    \n    # Calculate IV\n    bins_df['iv'] = (bins_df['good_dist']\
+      \ - bins_df['bad_dist']) * bins_df['woe']\n    \n    return bins_df\n"
+    cutpoints:
+      categorical:
+        method: frequency_grouping
+        missing_bucket: __MISSING__
+        rare_floor_pct: <RARE_FLOOR|0.005>
+      numeric:
+        adaptive_binning:
+          enable: true
+          methods:
+          - decision_tree
+          - chi_merge
+          - mdlp
+        fallback: winsorized_equal_width
+        method: quantiles
+        quantiles:
+        - 0.1
+        - 0.2
+        - 0.3
+        - 0.4
+        - 0.5
+        - 0.6
+        - 0.7
+        - 0.8
+        - 0.9
+    encoding:
+      alternatives:
+        high_card_target_encoding: true
+        low_card_one_hot: true
+        ordinal_encoding: true
+      woe:
+        compute_out_of_fold: true
+        min_bin_size_pct: <MIN_BIN|0.02>
+        scheme: kfold_time_blocked
+    monotonicity_detection:
+      method: spearman_vs_label
+      threshold_abs_rho: 0.1
+    selection:
+      candidates_categorical_patterns:
+      - '*purpose*'
+      - '*channel*'
+      - '*region*'
+      - '*employment*'
+      candidates_numeric_patterns:
+      - '*score*'
+      - '*ratio*'
+      - '*util*'
+      - '*income*'
+      - '*term*'
+      - '*age*'
+      - '*ltv*'
+      top_k_categorical: 20
+      top_k_numeric: 20

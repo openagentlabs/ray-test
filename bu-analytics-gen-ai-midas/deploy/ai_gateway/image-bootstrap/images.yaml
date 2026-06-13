@@ -1,0 +1,170 @@
+# MIDAS AI Gateway image bootstrap inventory (ORD2)
+#
+# Single source of truth for image tags + sources for the AI Gateway components.
+# ORD2 (`midas-ai-gateway-image-bootstrap-ORD2`) reads this file, pulls each image from its
+# `source` (or builds it `from_source`), tags it as the `target_ecr` value, and pushes it to
+# MIDAS ECR (account 811391286931, region us-east-1).
+#
+# Versions track upstream `ai_gateway/CI/upstream-images.yaml` plus AWS LB Controller v2.7.x
+# (matching the existing `midas-dev-aws-load-balancer-controller` repo in MIDAS).
+#
+# All public-registry pulls go through the corporate Netskope web proxy (M-3, M-4).
+
+ecr_account: "811391286931"
+ecr_region: "us-east-1"
+ecr_registry: "811391286931.dkr.ecr.us-east-1.amazonaws.com"
+
+images:
+
+  # --- Public-registry pulls ---------------------------------------------------------------
+
+  - name: litellm
+    source:
+      type: public_registry
+      registry: ghcr.io
+      repository: berriai/litellm
+      tag: v1.83.3-stable
+    target_ecr_repo: midas-aigtw-dev-litellm
+    target_tag: v1.83.3-stable
+    netskope_allowlist:
+      - ghcr.io
+      - pkg-containers.githubusercontent.com
+
+  - name: langfuse-web
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: langfuse/langfuse
+      tag: "3.163"
+    target_ecr_repo: midas-aigtw-dev-langfuse
+    target_tag: "3.163"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  - name: langfuse-worker
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: langfuse/langfuse-worker
+      tag: "3.163"
+    target_ecr_repo: midas-aigtw-dev-langfuse-worker
+    target_tag: "3.163"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  - name: clickhouse-server
+    # The Altinity ClickHouse chart's CHI template hardcodes `clickhouse.image.repository`
+    # default to `altinity/clickhouse-server` (NOT the official `clickhouse/clickhouse-server`).
+    # The chart is tested against this specific Altinity build + tag, so mirror THAT image.
+    # Before 2026-04-20 we (incorrectly) mirrored `clickhouse/clickhouse-server:26.3-alpine` here;
+    # the values overlay's override was on the wrong Helm path (`image.*` instead of
+    # `clickhouse.image.*`), so the running pod was actually pulling the altinity image
+    # directly from docker.io — violating Q15.2.  Fixed in the same commit as the overlay.
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: altinity/clickhouse-server
+      tag: "25.3.6.10034.altinitystable"
+    target_ecr_repo: midas-aigtw-dev-clickhouse-server
+    target_tag: "25.3.6.10034.altinitystable"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  # Altinity ClickHouse Helm chart (altinity/clickhouse 0.25.6) installs four additional
+  # side images beyond `clickhouse-server`.  Without these, ORD3 pulls them from Docker Hub
+  # at chart-install time, violating the zero-external-registry rule (Q15.2).
+  # Mirror them so the chart can run with every image sourced from MIDAS ECR.
+
+  - name: clickhouse-operator
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: altinity/clickhouse-operator
+      tag: "0.25.6"                          # = chart appVersion of altinity-clickhouse-operator 0.25.6
+    target_ecr_repo: midas-aigtw-dev-clickhouse-operator
+    target_tag: "0.25.6"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  - name: clickhouse-metrics-exporter
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: altinity/metrics-exporter
+      tag: "0.25.6"
+    target_ecr_repo: midas-aigtw-dev-clickhouse-metrics-exporter
+    target_tag: "0.25.6"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  - name: clickhouse-keeper
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: altinity/clickhouse-keeper
+      tag: "25.3.6.10034.altinitystable"     # = upstream chart default keeper.tag
+    target_ecr_repo: midas-aigtw-dev-clickhouse-keeper
+    target_tag: "25.3.6.10034.altinitystable"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  - name: kubectl                            # used by the chart's crdHook pre-install Job
+    # NOTE: Bitnami deprecated their Docker Hub catalog in 2026 (numbered tags like
+    # `bitnami/kubectl:1.33.4-0` now return `not found`; only image-digest `sha256-*`
+    # pseudo-tags remain on `bitnami/kubectl`). All semver tags were migrated to the
+    # `bitnamilegacy/kubectl` repo WITHOUT the trailing `-N` suffix -- i.e.
+    # `bitnamilegacy/kubectl:1.33.4` replaces `bitnami/kubectl:1.33.4-0`.
+    # Our MIDAS ECR target tag drops the `-N` suffix to match upstream.
+    source:
+      type: public_registry
+      registry: docker.io
+      repository: bitnamilegacy/kubectl
+      tag: "1.33.4"                          # pinned (not 'latest') so redeploys are reproducible
+    target_ecr_repo: midas-aigtw-dev-kubectl
+    target_tag: "1.33.4"
+    netskope_allowlist:
+      - registry-1.docker.io
+      - auth.docker.io
+
+  - name: aws-load-balancer-controller
+    source:
+      type: public_registry
+      registry: public.ecr.aws
+      repository: eks/aws-load-balancer-controller
+      tag: v2.7.2
+    target_ecr_repo: midas-aigtw-dev-aws-load-balancer-controller
+    target_tag: v2.7.2
+    netskope_allowlist:
+      - public.ecr.aws
+
+  # --- Built from source in the MIDAS fork -----------------------------------------------
+
+  - name: control-api
+    # MIDAS zero-JFrog build: uses the in-tree Dockerfile.c1-api-midas + shims
+    # for exlerate_logging and exlerate_database (see
+    # deploy/ai_gateway/vendored-shims/). Dockerfile.c1-api-midas builds from
+    # the REPO ROOT (so both `ai_gateway/` and `deploy/ai_gateway/` are
+    # reachable via its COPY directives) and installs the public-PyPI
+    # runtime deps from deploy/ai_gateway/CI/requirements-c1-api-midas.txt.
+    source:
+      type: from_source
+      context: "."
+      dockerfile: deploy/ai_gateway/CI/Dockerfile.c1-api-midas
+      build_args: {}
+    target_ecr_repo: midas-aigtw-dev-control-api
+    target_tag: "1.0.0-midas-${BUILD_NUMBER}"
+
+  # --- DEFERRED to phase 2 (Q15.1 = approve_hybrid, Inference API deferred) ----------
+  # - name: inference-api
+  #   source:
+  #     type: from_source
+  #     context: ai_gateway/src/inference_api
+  #     dockerfile: ai_gateway/CI/Dockerfile.inference-api
+  #   target_ecr_repo: midas-aigtw-dev-inference-api
+  #   target_tag: "1.0.0-midas-${BUILD_NUMBER}"

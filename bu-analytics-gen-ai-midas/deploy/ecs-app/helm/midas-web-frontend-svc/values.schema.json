@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "midas-web-frontend-svc",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "MIDAS enforces at most one pod per workload; Deployment strategy uses maxSurge 0."
+    },
+    "progressDeadlineSeconds": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 3600,
+      "description": "Deployment progress deadline in seconds before Kubernetes marks rollout failed."
+    }
+  }
+}

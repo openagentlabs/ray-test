@@ -1,0 +1,248 @@
+// midas-ai-gateway-tf-deploy-ORD1
+//
+// Pipeline: deploy AI Gateway dedicated AWS infrastructure via Terraform/Terragrunt.
+//
+// Reads:    deploy/ai_gateway/terraform/environment/${ENVIRONMENT}/terragrunt.hcl
+//           ai_gateway/infra/terraform/modules/                  (from submodule)
+// Writes:   AWS resources prefixed midas-aigtw-dev-* in account 811391286931, region us-east-1.
+//
+// Bootstrap-mode shortcuts (active until Step 19 dedicated infra is provisioned):
+//   * Uses the existing OIDC role EXLJenkinsCrossAccountRole-BU (NOT the dedicated
+//     EXLJenkinsAIGatewayCrossAccountRole-BU from Q19.1 / M-14, which doesn't exist yet).
+//   * Uses the existing TF state bucket midas-dev-us-east-1-terraform-811391286931
+//     with a unique key prefix `aigtw/` (NOT the dedicated bucket from M-11, which doesn't exist yet).
+//   * No HTTP_PROXY / HTTPS_PROXY env vars: the `cicd` agent already has the corporate
+//     network path configured at the host layer.
+//
+// All bootstrap shortcuts are flagged with a `// TODO(isolation):` comment. They are deviations
+// from Step 19's isolation policy and must be reverted to the dedicated values once M-11 + M-14
+// are in place.
+//
+// SOP: .cursor/scratch/sop-capture-2026-04-19_1529.md (Step 23 onward)
+
+pipeline {
+    agent { label 'cicd' }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev'],
+            description: 'Target environment. Only dev for initial rollout.'
+        )
+        choice(
+            name: 'TF_ACTION',
+            choices: ['plan', 'apply', 'destroy', 'init-only'],
+            description: 'Terraform action. init-only validates the chain end-to-end without planning.'
+        )
+        booleanParam(
+            name: 'AUTO_APPROVE_PLAN',
+            defaultValue: false,
+            description: 'Skip the human approval gate after plan. ONLY for non-prod, ONLY when chained from ORD7.'
+        )
+        choice(
+            name: 'BOOTSTRAP_PHASE',
+            choices: ['3', '2', '1'],
+            description: 'Terraform bootstrap_phase override. Phase 2 = NLB+TGs only (no ALB attachments). Phase 3 = also wire ALBs as NLB targets (requires ALBs to have :443 listeners). ORD7 passes 2 on its first ORD1 call, then 3 after ORD4+ORD5 have deployed.'
+        )
+    }
+
+    environment {
+        AWS_REGION             = 'us-east-1'
+        AWS_DEFAULT_REGION     = 'us-east-1'
+        AWS_ACCOUNT_ID         = '811391286931'
+        // TODO(isolation): swap to EXLJenkinsAIGatewayCrossAccountRole-BU once M-14 lands (Q19.1).
+        OIDC_ROLE_NAME         = 'EXLJenkinsCrossAccountRole-BU'
+        AWS_ROLE_ARN           = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${OIDC_ROLE_NAME}"
+        // TODO(isolation): swap to midas-aigtw-dev-us-east-1-terraform-811391286931 once M-11 lands.
+        TF_STATE_BUCKET        = 'midas-dev-us-east-1-terraform-811391286931'
+        TF_STATE_KEY_PREFIX    = 'aigtw'
+        TG_DIR                 = "deploy/ai_gateway/terraform/environment/${params.ENVIRONMENT}"
+    }
+
+    stages {
+        stage('Checkout (with submodules)') {
+            steps {
+                checkout scm
+                sh '''
+                    set -eu
+                    git submodule status
+                    ls -la deploy/ai_gateway/ | head -20
+                    test -f "${TG_DIR}/terragrunt.hcl" || { echo "Missing ${TG_DIR}/terragrunt.hcl"; exit 1; }
+                '''
+            }
+        }
+
+        stage('Toolchain versions') {
+            steps {
+                sh '''
+                    set -eu
+                    aws --version 2>&1 || true
+                    terraform --version 2>&1 || true
+                    terragrunt --version 2>&1 || true
+                    jq --version 2>&1 || true
+                    helm version --short 2>&1 || true
+                    kubectl version --client --short 2>&1 || true
+                '''
+            }
+        }
+
+        stage('AWS auth check') {
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    sh '''
+                        set -eu
+                        aws sts get-caller-identity
+                        aws s3api head-bucket --bucket ${TF_STATE_BUCKET}
+                        aws ec2 describe-vpcs --vpc-ids vpc-0c4d673f3e95a93eb --region ${AWS_REGION} --query 'Vpcs[0].VpcId' --output text
+                    '''
+                }
+            }
+        }
+
+        stage('Terragrunt init') {
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    dir(env.TG_DIR) {
+                        // The Jenkins workspace is REUSED between builds (the agent does not wipe
+                        // it). That means leftover .terragrunt-cache/.../terraform.tfstate from a
+                        // build that ran BEFORE we added the `generate "backend"` stanza in
+                        // terragrunt.hcl is still on disk. When terragrunt init runs now, terraform
+                        // sees BOTH (a) the leftover local state and (b) our new s3 backend, and
+                        // prompts "Pre-existing state was found ... copy this state to the new s3
+                        // backend? Enter yes/no". `--terragrunt-non-interactive` only suppresses
+                        // terragrunt's OWN prompts; it does NOT pass yes/no to terraform's stdin,
+                        // so the prompt receives EOF and init dies with:
+                        //     Error: Error asking for confirmation: EOF
+                        // (build #12 + build #14 both failed this way; -reconfigure alone does not
+                        // help because the migration prompt fires BEFORE -reconfigure is honoured).
+                        //
+                        // Fix: nuke .terraform/, .terragrunt-cache/, and any local state file so init
+                        // starts from a known-empty state. The REAL state lives in the s3 backend
+                        // configured by our `generate "backend"` block — losing the local cache is
+                        // safe and re-creating it is what `init -upgrade` is supposed to do anyway.
+                        sh '''
+                            set -eu
+                            echo "wiping pre-existing terraform local state / cache to avoid migration prompt..."
+                            rm -rf .terraform .terragrunt-cache terraform.tfstate terraform.tfstate.backup
+                            terragrunt init --terragrunt-non-interactive -reconfigure -upgrade -no-color
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Terragrunt plan') {
+            when { expression { return params.TF_ACTION == 'plan' || params.TF_ACTION == 'apply' } }
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    dir(env.TG_DIR) {
+                        sh """
+                            set -eu
+                            # Pass bootstrap_phase as a -var override so the orchestrator can
+                            # run ORD1 twice: phase 2 (NLB/TGs, no ALB attachment) before Helm
+                            # deploys, then phase 3 (NLB→ALB wire) after ORD4+ORD5 have created
+                            # their :443 HTTPS listeners. The value in terragrunt.hcl is the
+                            # default fallback when running ORD1 standalone.
+                            PHASE_VAR="-var bootstrap_phase=${params.BOOTSTRAP_PHASE}"
+                            terragrunt plan --terragrunt-non-interactive -no-color \${PHASE_VAR} -out=tfplan.binary
+                            terragrunt show --terragrunt-non-interactive -no-color tfplan.binary > tfplan.txt
+                        """
+                        archiveArtifacts artifacts: 'tfplan.txt', fingerprint: true, allowEmptyArchive: true
+                    }
+                }
+            }
+        }
+
+        stage('Approval gate') {
+            when {
+                expression { return params.TF_ACTION == 'apply' && !params.AUTO_APPROVE_PLAN }
+            }
+            steps {
+                input message: "Apply Terraform plan to ${params.ENVIRONMENT}?", ok: 'Apply'
+            }
+        }
+
+        stage('Adopt orphan k8s resources into TF state (one-shot, idempotent)') {
+            when { expression { return params.TF_ACTION == 'apply' } }
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    dir(env.TG_DIR) {
+                        // Some Kubernetes resources existed in the cluster before Terraform
+                        // was taught to manage them (e.g. `c1-api/langfuse-org-keys` used to
+                        // be created imperatively by the pre-2026-04-20 ORD6 bridging stage).
+                        // Without adoption the next `apply` would collide with "secret already
+                        // exists".
+                        //
+                        // `terragrunt import` is idempotent in three ways:
+                        //   * resource NOT in state, exists in remote   -> imports cleanly
+                        //   * resource ALREADY in state                 -> errors with
+                        //                                                  "resource already
+                        //                                                  managed"; we ignore
+                        //                                                  that (exit code 1).
+                        //   * resource does NOT exist in remote         -> errors with
+                        //                                                  "resource not found";
+                        //                                                  we ignore that too.
+                        // `|| true` on each line makes the step tolerant of all three cases.
+                        // After the first successful ORD7 pass that includes this stage, the
+                        // imports become plain no-ops.
+                        //
+                        // NOTE: the `kubernetes_secret_v1.langfuse_org_keys` resource address
+                        // is routed through the `modules-midas` Terraform module (sourced via
+                        // terragrunt.hcl) — terragrunt resolves the module path transparently.
+                        sh '''
+                            set +e
+                            echo "== adopting c1-api/langfuse-org-keys (if present) =="
+                            terragrunt import --terragrunt-non-interactive -no-color \
+                                'kubernetes_secret_v1.langfuse_org_keys' \
+                                'c1-api/langfuse-org-keys' || true
+
+                            echo "== adopting C1 API NLB listener (if present) =="
+                            terragrunt import --terragrunt-non-interactive -no-color \
+                                'aws_lb_listener.c1_api_nlb_443[0]' \
+                                'arn:aws:elasticloadbalancing:us-east-1:811391286931:listener/net/midas-eks-aigtw-dev-nlb-c1-api/56e7d2385a7dd47c/b90d9dff4c018762' || true
+
+                            echo "== adopting C1 API NLB TG (midas-aigtw-c1-nlb-alb-tg) =="
+                            terragrunt import --terragrunt-non-interactive -no-color \
+                                'aws_lb_target_group.c1_api_nlb_to_alb[0]' \
+                                'arn:aws:elasticloadbalancing:us-east-1:811391286931:targetgroup/midas-aigtw-c1-nlb-alb-tg/2c0abaefd34b0147' || true
+
+                            exit 0
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Terragrunt apply') {
+            when { expression { return params.TF_ACTION == 'apply' } }
+            steps {
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    dir(env.TG_DIR) {
+                        // Re-plan after a potential import so the saved plan reflects
+                        // current state (an import above can make the old plan stale).
+                        // `-refresh=false` is NOT used — we want TF to notice adopted resources.
+                        // Pass bootstrap_phase as a -var override (same as the plan stage above).
+                        sh """
+                            set -eu
+                            PHASE_VAR="-var bootstrap_phase=${params.BOOTSTRAP_PHASE}"
+                            terragrunt plan --terragrunt-non-interactive -no-color \${PHASE_VAR} -out=tfplan.binary
+                            terragrunt apply --terragrunt-non-interactive -no-color -auto-approve tfplan.binary
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Terragrunt destroy') {
+            when { expression { return params.TF_ACTION == 'destroy' } }
+            steps {
+                input message: "DESTROY all AI Gateway infra in ${params.ENVIRONMENT}? This is irreversible.", ok: 'Destroy'
+                withAWS(role: "${AWS_ROLE_ARN}", useNode: true) {
+                    dir(env.TG_DIR) {
+                        sh 'terragrunt destroy --terragrunt-non-interactive -no-color -auto-approve'
+                    }
+                }
+            }
+        }
+    }
+}

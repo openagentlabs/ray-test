@@ -1,0 +1,62 @@
+# Root-level .dockerignore - used when docker-build-matrix.sh builds midas-graph-svc
+# with context=. (repo root) and dockerfile=backend/Dockerfile.graphrag.
+# Excludes everything not needed by the GraphRAG image to keep the build context small.
+
+# Frontend source - not needed by GraphRAG
+frontend/
+
+# Deploy infrastructure - not needed inside the image
+deploy/
+
+# Other backend sub-trees not needed by GraphRAG
+backend/app/
+backend/app/notebooks/
+backend/logs/
+backend/uploads/
+# Keep other backend/data/* out of context but ship auth DB (same as backend/.dockerignore)
+backend/data/*
+!backend/data/message_states.db
+backend/vector_store/
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/*.ipynb
+backend/.ipynb_checkpoints/
+backend/.env
+backend/.env*
+backend/.env.local
+backend/.env.*.local
+backend/.env.backup
+backend/requirements.txt
+backend/main.py
+backend/run_server.py
+backend/start.py
+backend/startup.sh
+backend/restart_server.ps1
+backend/test_granular_accuracy.py
+backend/Untitled.ipynb
+backend/README.md
+backend/GraphRAG_Microservice.md
+backend/GraphRAG_Setup.md
+backend/docker-compose.graphrag.yml
+backend/.dockerignore
+backend/Dockerfile
+backend/Dockerfile.graphrag
+
+# Root-level docs and config not needed in image
+*.md
+.git/
+.gitignore
+.cursor/
+.vscode/
+.idea/
+docker-compose*.yml
+package*.json
+node_modules/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

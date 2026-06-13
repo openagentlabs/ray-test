@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+  {{- if .Values.stickySession.enabled }}
+  annotations:
+    # NOTE: In TargetGroupBinding mode (deploy/ecs-app/eks-tgb.tf) the AWS LB
+    # Controller does NOT read this annotation - target group attributes must
+    # be set on the aws_lb_target_group resource itself. The authoritative
+    # stickiness configuration now lives in
+    # deploy/ecs-app/modules/alb-nlb/main.tf ("stickiness" block on
+    # aws_lb_target_group.backend) and is driven by the Terraform variable
+    # var.backend_target_group_stickiness_seconds.
+    # This annotation is retained as belt-and-braces in case the wiring is
+    # ever migrated to an Ingress object; harmless when ignored.
+    alb.ingress.kubernetes.io/target-group-attributes: >-
+      stickiness.enabled=true,stickiness.type=lb_cookie,stickiness.lb_cookie.duration_seconds={{ .Values.stickySession.durationSeconds }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}

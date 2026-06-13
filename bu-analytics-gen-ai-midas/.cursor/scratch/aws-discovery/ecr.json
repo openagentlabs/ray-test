@@ -1,0 +1,74 @@
+{
+    "repositories": [
+        {
+            "repositoryArn": "arn:aws:ecr:us-east-1:811391286931:repository/midas-dev-aws-load-balancer-controller",
+            "registryId": "811391286931",
+            "repositoryName": "midas-dev-aws-load-balancer-controller",
+            "repositoryUri": "811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-dev-aws-load-balancer-controller",
+            "createdAt": "2026-04-17T09:14:41.736000+01:00",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:us-east-1:811391286931:repository/midas-dev-midas-graph-svc",
+            "registryId": "811391286931",
+            "repositoryName": "midas-dev-midas-graph-svc",
+            "repositoryUri": "811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-dev-midas-graph-svc",
+            "createdAt": "2026-04-14T01:47:09.850000+01:00",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:us-east-1:811391286931:repository/midas-dev-midas-web-frontend-svc",
+            "registryId": "811391286931",
+            "repositoryName": "midas-dev-midas-web-frontend-svc",
+            "repositoryUri": "811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-dev-midas-web-frontend-svc",
+            "createdAt": "2026-04-14T01:47:09.885000+01:00",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:us-east-1:811391286931:repository/midas-dev-app",
+            "registryId": "811391286931",
+            "repositoryName": "midas-dev-app",
+            "repositoryUri": "811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-dev-app",
+            "createdAt": "2026-04-14T01:47:09.841000+01:00",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:us-east-1:811391286931:repository/midas-dev-midas-api-backend-svc",
+            "registryId": "811391286931",
+            "repositoryName": "midas-dev-midas-api-backend-svc",
+            "repositoryUri": "811391286931.dkr.ecr.us-east-1.amazonaws.com/midas-dev-midas-api-backend-svc",
+            "createdAt": "2026-04-14T01:47:09.845000+01:00",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        }
+    ]
+}
