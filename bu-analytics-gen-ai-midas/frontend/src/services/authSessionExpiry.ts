@@ -89,12 +89,12 @@ export function scheduleClientSessionTimer(): void {
   timerId = setTimeout(() => {
     timerId = null;
     // Dynamic import breaks the circular dependency:
-    //   authSessionExpiry ← authService ← cognitoAuthService
+    //   authSessionExpiry ← authService
     // The full chain is guarded by .catch() so that any unexpected throw
     // (import failure, network exception inside refresh) still shows the
     // session-expired modal rather than silently leaving the user stuck.
-    void import('./cognitoAuthService')
-      .then(({ refresh }) => refresh())
+    void import('./authService')
+      .then(({ authService }) => authService.refreshAccessToken())
       .then((ok) => {
         if (!ok) {
           dispatchSessionExpiredOnce('Your session has expired due to inactivity.');

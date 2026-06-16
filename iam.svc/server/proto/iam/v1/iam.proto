@@ -1,0 +1,867 @@
+syntax = "proto3";
+
+package iam.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Identity and access management (DynamoDB-backed). Soft deletes: records are
+// retained with is_deleted=true and deleted_at set; list APIs omit deleted by default.
+
+service IamService {
+  rpc Ping(PingRequest) returns (PingReply);
+  rpc Echo(EchoRequest) returns (EchoReply);
+
+  // Total item count across all IAM tables (includes soft-deleted rows).
+  rpc RecordCount(RecordCountRequest) returns (RecordCountReply);
+
+  // When the database is completely empty, creates default catalog rows plus a
+  // ``User`` and email ``Login`` from the request. If any rows already exist, returns
+  // ``skipped = true`` without mutating data.
+  rpc EnsureInitialUser(EnsureInitialUserRequest) returns (EnsureInitialUserReply);
+
+  // Hard-delete every row in all IAM DynamoDB tables, then seed the default catalog and
+  // recreate one admin user + login from ``ResetDatabaseRequest`` (username + password).
+  rpc ResetDatabase(ResetDatabaseRequest) returns (ResetDatabaseReply);
+
+  // Resolve ``Login.name`` (email) to the owning user and related entities (same shape as ``GetUserLong``).
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (UserLong);
+
+  // Primary login credentials for a user (username = ``Login.name``, password on the login row).
+  rpc GetUserData(GetUserDataRequest) returns (GetUserDataReply);
+
+  // Users — short projection (profile card) vs long (user + related entities).
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc GetUserShort(GetUserRequest) returns (UserShort);
+  rpc GetUserLong(GetUserRequest) returns (UserLong);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc SoftDeleteUser(SoftDeleteUserRequest) returns (User);
+  rpc ListUsersByAccount(ListUsersByAccountRequest) returns (ListUsersByAccountReply);
+
+  // Aggregated counts of users per resolved user-type label for an account (all users
+  // in the account, optionally including soft-deleted). Entries are sorted by count
+  // descending, then type name ascending.
+  rpc GetUserTypeStats(GetUserTypeStatsRequest) returns (GetUserTypeStatsReply);
+
+  rpc CreateUserType(CreateUserTypeRequest) returns (UserType);
+  rpc GetUserType(GetUserTypeRequest) returns (UserType);
+  rpc UpdateUserType(UpdateUserTypeRequest) returns (UserType);
+  rpc SoftDeleteUserType(SoftDeleteUserTypeRequest) returns (UserType);
+  rpc ListUserTypes(ListUserTypesRequest) returns (ListUserTypesReply);
+
+  rpc CreateLoginType(CreateLoginTypeRequest) returns (LoginType);
+  rpc GetLoginType(GetLoginTypeRequest) returns (LoginType);
+  rpc UpdateLoginType(UpdateLoginTypeRequest) returns (LoginType);
+  rpc SoftDeleteLoginType(SoftDeleteLoginTypeRequest) returns (LoginType);
+  rpc ListLoginTypes(ListLoginTypesRequest) returns (ListLoginTypesReply);
+
+  rpc CreateSkillList(CreateSkillListRequest) returns (SkillList);
+  rpc GetSkillList(GetSkillListRequest) returns (SkillList);
+  rpc UpdateSkillList(UpdateSkillListRequest) returns (SkillList);
+  rpc SoftDeleteSkillList(SoftDeleteSkillListRequest) returns (SkillList);
+
+  // Skill catalog (many per tenant) and user ↔ skill assignments (many skills per user).
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsReply);
+  rpc CreateSkill(CreateSkillRequest) returns (Skill);
+  rpc GetSkill(GetSkillRequest) returns (Skill);
+  rpc UpdateSkill(UpdateSkillRequest) returns (Skill);
+  rpc SoftDeleteSkill(SoftDeleteSkillRequest) returns (Skill);
+
+  rpc ListUserSkills(ListUserSkillsRequest) returns (ListUserSkillsReply);
+  rpc CreateUserSkill(CreateUserSkillRequest) returns (UserSkill);
+  rpc SoftDeleteUserSkill(SoftDeleteUserSkillRequest) returns (UserSkill);
+  /** Atomically sets the active skill set for a user (soft-deletes removed, creates new). */
+  rpc ReplaceUserSkills(ReplaceUserSkillsRequest) returns (ReplaceUserSkillsReply);
+
+  rpc CreateLogin(CreateLoginRequest) returns (Login);
+  rpc GetLogin(GetLoginRequest) returns (Login);
+  rpc UpdateLogin(UpdateLoginRequest) returns (Login);
+  rpc SoftDeleteLogin(SoftDeleteLoginRequest) returns (Login);
+  rpc ListLoginsByUserId(ListLoginsByUserIdRequest) returns (ListLoginsByUserIdReply);
+
+  // Verify username (``Login.name``) + password (``Login.password``) without creating a session.
+  // Returns the owning ``user_id`` and matched ``login_id`` on success.
+  rpc SignInCheck(SignInCheckRequest) returns (SignInCheckReply);
+
+  // Authenticate a user by username/password and return a new session.
+  // Username matches Login.name; password is checked against Login.password.
+  // Failures (bad credentials, disabled user, missing login) surface as
+  // gRPC status from AppError (UNAUTHENTICATED / NOT_FOUND / INVALID_ARGUMENT).
+  rpc SignIn(SignInRequest) returns (Session);
+
+  // Revoke an authenticated session by id (soft-delete + ``is_revoked``).
+  // Idempotent: unknown or already-revoked session ids return success.
+  rpc SignOut(SignOutRequest) returns (SignOutReply);
+
+  // Invites — time-limited codes used to provision SignUpUser (account / types
+  // are embedded on the invite). Codes are uppercase ``XXXX-XX-XXXX`` segments.
+  rpc GenerateInvite(GenerateInviteRequest) returns (Invite);
+  rpc ListInvites(ListInvitesRequest) returns (ListInvitesReply);
+  rpc SoftDeleteInvite(SoftDeleteInviteRequest) returns (Invite);
+  rpc RedeemInvite(RedeemInviteRequest) returns (Invite);
+
+  // Self-service registration: validates invite + email uniqueness, creates
+  // ``User`` + ``Login`` (email as ``Login.name``), then marks the invite redeemed.
+  rpc SignUpUser(SignUpUserRequest) returns (SignUpUserReply);
+
+  // RBAC — roles, permissions, assignments, and authorization context.
+  rpc ListRoles(ListRolesRequest) returns (ListRolesReply);
+  rpc CreateRole(CreateRoleRequest) returns (Role);
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsReply);
+  rpc CreatePermission(CreatePermissionRequest) returns (Permission);
+  rpc AttachPermissionToRole(AttachPermissionToRoleRequest) returns (RolePermission);
+  rpc AssignRoleToUser(AssignRoleToUserRequest) returns (UserRoleAssignment);
+  rpc RevokeRoleFromUser(RevokeRoleFromUserRequest) returns (RevokeRoleFromUserReply);
+  rpc ListUserRoles(ListUserRolesRequest) returns (ListUserRolesReply);
+  rpc CheckUserAuthAndPermissions(CheckUserAuthAndPermissionsRequest) returns (CheckUserAuthAndPermissionsReply);
+  rpc ListServicePermissions(ListServicePermissionsRequest) returns (ListServicePermissionsReply);
+  rpc RegisterServicePermission(RegisterServicePermissionRequest) returns (ServicePermission);
+}
+
+message PingRequest {
+  string client_name = 1;
+}
+
+message PingReply {
+  string service_name = 1;
+  string version = 2;
+}
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoReply {
+  string message = 1;
+}
+
+message RecordCountRequest {}
+
+message RecordCountReply {
+  uint64 total_records = 1;
+}
+
+message EnsureInitialUserRequest {
+  string first_name = 1;
+  string last_name = 2;
+  /** Email becomes ``Login.name`` (case-sensitive; use lowercase consistently). */
+  string email = 3;
+  string password = 4;
+  bool enabled = 5;
+  string notes = 6;
+  string timezone = 7;
+  string location = 8;
+}
+
+message EnsureInitialUserReply {
+  /** True when rows already existed and no seeding ran. */
+  bool skipped = 1;
+  /** True when this call created the catalog + user + login. */
+  bool created = 2;
+  /** Populated when ``created`` is true; login password field cleared. */
+  User user = 3;
+  Login login = 4;
+}
+
+message ResetDatabaseRequest {
+  /** Email used as ``Login.name`` (same as SignIn / SignInCheck username). */
+  string username = 1;
+  string password = 2;
+}
+
+message ResetDatabaseReply {
+  /** User + login rows removed immediately before wipe (includes soft-deleted). */
+  uint64 total_records_before_reset = 1;
+  /** Recreated admin user + login; login password field cleared. */
+  User user = 2;
+  Login login = 3;
+}
+
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message GetUserDataRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message GetUserDataReply {
+  string user_id = 1;
+  /** Primary active login name (often email). */
+  string username = 2;
+  /** Stored credential on the primary login row. */
+  string password = 3;
+  string login_id = 4;
+}
+
+// --- Common primitives ------------------------------------------------------
+
+message UserShort {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  bool enabled = 4;
+  string account_id = 5;
+  string user_type_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message User {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string first_name = 7;
+  string last_name = 8;
+  string account_id = 9;
+  string notes = 10;
+  string timezone = 11;
+  string location = 12;
+  string skill_list_id = 13;
+  string user_type_id = 14;
+  reserved 15;
+  reserved "password";
+}
+
+message UserType {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string code = 7;
+  string display_name = 8;
+  string data_json = 9;
+}
+
+message SkillList {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string name = 7;
+  string data_json = 8;
+}
+
+/** One entry in the skill catalog (e.g. ``python``, ``architecture``). */
+message Skill {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string code = 7;
+  string display_name = 8;
+  string data_json = 9;
+}
+
+/** Assignment of a catalog ``Skill`` to a ``User`` (PK ``id``; GSI ``user-skills``). */
+message UserSkill {
+  string id = 1;
+  string user_id = 2;
+  string skill_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  google.protobuf.Timestamp deleted_at = 6;
+  bool is_deleted = 7;
+}
+
+message LoginType {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string code = 7;
+  string display_name = 8;
+  string data_json = 9;
+}
+
+message Login {
+  string id = 1;
+  string user_id = 2;
+  string login_type_id = 3;
+  string name = 4;
+  string description = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Timestamp deleted_at = 8;
+  bool is_deleted = 9;
+  bool enabled = 10;
+  string data_json = 11;
+  /** Stored credential string (caller responsibility: hashing / secrecy at rest). */
+  string password = 12;
+}
+
+message LoginDetail {
+  Login login = 1;
+  LoginType login_type = 2;
+}
+
+message UserLong {
+  User user = 1;
+  UserType user_type = 2;
+  SkillList skill_list = 3;
+  repeated LoginDetail logins = 4;
+  /** Active catalog skills linked via ``UserSkill`` rows (resolved ``Skill`` payloads). */
+  repeated Skill skills = 5;
+}
+
+// --- User RPCs --------------------------------------------------------------
+
+message CreateUserRequest {
+  string first_name = 1;
+  string last_name = 2;
+  string account_id = 3;
+  string notes = 4;
+  string timezone = 5;
+  string location = 6;
+  string skill_list_id = 7;
+  string user_type_id = 8;
+  bool enabled = 9;
+  reserved 10;
+  reserved "password";
+  /** Optional; each id must reference an active ``Skill``. Applied after the user row is created. */
+  repeated string skill_ids = 11;
+}
+
+message GetUserRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  optional string first_name = 2;
+  optional string last_name = 3;
+  optional string account_id = 4;
+  optional string notes = 5;
+  optional string timezone = 6;
+  optional string location = 7;
+  optional string skill_list_id = 8;
+  optional string user_type_id = 9;
+  optional bool enabled = 10;
+  reserved 11;
+  reserved "password";
+}
+
+message SoftDeleteUserRequest {
+  string id = 1;
+}
+
+message ListUsersByAccountRequest {
+  string account_id = 1;
+  bool include_deleted = 2;
+  uint32 page_size = 3;
+  string page_token = 4;
+  // Optional listing filters for admin UIs (unset = no constraint on that axis).
+  optional string user_type_id = 5;  // UUID; active users must match this type id
+  optional bool enabled = 6;         // when set, match enabled flag exactly
+  // Case-sensitive substring on first_name OR last_name (DynamoDB contains()).
+  optional string name_contains = 7;
+}
+
+message ListUsersByAccountReply {
+  repeated User users = 1;
+  string next_page_token = 2;
+}
+
+message GetUserTypeStatsRequest {
+  string account_id = 1;
+  bool include_deleted = 2;
+}
+
+message UserTypeStat {
+  /** Resolved user-type label: display name when set, otherwise ``UserType.code``; unknown ids use the raw id. */
+  string type_name = 1;
+  /** Active users with this user type (within the requested account and delete filter). */
+  uint64 count = 2;
+}
+
+message GetUserTypeStatsReply {
+  repeated UserTypeStat entries = 1;
+}
+
+// --- User type RPCs ---------------------------------------------------------
+
+message CreateUserTypeRequest {
+  string code = 1;
+  string display_name = 2;
+  string data_json = 3;
+  bool enabled = 4;
+}
+
+message GetUserTypeRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message UpdateUserTypeRequest {
+  string id = 1;
+  optional string code = 2;
+  optional string display_name = 3;
+  optional string data_json = 4;
+  optional bool enabled = 5;
+}
+
+message SoftDeleteUserTypeRequest {
+  string id = 1;
+}
+
+message ListUserTypesRequest {
+  bool include_deleted = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListUserTypesReply {
+  repeated UserType items = 1;
+  string next_page_token = 2;
+}
+
+// --- Login type RPCs --------------------------------------------------------
+
+message CreateLoginTypeRequest {
+  string code = 1;
+  string display_name = 2;
+  string data_json = 3;
+  bool enabled = 4;
+}
+
+message GetLoginTypeRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message UpdateLoginTypeRequest {
+  string id = 1;
+  optional string code = 2;
+  optional string display_name = 3;
+  optional string data_json = 4;
+  optional bool enabled = 5;
+}
+
+message SoftDeleteLoginTypeRequest {
+  string id = 1;
+}
+
+message ListLoginTypesRequest {
+  bool include_deleted = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListLoginTypesReply {
+  repeated LoginType items = 1;
+  string next_page_token = 2;
+}
+
+// --- Skill list RPCs --------------------------------------------------------
+
+message CreateSkillListRequest {
+  string name = 1;
+  string data_json = 2;
+  bool enabled = 3;
+}
+
+message GetSkillListRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message UpdateSkillListRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string data_json = 3;
+  optional bool enabled = 4;
+}
+
+message SoftDeleteSkillListRequest {
+  string id = 1;
+}
+
+// --- Skill catalog RPCs -----------------------------------------------------
+
+message ListSkillsRequest {
+  bool include_deleted = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListSkillsReply {
+  repeated Skill items = 1;
+  string next_page_token = 2;
+}
+
+message CreateSkillRequest {
+  string code = 1;
+  string display_name = 2;
+  string data_json = 3;
+  bool enabled = 4;
+}
+
+message GetSkillRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message UpdateSkillRequest {
+  string id = 1;
+  optional string code = 2;
+  optional string display_name = 3;
+  optional string data_json = 4;
+  optional bool enabled = 5;
+}
+
+message SoftDeleteSkillRequest {
+  string id = 1;
+}
+
+// --- User skill assignment RPCs --------------------------------------------
+
+message ListUserSkillsRequest {
+  string user_id = 1;
+  bool include_deleted = 2;
+  uint32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListUserSkillsReply {
+  repeated UserSkill items = 1;
+  string next_page_token = 2;
+}
+
+message CreateUserSkillRequest {
+  string user_id = 1;
+  string skill_id = 2;
+}
+
+message SoftDeleteUserSkillRequest {
+  string id = 1;
+}
+
+message ReplaceUserSkillsRequest {
+  string user_id = 1;
+  repeated string skill_ids = 2;
+}
+
+message ReplaceUserSkillsReply {
+  uint32 applied_count = 1;
+}
+
+// --- Login RPCs -------------------------------------------------------------
+
+message CreateLoginRequest {
+  string user_id = 1;
+  string login_type_id = 2;
+  string name = 3;
+  string description = 4;
+  string data_json = 5;
+  bool enabled = 6;
+  string password = 7;
+}
+
+message GetLoginRequest {
+  string id = 1;
+  bool include_deleted = 2;
+}
+
+message UpdateLoginRequest {
+  string id = 1;
+  optional string login_type_id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional string data_json = 5;
+  optional bool enabled = 6;
+  optional string password = 7;
+}
+
+message SoftDeleteLoginRequest {
+  string id = 1;
+}
+
+message ListLoginsByUserIdRequest {
+  string user_id = 1;
+  bool include_deleted = 2;
+  uint32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListLoginsByUserIdReply {
+  repeated LoginDetail items = 1;
+  string next_page_token = 2;
+}
+
+// --- Sign-in / session RPCs ------------------------------------------------
+
+message Session {
+  string id = 1;
+  string user_id = 2;
+  /** Login record that authenticated this session (the matched username). */
+  string login_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp deleted_at = 6;
+  bool is_revoked = 7;
+  /** Populated on ``SignIn`` — snapshot of the authenticated user for clients. */
+  string first_name = 8;
+  string last_name = 9;
+  /** Same value as the matched ``Login.name`` (often the user's email). */
+  string email = 10;
+  string user_type_id = 11;
+  /** ``UserType.display_name`` when ``user_type_id`` resolves; otherwise empty. */
+  string user_type_display_name = 12;
+  /** Effective roles and permission grants for the authenticated user. */
+  UserAuthContext user_auth_context = 13;
+}
+
+/** Resolved authorization snapshot for a user (also embedded on ``Session`` after ``SignIn``). */
+message UserAuthContext {
+  string user_id = 1;
+  repeated string role_codes = 2;
+  repeated PermissionGrant permission_grants = 3;
+  /** Stable JSON serialization of roles and grants for caching / downstream services. */
+  string auth_json = 4;
+}
+
+message PermissionGrant {
+  string permission_code = 1;
+  string role_code = 2;
+}
+
+message SignInCheckRequest {
+  /** Username — matches an active Login.name (case-sensitive). */
+  string username = 1;
+  /** Plaintext password — verified against Login.password (no hashing yet). */
+  string password = 2;
+}
+
+message SignInCheckReply {
+  string user_id = 1;
+  string login_id = 2;
+}
+
+message SignInRequest {
+  /** Username — matches an active Login.name (case-sensitive). */
+  string username = 1;
+  /** Plaintext password — verified against Login.password (no hashing yet). */
+  string password = 2;
+}
+
+message SignOutRequest {
+  /** IAM ``Session.id`` issued by ``SignIn``. */
+  string session_id = 1;
+}
+
+message SignOutReply {}
+
+// --- Invites / sign-up ------------------------------------------------------
+
+message Invite {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  /** Human-facing code, e.g. ``AB12-CD-EF34`` (uppercase alphanumerics). */
+  string code = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  /** When true, the code must not be accepted for new sign-ups. */
+  bool redeemed = 8;
+  string account_id = 9;
+  string user_type_id = 10;
+  string login_type_id = 11;
+  /** Optional label: intended recipient email (for admin UIs; not validated as a login). */
+  string recipient_email = 12;
+}
+
+message GenerateInviteRequest {
+  string account_id = 1;
+  string user_type_id = 2;
+  string login_type_id = 3;
+  /** Hours until expiry; when unset or zero, defaults to 24. */
+  uint32 ttl_hours = 4;
+  /** Optional; stored on the invite for display (e.g. who the code is for). */
+  string recipient_email = 5;
+}
+
+message ListInvitesRequest {
+  bool include_deleted = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListInvitesReply {
+  repeated Invite items = 1;
+  string next_page_token = 2;
+}
+
+message SoftDeleteInviteRequest {
+  string id = 1;
+}
+
+message RedeemInviteRequest {
+  string id = 1;
+}
+
+message SignUpUserRequest {
+  string email = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string password = 4;
+  string password_confirm = 5;
+  /** Same format as ``Invite.code``; matching is case-insensitive. */
+  string invite_code = 6;
+}
+
+message SignUpUserReply {
+  User user = 1;
+  Login login = 2;
+}
+
+// --- RBAC -------------------------------------------------------------------
+
+message Role {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string code = 7;
+  string display_name = 8;
+  string data_json = 9;
+}
+
+message Permission {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  bool is_deleted = 5;
+  bool enabled = 6;
+  string code = 7;
+  string display_name = 8;
+  string data_json = 9;
+}
+
+message RolePermission {
+  string role_id = 1;
+  string permission_id = 2;
+  string role_code = 3;
+  string permission_code = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message UserRoleAssignment {
+  string user_id = 1;
+  string role_id = 2;
+  string role_code = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message ServicePermission {
+  string service_code = 1;
+  string permission_code = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ListRolesRequest {
+  bool include_deleted = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListRolesReply {
+  repeated Role items = 1;
+  string next_page_token = 2;
+}
+
+message CreateRoleRequest {
+  string code = 1;
+  string display_name = 2;
+  string data_json = 3;
+  bool enabled = 4;
+}
+
+message ListPermissionsRequest {
+  bool include_deleted = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListPermissionsReply {
+  repeated Permission items = 1;
+  string next_page_token = 2;
+}
+
+message CreatePermissionRequest {
+  string code = 1;
+  string display_name = 2;
+  string data_json = 3;
+  bool enabled = 4;
+}
+
+message AttachPermissionToRoleRequest {
+  string role_id = 1;
+  string permission_id = 2;
+}
+
+message AssignRoleToUserRequest {
+  string user_id = 1;
+  string role_id = 2;
+}
+
+message RevokeRoleFromUserRequest {
+  string user_id = 1;
+  string role_id = 2;
+}
+
+message RevokeRoleFromUserReply {}
+
+message ListUserRolesRequest {
+  string user_id = 1;
+}
+
+message ListUserRolesReply {
+  repeated UserRoleAssignment items = 1;
+}
+
+message CheckUserAuthAndPermissionsRequest {
+  /** When set, build context for this user; otherwise use ``user_auth_context.user_id``. */
+  string user_id = 1;
+  UserAuthContext user_auth_context = 2;
+  /** Permission codes to evaluate (all must be granted when ``require_all`` is true). */
+  repeated string permission_codes = 3;
+  bool require_all = 4;
+}
+
+message CheckUserAuthAndPermissionsReply {
+  UserAuthContext user_auth_context = 1;
+  bool authorized = 2;
+  repeated string missing_permission_codes = 3;
+}
+
+message ListServicePermissionsRequest {
+  string service_code = 1;
+}
+
+message ListServicePermissionsReply {
+  repeated ServicePermission items = 1;
+}
+
+message RegisterServicePermissionRequest {
+  string service_code = 1;
+  string permission_code = 2;
+}

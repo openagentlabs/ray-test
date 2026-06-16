@@ -1,0 +1,135 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iam-service"
+version = "0.1.0"
+description = "IAM microservice (gRPC + DynamoDB, Result types)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "aioboto3>=13.0",
+  "boto3>=1.35",
+  "python-dotenv>=1.0",
+  "exl-observability>=0.1.0",
+  "grpcio>=1.80",
+  "protobuf>=5.29",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "email-validator>=2.2",
+  "returns>=0.23",
+  "PyJWT>=2.10",
+  "cryptography>=44.0",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.34",
+]
+
+[tool.uv.sources]
+exl-observability = { path = "../../lib/exl-observability", editable = true }
+
+[project.optional-dependencies]
+dev = [
+  "grpcio-tools>=1.80",
+  "mypy>=1.13",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+  "httpx>=0.28",
+  "ruff>=0.8",
+  "types-aioboto3[dynamodb]>=13.0",
+]
+
+[project.scripts]
+iam-service = "iam_service.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+src = ["src", "tools"]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["src/iam/v1"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "ANN"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"src/iam_service/main.py" = ["ANN201", "S104"]
+"src/iam_service/core/app_config.py" = ["S104"]
+"src/iam_service/auth/token_service.py" = ["S105"]
+"src/iam_service/plugins/idp/types.py" = ["S105"]
+"src/iam_service/grpc_transport/iam_servicer.py" = ["E501"]
+"src/iam_service/services/iam_application.py" = ["E501"]
+"src/iam_service/util/validation.py" = ["S105", "S101"]
+"tests/**/*.py" = ["ANN", "S101", "S105", "S106"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["returns.contrib.mypy.returns_plugin"]
+mypy_path = "src"
+packages = ["iam_service"]
+
+[[tool.mypy.overrides]]
+module = "returns.*"
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = "grpc.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "aioboto3.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "botocore.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "boto3.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "google.protobuf.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "opentelemetry.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fastapi.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "starlette.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "uvicorn.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "iam_service.services.iam_application"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "iam_service.grpc_transport.iam_servicer"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "iam_service.grpc_transport.iam_converters"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "iam.v1.*"
+ignore_errors = true

@@ -8,7 +8,7 @@ globs:
 alwaysApply: false
 ---
 
-Rules for **Arb Aspire** UI: **`aspire.svc/components/layout/`** (dashboard shell, sidebar, header), **`aspire.svc/components/pages/architect-workspace/`** (current product surface), **`aspire.svc/components/ui/`** (shadcn primitives), and **`aspire.svc/components/providers/`**. Product identity: **`.cursor/rules/constants.mdc`**. Stack and routing: **`nextjs.mdc`**, styling: **`pages_compoents_style_guide.mdc`**.
+Rules for **Arb Aspire** UI: **`aspire.svc/components/layout/`** (dashboard shell, sidebar, header), **`aspire.svc/components/pages/architect-workspace/`** (current product surface), **`aspire.svc/components/ui/`** (shadcn primitives), and **`aspire.svc/components/providers/`**. Product identity: **`.cursor/rules/constants/constants.mdc`**. Stack and routing: **`nextjs.mdc`**, styling: **`pages_compoents_style_guide.mdc`**.
 
 ## Chat / assistant UI
 

@@ -36,10 +36,10 @@ Prefer **repository root** as **cwd** when running the tool so the default SQLit
 
 ## Quality and tests
 
-- Follow **repository root** **`.cursor/rules/python.mdc`** and **`.cursor/rules/testing_py.mdc`** for pytest layout and typing expectations.
+- Follow **repository root** **`.cursor/rules/python/python.mdc`** and **`.cursor/rules/testing_py/testing_py.mdc`** for pytest layout and typing expectations.
 - Run tests: **`cd .cursor/tools/aspire && uv run pytest`**.
 
 ## Rules alignment
 
-- **Monorepo layout / ports**: **`.cursor/rules/solution.mdc`** (repository root).
+- **Monorepo layout / ports**: **`.cursor/rules/solution/solution.mdc`** (repository root).
 - **Arb Aspire app code**: **`aspire.svc/.cursor/rules/`** — do not fold registry schema changes into unrelated Next.js UI rules.

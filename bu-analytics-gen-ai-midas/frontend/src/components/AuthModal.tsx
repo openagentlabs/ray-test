@@ -1,66 +1,54 @@
-/**
- * AuthModal (Cognito-redirect shim).
- *
- * The legacy username/password modal has been removed. Authentication now
- * happens via the Cognito Hosted UI (with Microsoft Entra ID federation).
- * This component is kept with the same prop signature as a thin UX shim:
- * when shown, it displays a brief "Redirecting to sign-in" notice and kicks
- * off the Cognito Authorization Code + PKCE flow via `cognitoAuthService`.
- *
- * `onLoginSuccess` is retained for backwards compatibility but is NOT invoked
- * here — the login finishes on the `/auth/callback` page after the Cognito
- * redirect, where `UserContext.initializeAuth` picks up the new session.
- */
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { LogIn, X, AlertTriangle, Loader2 } from 'lucide-react';
-import cognitoAuthService, { CognitoConfigError } from '../services/cognitoAuthService';
+import authService, { LoginResponse } from '../services/authService';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess?: (user: unknown) => void; // retained for source-level compatibility
+  onLoginSuccess?: (user: {
+    name: string;
+    role: string;
+    avatar: string;
+    email?: string;
+    id?: string;
+    username?: string;
+  }) => void;
   initialMode?: 'login' | 'register';
   allowRegistration?: boolean;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const [redirecting, setRedirecting] = useState(false);
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const autoStartedRef = useRef(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      autoStartedRef.current = false;
-      setError(null);
-      setRedirecting(false);
-      return;
-    }
-    if (autoStartedRef.current) return;
-    autoStartedRef.current = true;
-
-    void (async () => {
-      setRedirecting(true);
-      setError(null);
-      try {
-        await cognitoAuthService.beginLogin();
-        // beginLogin() triggers a full-page navigation to Cognito, so this
-        // promise never actually resolves on success; the code below only
-        // runs if it throws.
-      } catch (e) {
-        const message =
-          e instanceof CognitoConfigError
-            ? 'Sign-in is not configured. Please contact an administrator.'
-            : e instanceof Error
-              ? e.message
-              : 'Failed to start sign-in.';
-        setError(message);
-        setRedirecting(false);
-      }
-    })();
-  }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data: LoginResponse = await authService.login(email.trim(), password);
+      const frontendUser = {
+        name: data.user.full_name,
+        role: 'Data Analyst',
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.full_name)}&background=3b82f6&color=ffffff`,
+        email: data.user.email || email.trim(),
+        id: data.user.id.toString(),
+        username: data.user.username,
+      };
+      onLoginSuccess?.(frontendUser);
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign-in failed. Please try again.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -80,34 +68,66 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Sign in</h2>
             <p className="text-sm text-gray-500 dark:text-gray-300">
-              Redirecting to your organization sign-in
+              Enter your email and password
             </p>
           </div>
         </div>
 
-        {error ? (
+        {error && (
           <div className="flex items-start space-x-3 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 mb-4">
             <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
             <div className="flex-1 text-sm">{error}</div>
           </div>
-        ) : (
-          <div className="flex items-center justify-center space-x-3 py-8 text-gray-600 dark:text-gray-300">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>{redirecting ? 'Opening Cognito / Entra ID sign-in…' : 'Preparing…'}</span>
-          </div>
         )}
 
-        {error && (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email
+            </label>
+            <input
+              id="login-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="username"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="••••••••"
+            />
+          </div>
+
           <button
-            onClick={() => {
-              autoStartedRef.current = false;
-              setError(null);
-            }}
-            className="w-full py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-[#292966] dark:hover:bg-[#333380] text-white dark:text-[#ccccff] font-medium transition-colors"
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 dark:bg-[#292966] dark:hover:bg-[#333380] text-white dark:text-[#ccccff] font-medium transition-colors flex items-center justify-center gap-2"
           >
-            Try again
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing in…
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
-        )}
+        </form>
       </div>
     </div>
   );

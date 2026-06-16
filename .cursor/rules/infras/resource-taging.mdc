@@ -16,7 +16,7 @@ alwaysApply: false
 
 **When to use it:** Any new or changed tag map on AWS resources in Terraform, Helm values that set AWS tags, or ownership markers under **`infra/`**.
 
-**How to use it:** Read **Format** and **Build** below; apply every line in **Rules**; read tag keys and example values from **`.cursor/rules/constants.mdc`** § Mandatory resource tagging only; pair physical names with **`.cursor/rules/infras/resource-naming.mdc`**.
+**How to use it:** Read **Format** and **Build** below; apply every line in **Rules**; read tag keys and example values from **`.cursor/rules/constants/constants.mdc`** § Mandatory resource tagging only; pair physical names with **`.cursor/rules/infras/resource-naming.mdc`**.
 
 ---
 
@@ -171,7 +171,7 @@ alwaysApply: false
 
 | Topic | Path |
 |-------|------|
-| Tag keys and example values | **`.cursor/rules/constants.mdc`** § Mandatory resource tagging |
+| Tag keys and example values | **`.cursor/rules/constants/constants.mdc`** § Mandatory resource tagging |
 | Physical names and `Name` values | **`.cursor/rules/infras/resource-naming.mdc`** |
 | Terraform layout | **`.cursor/rules/iac/terrafrom.mdc`** |
 | AWS account / tools | **`.cursor/rules/infras/aws.mdc`** |

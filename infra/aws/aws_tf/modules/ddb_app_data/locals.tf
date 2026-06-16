@@ -7,11 +7,12 @@
 ###############################################################################
 
 locals {
-  table_name = replace(replace(replace(lower(replace(
+  _table_name_raw = lower(replace(
     "${var.solution.name}-${var.solution.deployment_key}-${var.purpose}-${var.solution.account_id}",
     "_",
     "-",
-  )), "--", "-"), "--", "-"), "--", "-")
+  ))
+  table_name = can(regex("--", var.solution.deployment_key)) ? local._table_name_raw : replace(replace(replace(local._table_name_raw, "--", "-"), "--", "-"), "--", "-")
 
   module_tags = merge(
     {

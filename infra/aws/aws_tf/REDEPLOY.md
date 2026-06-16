@@ -6,7 +6,7 @@ Remote state in S3 (`arb-ai-assistant-terraform-state`) is **not** destroyed by 
 
 - `iam.svc/server/.env.local`, `solutions.svc/server/.env.local`, `storage.svc/server/.env.local`, `notification.svc/server/.env.local`, `general.ai.agent.svc/server/.env.local`
 - `frontend/.env.local` and/or `infra/containers/compose/.env.local` (for `AUTH_SECRET` and IAM bootstrap)
-- AWS CLI profile `kt-acc` (see `.cursor/rules/constants.mdc`)
+- AWS CLI profile `kt-acc` (see `.cursor/rules/constants/constants.mdc`)
 - Docker, `kubectl`, and `helm` (for image build/push and EKS rollout)
 
 ## Full restore

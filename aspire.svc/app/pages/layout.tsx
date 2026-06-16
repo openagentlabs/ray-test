@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { getAspirePeopleAndArchitectNavigation } from "@/lib/navigation/aspire-pages-navigation";
+import { NavigationService } from "@/lib/navigation/navigation-service";
 
-export default function AspirePagesLayout({
+export default function PagesWorkspaceLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const navigationItems = getAspirePeopleAndArchitectNavigation();
+  const navigationItems = NavigationService.getInstance().getMainNavigation();
 
   return (
-    <DashboardShell navigationItems={navigationItems}>{children}</DashboardShell>
+    <DashboardShell navigationItems={navigationItems}>
+      {children}
+    </DashboardShell>
   );
 }

@@ -1,0 +1,165 @@
+---
+description: Gold-standard Python testing policy (pytest) for uv apps and microservices — layout, types, agent feedback table, and framework mandate.
+globs:
+  - "**/*.py"
+---
+
+# Python testing — gold standard (pytest)
+
+## Agent init
+
+**Mandatory:** Read this entire section before any other content in this file; execute every `Action:` line here immediately and retain every `Rule:` and `Knowledge:` line for the rest of this session.
+
+- Rule: Every bullet in **Rules content** is exactly one line starting with `Knowledge:`, `Rule:`, or `Action:` — never wrap a rule across multiple lines.
+- Rule: Type prefix is PascalCase with no spaces, first letter capitalized, followed by a colon and one space — Example: `Rule: Use pytest as the only Python test runner in this repository.`
+- Rule: `Knowledge:` bullets are context to retain; `Rule:` bullets are constraints to follow when this file applies; `Action:` bullets are steps to execute when their condition is met.
+- Knowledge: This file is the authoritative Python testing policy for uv applications and `*.svc/server/` microservices in this monorepo.
+- Knowledge: Pair with **`.cursor/rules/python/python.mdc`** for package layout, async gRPC, validation, and `returns` Result boundaries.
+- Action: Before writing or running tests, confirm the target package `pyproject.toml` declares `pytest` and `pytest-asyncio` in dev dependencies and `[tool.pytest.ini_options]`.
+- Action: After a test run, present results to the user using the **Agent feedback table** format in **Rules content** § Agent feedback table.
+- Action: Read every `###` subsection in **Rules content** in order; store `Knowledge:` and `Rule:` bullets; execute `Action:` bullets when their condition applies.
+
+---
+
+## Rules content
+
+### Framework selection — mandatory pytest
+
+Apply when choosing or reviewing a Python test stack for any package in this repository.
+
+- Knowledge: Top-five candidates scored against repo requirements (fixtures, async, parametrization, plugins, CI/IDE support, ecosystem, maintainability) — max 10 per row, total 50.
+
+| Framework | Fixtures | Async | Parametrize | Plugins/CI | Ecosystem | Total |
+|---|---:|---:|---:|---:|---:|---:|
+| **pytest** (selected) | 10 | 10 | 10 | 10 | 10 | **50** |
+| unittest (stdlib) | 5 | 6 | 4 | 8 | 9 | 32 |
+| hypothesis | 7 | 8 | 10 | 7 | 7 | 39 |
+| nose2 | 6 | 5 | 6 | 4 | 3 | 24 |
+| robot framework | 4 | 3 | 5 | 6 | 5 | 23 |
+
+- Rule: **pytest** is the mandatory and only approved Python test runner — do not introduce unittest class suites, nose, nose2, or robot framework unless the user explicitly requests a migration plan.
+- Rule: Async tests use **pytest-asyncio** with `asyncio_mode = "auto"` in `[tool.pytest.ini_options]`.
+- Rule: Property-based tests may use **hypothesis** as a pytest plugin only — never as a replacement runner.
+- Rule: Declare `pytest`, `pytest-asyncio`, and optional `httpx` (HTTP integration) in the package `pyproject.toml` `dependency-groups.dev` or `[project.optional-dependencies].dev`.
+- Rule: Use plain `assert` with clear messages; avoid heavyweight custom assertion libraries unless already adopted in the package.
+
+### Test roots and layout — one concern per file
+
+Apply when scaffolding or extending tests for a Python deliverable.
+
+- Knowledge: Every Python package must have a dedicated test root — microservices use `tests/`; uv tools and client libraries use `testing/`.
+
+| Package kind | Test root | Unit | Integration | User-case | Shared fixtures |
+|---|---|---|---|---|---|
+| gRPC microservice (`*.svc/server/`) | `tests/` | `tests/unit/` | `tests/integration/` | `tests/user/` | `tests/conftest.py` |
+| Persistence adapters | `tests/` | `tests/database/` | — | — | `tests/database/conftest.py` |
+| UV tool / client lib | `testing/` | `testing/unit/` | `testing/integration/` | `testing/user/` | `testing/conftest.py` |
+
+- Rule: One test module per subject — never put two unrelated subjects in the same file (e.g. do not mix config singleton tests with gRPC servicer tests).
+- Rule: Use subfolders for parent/child groupings — e.g. `tests/unit/test_app_config_store.py`, `tests/integration/test_http_auth_server.py`.
+- Rule: Name modules `test_<subject>.py` and functions `test_<behavior>_<expected>()`.
+- Rule: Put cross-cutting non-fixture helpers in `tests/support/` (microservices) or `testing/helpers.py` (tools) — do not import from `conftest.py` modules.
+- Rule: Register project-local pytest plugins (e.g. result table reporter) in `[tool.pytest.ini_options] plugins = [...]`.
+
+### Test types — objectives and scope
+
+Apply when deciding what kind of test to write for a change.
+
+- Knowledge: **Unit tests** — fast, isolated; mock I/O boundaries; cover validation, error mapping, pure helpers, single-class behavior, and `Result` success/failure paths.
+- Knowledge: **Integration tests** — multi-layer wiring without external network when possible; e.g. servicer → application with mocked repositories, FastAPI routes → auth application with in-memory drivers.
+- Knowledge: **Database tests** — repository semantics, pagination, record models; mock DynamoDB unless a change requires real persistence (moto/local) — then isolate in `tests/database/`.
+- Knowledge: **User-case tests** (`tests/user/` or `testing/user/`) — exercise every meaningful user option, not only happy path; include invalid inputs, boundary values, missing required fields, type mismatches, and authorization failures.
+- Rule: Validation ingress must have dedicated tests for mandatory fields, types, bounds, and error codes mapped to `AppError` / gRPC status / HTTP status.
+- Rule: Service boundaries returning `Result[T, AppError]` must test both `Success` and `Failure` branches with explicit assertions on `code` and `message`.
+- Rule: Plugin drivers (vault, IdP, storage backends) must have unit tests per driver plus factory wiring tests in integration.
+- Rule: Config singleton (`app_config`) must have tests proving load-once semantics and fail-fast before init.
+
+### Async gRPC / DynamoDB services
+
+Apply to `*.svc/server/` packages (IAM, solutions, storage, notification, collaboration, document-storage, arch diagram agent, general AI agent).
+
+- Rule: Unit tests mock `aioboto3` / repository ports — no real DynamoDB in unit tests.
+- Rule: Integration tests exercise servicer dispatch with mocked `ServicerContext` and async repository mocks — verify RPC wiring and `context.abort` paths.
+- Rule: Full-stack persistence tests are optional and isolated — use moto or local DynamoDB only when mocks cannot represent the behavior under change.
+- Rule: Run `uv run ruff check --select ASYNC src` before merging transport or I/O changes — see **`.cursor/rules/python/python.mdc`**.
+
+### Configuration and commands
+
+Apply when documenting or running tests for a package.
+
+- Rule: Configure `[tool.pytest.ini_options]` in the package `pyproject.toml` with `testpaths`, `pythonpath = ["src"]`, and `asyncio_mode = "auto"`.
+- Rule: Run from the package root: `uv sync --dev && uv run pytest`.
+- Rule: Run a single file: `uv run pytest tests/unit/test_<subject>.py -v`.
+- Rule: Run one test: `uv run pytest tests/unit/test_<subject>.py::test_<name> -v`.
+- Rule: Run by marker when used: `uv run pytest -m integration`.
+
+### Single-test pattern — reference shape
+
+Apply when authoring a new test module; agents should match this structure.
+
+- Knowledge: Canonical unit test shape:
+
+```python
+"""Tests for <subject> — <one-line scope>."""
+
+from __future__ import annotations
+
+import pytest
+
+from my_package.module import fn_under_test
+from my_package.core.results import Failure, Success
+
+
+def test_fn_returns_success_for_valid_input() -> None:
+    """Happy path: valid input yields Success."""
+    outcome = fn_under_test("ok")
+    assert isinstance(outcome, Success)
+    assert outcome.unwrap() == "expected"
+
+
+def test_fn_returns_failure_for_invalid_input() -> None:
+    """User case: invalid input yields Failure with validation code."""
+    outcome = fn_under_test("")
+    assert isinstance(outcome, Failure)
+    assert outcome.failure().code == "validation"
+```
+
+- Rule: Every test function has a one-line docstring stating the scenario (becomes the **Description** column in the agent table).
+- Rule: Prefer `@pytest.mark.parametrize` for user-case matrices instead of copy-pasted test bodies.
+
+### Agent feedback table — mandatory output format
+
+Apply after every test run when reporting results to the user or in handoff.
+
+- Rule: Summarize pytest results as a markdown table with exactly these columns: `#`, `Test`, `Description`, `Comment`, `Status`.
+- Rule: `Status` uses traffic-light icons only — 🟢 success, 🟡 partial (skipped/xfail/warn), 🔴 failure/error.
+- Rule: `#` is a 1-based row index; `Test` is the pytest node short name; `Description` is the test docstring first line; `Comment` is failure excerpt or `passed`/`skipped`.
+- Knowledge: Example table:
+
+| # | Test | Description | Comment | Status |
+|---:|---|---|---|---|
+| 1 | test_init_loads_once | Second init returns cached instance | passed | 🟢 |
+| 2 | test_raises_before_init | Access before init fails fast | passed | 🟢 |
+| 3 | test_invalid_path | Missing file surfaces Failure | AssertionError: ... | 🔴 |
+
+- Action: After `uv run pytest`, build this table from pytest output or the project `tests/support/result_table.py` plugin when present.
+- Action: When tests fail, fix failures and re-run until the table is all 🟢 or explain remaining 🔴/🟡 rows.
+
+### Coverage objectives
+
+Apply when assessing whether testing is complete for a change.
+
+- Rule: Aim to validate 100% of public behavior for the changed module — all user-case branches, not only happy path.
+- Rule: New modules require matching new test modules in the correct subfolder before handoff.
+- Rule: Do not list individual test names in package `README.md` — tests change often; document framework, layout, and run commands only.
+- Rule: CI and local runs use the same `uv run pytest` entrypoint — no alternate runners.
+
+### Related
+
+Reference paths for companion rules — link by path; do not duplicate Python policy here.
+
+- Knowledge: Python package layout and validation — **`.cursor/rules/python/python.mdc`**.
+- Knowledge: PEP 8 naming — **`.cursor/rules/python/pep8.mdc`**.
+- Knowledge: Approved libraries — **`.cursor/rules/python/lib.mdc`**.
+- Knowledge: Human-readable errors — **`.cursor/rules/error/error.mdc`**.
+- Knowledge: IAM reference integration — **`iam.svc/server/tests/`** (unit, integration, database, support).

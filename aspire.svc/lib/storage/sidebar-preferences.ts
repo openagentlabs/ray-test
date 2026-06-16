@@ -1,11 +1,13 @@
-import { AppConfig } from "@/lib/config/app-config";
+import { AppPublicConfig } from "@/lib/config/app-config-public";
 
 export class SidebarPreferences {
   public static readCollapsed(): boolean {
     if (typeof window === "undefined") {
       return false;
     }
-    return window.localStorage.getItem(AppConfig.sidebarStorageKey) === "true";
+    return (
+      window.localStorage.getItem(AppPublicConfig.sidebarStorageKey) === "true"
+    );
   }
 
   public static writeCollapsed(collapsed: boolean): void {
@@ -13,7 +15,7 @@ export class SidebarPreferences {
       return;
     }
     window.localStorage.setItem(
-      AppConfig.sidebarStorageKey,
+      AppPublicConfig.sidebarStorageKey,
       collapsed ? "true" : "false",
     );
   }

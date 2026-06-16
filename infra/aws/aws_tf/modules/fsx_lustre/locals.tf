@@ -1,11 +1,9 @@
 locals {
   is_persistent = contains(["PERSISTENT_1", "PERSISTENT_2"], var.deployment_type)
 
-  file_system_name = replace(replace(replace(lower(replace(
-    "${var.solution.name}-${var.purpose}",
-    "_",
-    "-",
-  )), "--", "-"), "--", "-"), "--", "-")
+  _file_system_name_legacy = lower(replace("${var.solution.name}-${var.solution.deployment_key}-${var.purpose}", "_", "-"))
+  _file_system_name_modern = replace(replace(replace(lower(replace("${var.solution.name}-${var.purpose}", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  file_system_name         = can(regex("--", var.solution.deployment_key)) ? local._file_system_name_legacy : local._file_system_name_modern
 
   module_tags = merge(
     {

@@ -23,14 +23,14 @@ terraform {
 
 data "aws_eks_cluster" "eks" {
   count = var.containers_eks_enabled ? 1 : 0
-  name  = module.workloads_infra[0].cluster_name
+  name  = local.containers_cluster_name_effective
 }
 
 provider "kubernetes" {
   alias = "eks"
 
-  host                   = try(data.aws_eks_cluster.eks[0].endpoint, try(module.workloads_infra[0].cluster_endpoint, "https://127.0.0.1"))
-  cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks[0].certificate_authority[0].data), try(base64decode(module.workloads_infra[0].cluster_certificate_authority_data), ""))
+  host                   = try(data.aws_eks_cluster.eks[0].endpoint, "https://127.0.0.1")
+  cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks[0].certificate_authority[0].data), "")
 
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
@@ -39,7 +39,7 @@ provider "kubernetes" {
       "eks",
       "get-token",
       "--cluster-name",
-      try(data.aws_eks_cluster.eks[0].name, module.workloads_infra[0].cluster_name),
+      local.containers_cluster_name_effective,
       "--region",
       local.solution.region,
     ]
@@ -53,8 +53,8 @@ provider "helm" {
   alias = "eks"
 
   kubernetes {
-    host                   = try(data.aws_eks_cluster.eks[0].endpoint, try(module.workloads_infra[0].cluster_endpoint, "https://127.0.0.1"))
-    cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks[0].certificate_authority[0].data), try(base64decode(module.workloads_infra[0].cluster_certificate_authority_data), ""))
+    host                   = try(data.aws_eks_cluster.eks[0].endpoint, "https://127.0.0.1")
+    cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks[0].certificate_authority[0].data), "")
 
     exec {
       api_version = "client.authentication.k8s.io/v1beta1"
@@ -63,7 +63,7 @@ provider "helm" {
         "eks",
         "get-token",
         "--cluster-name",
-        try(data.aws_eks_cluster.eks[0].name, module.workloads_infra[0].cluster_name),
+        local.containers_cluster_name_effective,
         "--region",
         local.solution.region,
       ]

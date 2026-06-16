@@ -1,0 +1,193 @@
+---
+description: Mandatory 12-Factor App design and deployment rules — architecture, config, processes, logs, and release discipline for all application code.
+globs:
+  # Python — anywhere in the solution (Cursor excludes node_modules / .venv by default).
+  - "**/*.py"
+  - "**/*.pyi"
+  - "**/*.pyx"
+  - "**/*.pxd"
+  - "**/*.pxi"
+  - "**/*.pyw"
+  # TypeScript — anywhere in the solution.
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.mts"
+  - "**/*.cts"
+  # Cursor rules — repo-wide and per-component.
+  - ".cursor/rules/**/*.mdc"
+  - "**/.cursor/rules/**/*.mdc"
+alwaysApply: false
+---
+
+# 12-Factor App — mandatory application design
+
+## Agent init
+
+**Mandatory:** Read this entire section before any other content in this file; execute every `Action:` line here immediately and retain every `Rule:` and `Knowledge:` line for the rest of this session.
+
+- Rule: Every bullet in **Rules content** is exactly one line starting with `Knowledge:`, `Rule:`, or `Action:` — never wrap a rule across multiple lines.
+- Rule: Type prefix is PascalCase with no spaces, first letter capitalized, followed by a colon and one space — Example: `Rule: Store all configuration in the environment, never in source code.`
+- Rule: `Knowledge:` bullets are context to retain; `Rule:` bullets are constraints to follow when this file applies; `Action:` bullets are steps to execute when their condition is met.
+- Knowledge: This file is the authoritative 12-Factor App policy for creating, modifying, and reviewing application code and deployment processes in this monorepo.
+- Knowledge: A 12-Factor application is loosely coupled to its backend, deployed on a cloud platform, ships explicit dependencies in a single package, and separates backing services from the core process.
+- Knowledge: 12-Factor processes require full automation, horizontal scalability, a single tracked codebase, and zero bypass of the build-release-run pipeline.
+- Action: Before scaffolding or materially changing an application, read every `###` subsection in **Rules content** and verify the change complies with each applicable factor.
+- Action: When reviewing code or architecture, flag violations using the factor number (e.g. Factor III) and cite the matching `Rule:` bullet.
+- Action: Read every `###` subsection in **Rules content** in order; store `Knowledge:` and `Rule:` bullets; execute `Action:` bullets when their condition applies.
+
+---
+
+## Rules content
+
+### Architecture and process objectives
+
+Apply when evaluating cloud maturity, modernization scope, or overall application design.
+
+- Knowledge: 12-Factor compliance minimizes developer ramp-up time, increases portability across environments, and reduces server administration burden.
+- Knowledge: Compliant apps maximize continuous-deployment agility, scale without retooling architecture, and adopt modern cloud services (AI, ML, serverless) faster.
+- Rule: Design applications to be scalable, self-sustaining, and fit for cloud-based deployment — not tied to a specific host or manual server administration.
+- Rule: Maintain a clean contract between the application and backing services — refer to databases, queues, caches, and object stores through configuration, not embedded hostnames or paths.
+- Rule: Automate build, release, run, rollback, and admin tasks — manual production edits and bypassed pipelines are forbidden.
+- Rule: Separate the web or RPC server process from the application core where the platform embeds the server; the app exports services via port binding and remains self-contained.
+
+### Factor I — Codebase
+
+Apply when creating repositories, splitting modules, or planning deploy artifacts.
+
+- Rule: Track every application's source code in revision control — no deployable artifact without a version-controlled origin.
+- Rule: Maintain one codebase per application — one repository or several repositories that share a single root commit for that app.
+- Rule: Every deploy of an application must use the same codebase — staging and production are built from the same tracked source, not forked copies.
+- Rule: Do not share a codebase across unrelated applications — if another app reuses some or all of the code, extract a shared library with its own lifecycle instead of coupling deploys.
+- Action: When adding a new deployable surface (service, frontend, tool), confirm it has a dedicated repo root or a clearly scoped monorepo package with independent release boundaries.
+
+### Factor II — Dependencies
+
+Apply when adding libraries, system integrations, or packaging deliverables.
+
+- Rule: Declare all dependencies explicitly in a manifest — Python: `pyproject.toml` / `requirements.txt` with pip or uv; Node: `package.json`; Java: `pom.xml` / Gradle lockfiles; never rely on undeclared system packages.
+- Rule: Isolate dependencies from the host OS — use virtual environments, containers, or fat jars; do not assume pre-installed system libraries.
+- Rule: Do not rely on implicit system dependencies — COM components, system DLLs, Windows registry, `ConfigurationManager`, auto-generated machine keys, and undeclared OS services are forbidden in application code.
+- Rule: Do not use the local filesystem as an undeclared dependency for runtime behavior — avoid `GetTempPath`, ad hoc directory manipulation, and file-based state outside explicit attached resources declared in config.
+- Rule: Pin and reproduce dependency versions in CI and local dev — lockfiles or equivalent must match what production resolves.
+
+### Factor III — Config
+
+Apply when adding settings, secrets, feature flags, or environment-specific behavior.
+
+- Rule: Store all configuration in the environment — environment variables, secret managers, or platform config services; never hard-code environment-specific values in source.
+- Rule: Keep credentials, API keys, connection strings, and endpoints out of code and committed config files — inject at deploy time from the environment or a secrets backend.
+- Rule: Application code must be environment-agnostic — the same build artifact runs in dev, staging, and production with only config changes.
+- Rule: Do not embed application-server-specific configuration in code — JEE deployment descriptors, container-specific XML, or server-bound config files tied to one host violate this factor.
+- Action: When introducing a new setting, add it to env/schema documentation and wire through `os.environ`, platform secret refs, or the project's config loader — never as a literal in source.
+
+### Factor IV — Backing services
+
+Apply when integrating databases, caches, queues, object storage, identity, or third-party APIs.
+
+- Rule: Treat every backing service as an attached resource — databases, message buses, caches, blob stores, schedulers, and auth providers are swappable via config without code changes.
+- Rule: Reference backing services uniformly across environments — swap a local Postgres for Cloud Spanner or DynamoDB by changing env config, not application logic.
+- Rule: Use cloud-managed or platform-managed services where available — KMS, Pub/Sub, object storage, IAM/IAP, managed Redis, Spanner, Firestore/Datastore, BigQuery, Kubernetes, and service buses are preferred over self-hosted equivalents when they match the bounded context.
+- Rule: Do not hard-code service hostnames, filesystem paths, or vendor-specific connection details in code — resolve from environment at startup.
+- Action: When adding a new integration, define a single connection/config surface (URL, DSN, ARN, bucket name) read from the environment and document required env keys in the nearest `README.md`.
+
+### Factor V — Build, release, run
+
+Apply when designing CI/CD, deployment scripts, and production change processes.
+
+- Rule: Strictly separate build, release, and run stages — build compiles artifact; release combines build with config; run executes release processes.
+- Rule: Releases must be immutable — once created, a release cannot be changed or tampered with; fixes require a new build and release.
+- Rule: Never modify run (production) code without triggering a new build and release — no hot-patching binaries or live-editing deployed artifacts.
+- Rule: Use an automated deployment platform with orchestrated promote and rollback — manual copy-to-server deploys are forbidden for production paths.
+- Rule: Deployment orchestration must support automated rollback to the previous known-good release.
+- Action: When changing deploy pipelines, verify each stage is autonomous: build produces artifact, release binds config, run starts processes from that release only.
+
+### Factor VI — Processes
+
+Apply when handling sessions, in-memory state, authentication, and request lifecycle.
+
+- Rule: Execute the application as one or more stateless processes — any durable state lives in backing services, not process memory or local disk.
+- Rule: Do not rely on in-process memory to remember user input, session data, or workflow state across requests — use external session stores, caches, or databases.
+- Rule: Avoid stateful server-session models — servlet sessions, Spring HTTP sessions, WebForms authentication, and similar server-affinity patterns are forbidden for new code.
+- Rule: Do not spawn unmanaged background daemons from application code — use the platform process manager, job orchestrator, or worker pool declared in deployment config.
+- Rule: Stateless design enables horizontal scale — any process instance must handle any request without assuming prior local state.
+- Knowledge: Cloud batch orchestration, external cache frameworks, and dependency-injection-managed request scopes are acceptable when durable state remains in attached resources.
+
+### Factor VII — Port binding
+
+Apply when exposing HTTP, gRPC, or other network services.
+
+- Rule: Export services via port binding — the application binds to a port and serves traffic itself; it is self-contained and does not require an external application server container.
+- Rule: Do not depend on deployment into a separate web container as the serving model — WebSphere, JBoss, Tomcat-as-host (app deployed as WAR only), and similar external app-server hosting violate this factor.
+- Rule: Long-running services in this monorepo bind their own listen port per **`.cursor/rules/solution/solution.mdc`** canonical dev ports and container `PORT` env at runtime.
+- Action: When adding a new network surface, confirm the process starts the server (FastAPI, gRPC server, Next.js standalone, etc.) and reads `PORT` or the documented service port from config.
+
+### Factor VIII — Concurrency
+
+Apply when designing workers, request handlers, and scaling behavior.
+
+- Rule: Scale out via the process model — add more process instances to handle more load; do not scale up a single monolithic process as the primary strategy.
+- Rule: Assign distinct process types to distinct workloads — web, worker, scheduler, and batch roles run as separate process types managed by the platform.
+- Rule: Processes handling different request types must not share mutable in-process resources — isolate via stateless handlers and external stores.
+- Rule: Do not create daemons from code, write PID files, or manage child processes manually for production concurrency — use the platform supervisor.
+- Rule: Use secured protocols and connections in production — prefer HTTPS/TLS for HTTP, TLS for databases and message buses; unsecured HTTP/FTP and plaintext connection strings in production paths are forbidden.
+- Action: When load increases, scale by increasing replica count or worker processes, not by enlarging a single threaded monolith.
+
+### Factor IX — Disposability
+
+Apply when implementing startup, shutdown, health checks, and signal handling.
+
+- Rule: Maximize robustness with fast startup and graceful shutdown — processes must boot in seconds, not minutes.
+- Rule: On `SIGTERM` (or platform equivalent), finish processing active requests before exiting — drain connections, flush in-flight work, then shut down.
+- Rule: Shutdown must not corrupt other processes or leave partial side effects — idempotent cleanup and short stop timeouts are required.
+- Rule: Design for sudden failure — processes may be killed at any time; recovery relies on backing services and idempotent handlers, not local recovery state.
+- Action: When adding long-running handlers, implement graceful shutdown hooks and verify stop time is a couple of seconds under normal load.
+
+### Factor X — Development / production parity
+
+Apply when configuring local dev, staging, CI, and production environments.
+
+- Rule: Keep development, staging, and production as similar as possible — same backing-service types, same container images where feasible, same config keys with different values.
+- Rule: Sync environments frequently — treat environment drift as a defect; changes to services or schema propagate across dev, staging, and prod on a regular cadence.
+- Rule: Use the same database engine family and major backing services in all environments — local emulators or lightweight equivalents are acceptable when API-compatible.
+- Rule: Avoid production-only code paths, flags, or dependencies that cannot be exercised in dev or CI — parity gaps cause release risk.
+- Action: When introducing a new external dependency, document how dev/staging emulate or connect to it and keep env var names identical across environments.
+
+### Factor XI — Logs
+
+Apply when adding logging, observability, and diagnostic output.
+
+- Rule: Treat logs as event streams — write structured or line-oriented events to stdout/stderr; the platform aggregates and routes them.
+- Rule: Do not manage log files in application code — no custom log rotation, path-based file appenders, or per-host log directories in app logic.
+- Rule: Do not embed log storage or archival logic in the application — use platform log agents, CloudWatch, or centralized observability stacks per **`.cursor/rules/error/error.mdc`**.
+- Rule: Each log event should be a single line or structured record suitable for stream processing — include correlation ids where the stack supports them.
+- Action: When adding logging, use the project's standard logger configured for stream output; reject file-handler defaults unless the runtime platform explicitly requires them.
+
+### Factor XII — Admin processes
+
+Apply when adding migrations, one-off scripts, data fixes, and operational tasks.
+
+- Rule: Ship admin and management code in the same codebase as the application — migrations, REPL utilities, and batch fix scripts live alongside app source.
+- Rule: Run admin tasks as one-off processes in the same (or equivalent) environment as production — same release artifact, same config mechanism, same attached resources.
+- Rule: Do not run ad hoc production fixes via manual SQL, SSH edits, or unreleased scratch scripts — every admin action is versioned and repeatable.
+- Rule: Separate admin process types from long-running web/worker processes in orchestration — one-off jobs use the same image or package with a different entry command.
+- Action: When adding a migration or admin script, wire it through the package entrypoint or documented `uv run` / `npm run` command and execute against env-provided config.
+
+### Compliance assessment
+
+Apply when reviewing portfolios, auditing services, or planning cloud migration.
+
+- Knowledge: Full compliance requires software composition analysis, code review against these factors, and verification of team deployment practices — not code scan alone.
+- Rule: Evaluate each deployable application factor-by-factor before major releases or cloud migration — document gaps with factor id and remediation plan.
+- Rule: Non-compliance hotspots to inspect first — shared codebases across apps (I), undeclared OS deps (II), hard-coded config (III), embedded service URLs (IV), mutable releases (V), in-process session state (VI), external app-server hosting (VII), manual scaling (VIII), slow or ungraceful shutdown (IX), environment drift (X), file-based logs (XI), manual admin runs (XII).
+- Action: After materially changing an application, walk Factors I–XII and confirm no new violations were introduced; list any intentional exceptions with owner approval.
+
+### Related
+
+Reference paths for companion rules — link by path; do not duplicate policies here.
+
+- Knowledge: Solution components and canonical dev ports — **`.cursor/rules/solution/solution.mdc`**.
+- Knowledge: Human-readable errors and structured logging — **`.cursor/rules/error/error.mdc`**.
+- Knowledge: Python package layout and uv apps — **`.cursor/rules/python/python.mdc`**.
+- Knowledge: TypeScript and gRPC clients — **`.cursor/rules/typescript/typescript.mdc`**.
+- Knowledge: Observability guide — **`doc/observibility/observability-guide.md`**.
+- Knowledge: Official manifesto — [The Twelve-Factor App](https://12factor.net/).

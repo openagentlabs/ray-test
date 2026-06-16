@@ -1,5 +1,5 @@
 ---
-description: "Authoritative Terraform conventions for `PRJ_NAME` (see `.cursor/rules/constants.mdc`): mandatory tf-tool registry search (`.cursor/rules/tools/terraform-tool.mdc`), project layout, file naming, state management, modules, Well-Architected defaults, security, tagging, lifecycle, and CI/CD. Auto-attaches when editing or reviewing any Terraform (`.tf` / `.tfvars`) source so HCL changes stay production-grade, reviewable, and aligned with the repo-wide AWS account rules in `infra.mdc`."
+description: "Authoritative Terraform conventions for `PRJ_NAME` (see `.cursor/rules/constants/constants.mdc`): mandatory tf-tool registry search (`.cursor/rules/tools/terraform-tool.mdc`), project layout, file naming, state management, modules, Well-Architected defaults, security, tagging, lifecycle, and CI/CD. Auto-attaches when editing or reviewing any Terraform (`.tf` / `.tfvars`) source so HCL changes stay production-grade, reviewable, and aligned with the repo-wide AWS account rules in `infra.mdc`."
 globs:
   - "infra/**/*.tf"
   - "infra/**/*.tfvars"
@@ -12,7 +12,7 @@ alwaysApply: false
 # `PRJ_NAME` — Terraform rules
 
 Project identity values referenced below (`PRJ_NAME`, `PRJ_SLUG`,
-`PRJ_PACKAGE`) are defined in **`.cursor/rules/constants.mdc`**. Do
+`PRJ_PACKAGE`) are defined in **`.cursor/rules/constants/constants.mdc`**. Do
 not re-declare them.
 
 Apply when authoring, refactoring, or reviewing **Terraform** in this repo.
@@ -21,7 +21,7 @@ testable, and governed by automated policies.
 
 > **Account & region binding (non-negotiable).** Every Terraform plan/apply in
 > this repo must target the AWS account, CLI profile, and default region defined in
-> **`.cursor/rules/constants.mdc`**, with operational rules in **`.cursor/rules/infra.mdc`**.
+> **`.cursor/rules/constants/constants.mdc`**, with operational rules in **`.cursor/rules/infra.mdc`**.
 > These values enter the stack through **`infra/aws_tf/terraform.tfvars`** (§1.3),
 > flow into every module via **`local.solution`** (§1.4), and are enforced by the
 > `aws_account_id` variable validation plus `allowed_account_ids` on the
@@ -39,7 +39,7 @@ testable, and governed by automated policies.
 > **Registry templates — tf-tool (mandatory).** Before authoring net-new
 > infrastructure, agents **must** search the public Terraform Registry with
 > **tf-tool** (see **§1.0**, **`.cursor/rules/tools/terraform-tool.mdc`**, tooling
-> index **`.cursor/rules/tool.mdc`**). Do not hand-write modules from scratch or
+> index **`.cursor/rules/tool/tool.mdc`**). Do not hand-write modules from scratch or
 > guess module sources when a suitable registry template exists. Select a
 > Well-Architected–aligned, production-grade module; adapt it into
 > **`infra/aws_tf/modules/`**; wire it from **`infra/aws_tf/main.tf`** with
@@ -55,7 +55,7 @@ When creating or extending infrastructure-as-code in this repo, **always**
 start with **tf-tool** — the Terraform Registry CLI at **`.cursor/tools/tf-tool/`**.
 Invocation rules, commands, and JSON output shape live in
 **`.cursor/rules/tools/terraform-tool.mdc`**; the tooling index is
-**`.cursor/rules/tool.mdc`**.
+**`.cursor/rules/tool/tool.mdc`**.
 
 **Workflow (agents must follow in order):**
 
@@ -357,7 +357,7 @@ per **`.cursor/rules/infra.mdc`**.
 | Topic | Path |
 |-------|------|
 | tf-tool invocation | **`.cursor/rules/tools/terraform-tool.mdc`** |
-| Tooling index | **`.cursor/rules/tool.mdc`** |
+| Tooling index | **`.cursor/rules/tool/tool.mdc`** |
 | tf-tool source | **`.cursor/tools/tf-tool/`** |
 | Resource naming | **`.cursor/rules/infras/resource-naming.mdc`** |
 | Resource tagging | **`.cursor/rules/infras/resource-taging.mdc`** |

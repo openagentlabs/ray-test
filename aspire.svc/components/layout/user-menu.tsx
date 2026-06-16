@@ -2,6 +2,8 @@
 
 import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 
 import {
   Avatar,
@@ -17,7 +19,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AnyhowResultFactory } from "@/lib/types/anyhow";
+import { OptionValue, type Option } from "@/lib/types/option";
+import { UserSessionClient } from "@/lib/user/session/user-session-client";
 import { cn } from "@/lib/utils";
+
+const ACCOUNT_SETTINGS_HREF = "/pages/settings";
 
 interface UserMenuProps {
   readonly displayName: string;
@@ -26,6 +33,26 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ displayName, email, avatarUrl }: UserMenuProps) {
+  const router = useRouter();
+  const [isSigningOut, startSignOut] = useTransition();
+
+  const handleSignOut = (): void => {
+    startSignOut(() => {
+      void UserSessionClient.getInstance()
+        .signOut()
+        .then((result) => {
+          if (!result.ok) {
+            console.error(AnyhowResultFactory.formatError(result.error));
+            return;
+          }
+          router.push("/login");
+          router.refresh();
+        });
+    });
+  };
+
+  const avatarOption: Option<string> = OptionValue.fromNullable(avatarUrl);
+
   const initials = displayName
     .split(" ")
     .map((part) => part.charAt(0))
@@ -41,8 +68,8 @@ export function UserMenu({ displayName, email, avatarUrl }: UserMenuProps) {
         )}
       >
         <Avatar className="size-9">
-          {avatarUrl !== undefined && avatarUrl.length > 0 ? (
-            <AvatarImage src={avatarUrl} alt="" />
+          {avatarOption.some && avatarOption.value.length > 0 ? (
+            <AvatarImage src={avatarOption.value} alt="" />
           ) : null}
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
@@ -60,18 +87,29 @@ export function UserMenu({ displayName, email, avatarUrl }: UserMenuProps) {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href="/pages/users/user" />}>
+        <DropdownMenuItem>
           <User className="size-4" />
           Profile
         </DropdownMenuItem>
-        <DropdownMenuItem render={<Link href="/pages/user/settings" />}>
+        <DropdownMenuItem
+          render={
+            <Link
+              href={ACCOUNT_SETTINGS_HREF}
+              className="flex w-full items-center gap-1.5"
+            />
+          }
+        >
           <Settings className="size-4" />
           Account settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={isSigningOut}
+          onClick={handleSignOut}
+        >
           <LogOut className="size-4" />
-          Log out
+          {isSigningOut ? "Signing out…" : "Log out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

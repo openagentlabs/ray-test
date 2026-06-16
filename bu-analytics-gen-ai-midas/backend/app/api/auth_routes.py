@@ -3,6 +3,7 @@ Authentication API routes for user login, registration, and management
 """
 
 import gc
+import secrets as _secrets
 import time
 from datetime import timedelta
 from typing import List
@@ -12,11 +13,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from app.models.schemas import (
-    UserCreate, UserUpdate, User, UserLogin,
+    UserCreate, UserUpdate, User, UserLogin, UserInDB,
 )
 from app.models.user_database import user_db
 from app.services.auth_service import (
-    authenticate_user,
     create_access_token,
     resolve_user_from_refresh_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -26,12 +26,14 @@ from app.services.auth_service import (
 )
 from app.core.config import settings as app_settings
 from app.core.logging_config import get_logger
-from app.core.pod_manager.deps import get_pod_manager_service
 from app.core.session.contracts import ISessionAuthenticator
 from app.core.session.session_http_responses import build_session_expired_detail
-from app.services.pod_manager_service import PodManagerServiceError
 
 logger = get_logger(__name__)
+
+# Hardcoded credentials for local/dev login (email is the user identifier).
+HARDCODED_LOGIN_EMAIL = "keith.tobin@gmail.com"
+HARDCODED_LOGIN_PASSWORD = "Tippertobin12@"
 
 # Initialize router
 auth_router = APIRouter()
@@ -78,27 +80,50 @@ async def get_current_user_dependency(
             detail=build_session_expired_detail(),
             headers={"WWW-Authenticate": "Bearer"},
         )
-    pod_manager_service = get_pod_manager_service(request)
-    if pod_manager_service is not None:
-        try:
-            await pod_manager_service.ensure_lease(user.username)
-        except PodManagerServiceError as exc:
-            logger.warning(
-                "pod_manager lease ensure failed for user '%s': %s",
-                user.username,
-                str(exc),
-            )
     return user
 
+
+def _check_hardcoded_credentials(username: str, password: str) -> bool:
+    """Return True when the provided email/password match the hardcoded login."""
+    return (
+        username.strip().lower() == HARDCODED_LOGIN_EMAIL.lower()
+        and password == HARDCODED_LOGIN_PASSWORD
+    )
+
+
+def _get_or_create_hardcoded_user(email: str) -> UserInDB:
+    """Fetch or create a local user keyed by email (used as username identifier)."""
+    username = email.strip().lower()
+    existing = user_db.get_user_by_username(username)
+    if existing is not None:
+        return existing
+
+    local_part = username.split("@", 1)[0]
+    full_name = local_part.replace(".", " ").title()[:100]
+    create_payload = UserCreate(
+        username=username,
+        full_name=full_name,
+        email=username,
+        password=_secrets.token_urlsafe(48),
+        is_active=True,
+    )
+    created = user_db.create_user(create_payload)
+    if created is not None:
+        logger.info("Provisioned hardcoded login user: %s", username)
+        return created
+
+    refetched = user_db.get_user_by_username(username)
+    if refetched is None:
+        raise RuntimeError(f"Failed to provision user for email={email!r}")
+    return refetched
+
+
 def _require_legacy_password_login() -> None:
-    """Gate for legacy username/password endpoints. Cognito is the supported path."""
+    """Gate for legacy registration endpoint only."""
     if not app_settings.ENABLE_LEGACY_PASSWORD_LOGIN:
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
-            detail=(
-                "Legacy password login is disabled. Use /api/v1/auth/cognito/login-url to "
-                "begin the Cognito federated sign-in flow."
-            ),
+            detail="User registration is disabled.",
         )
 
 
@@ -155,22 +180,20 @@ async def register_user(user_create: UserCreate):
 @auth_router.post("/login")
 async def login_user(request: Request, user_login: UserLogin, response: Response):
     """
-    Login user and return access token (legacy path; disabled by default).
+    Login with hardcoded email/password credentials and return access token.
     """
-    _require_legacy_password_login()
     logger.info(f"Login attempt for username: {user_login.username}")
     
     try:
-        # Authenticate user
-        user = authenticate_user(user_login.username, user_login.password)
-        
-        if not user:
+        if not _check_hardcoded_credentials(user_login.username, user_login.password):
             logger.warning(f"Login failed: Invalid credentials for username {user_login.username}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        user = _get_or_create_hardcoded_user(HARDCODED_LOGIN_EMAIL)
         
         # Check if user is active
         if not user.is_active:
@@ -183,12 +206,6 @@ async def login_user(request: Request, user_login: UserLogin, response: Response
         
         sm: ISessionAuthenticator = request.app.state.session_manager
         session_id = await sm.create_session(user.username)
-        pod_manager_service = get_pod_manager_service(request)
-        if pod_manager_service is not None:
-            try:
-                await pod_manager_service.acquire_lease(user.username)
-            except PodManagerServiceError as exc:
-                logger.warning("pod_manager lease acquire failed for '%s': %s", user.username, str(exc))
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username},
@@ -368,12 +385,6 @@ async def refresh_token_endpoint(body: RefreshRequest, request: Request):
 
         sm: ISessionAuthenticator = request.app.state.session_manager
         new_sid = await sm.create_session(user.username)
-        pod_manager_service = get_pod_manager_service(request)
-        if pod_manager_service is not None:
-            try:
-                await pod_manager_service.acquire_lease(user.username)
-            except PodManagerServiceError as exc:
-                logger.warning("pod_manager lease acquire failed for '%s': %s", user.username, str(exc))
         access_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         new_access = create_access_token(
             data={"sub": user.username},
@@ -409,12 +420,6 @@ async def logout_current_user(
     try:
         sm: ISessionAuthenticator = request.app.state.session_manager
         await sm.invalidate_access_token(credentials.credentials)
-        pod_manager_service = get_pod_manager_service(request)
-        if pod_manager_service is not None:
-            try:
-                await pod_manager_service.release_lease(current_user.username)
-            except PodManagerServiceError as exc:
-                logger.warning("pod_manager lease release failed for '%s': %s", current_user.username, str(exc))
         revoked = user_db.revoke_all_refresh_tokens_for_user(current_user.id)
         logger.info(f"User {current_user.username} logged out, revoked {revoked} tokens")
         gc.collect()

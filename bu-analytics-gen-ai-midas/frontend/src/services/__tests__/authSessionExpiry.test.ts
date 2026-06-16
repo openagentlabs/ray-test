@@ -1,6 +1,6 @@
 /**
  * Tests for ISU0001/ISU0002 fixes — scheduleClientSessionTimer() must call
- * cognitoAuthService.refresh() proactively, not dispatch logout directly;
+ * authService.refreshAccessToken() proactively, not dispatch logout directly;
  * initVisibilityRefreshGuard() must re-arm the timer when the tab becomes visible.
  *
  * Cases covered:
@@ -31,12 +31,10 @@ const { mockRefresh } = vi.hoisted(() => ({
   mockRefresh: vi.fn<[], Promise<boolean>>(() => Promise.resolve(true)),
 }));
 
-vi.mock('../cognitoAuthService', () => ({
-  default: {},
-  refresh: mockRefresh,
-  beginLogin: vi.fn(),
-  completeLogin: vi.fn(),
-  logout: vi.fn(),
+vi.mock('../authService', () => ({
+  authService: {
+    refreshAccessToken: mockRefresh,
+  },
 }));
 
 // ─── localStorage stub ────────────────────────────────────────────────────────

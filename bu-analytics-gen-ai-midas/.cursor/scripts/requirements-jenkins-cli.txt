@@ -1,8 +1,0 @@
-# Python dependencies for jenkins_tools.py
-# Install: python3 -m pip install -r requirements-jenkins-cli.txt
-#
-# api4jenkins — gold standard Jenkins Python client
-#   sync + async APIs, object-oriented, covers every Jenkins item
-#   (builds, jobs, nodes, credentials, plugins, pipeline stages, input actions, artifacts)
-#   https://api4jenkins.readthedocs.io/en/stable/
-api4jenkins>=2.1.0

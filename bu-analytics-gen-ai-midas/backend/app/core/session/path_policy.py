@@ -55,11 +55,6 @@ _DEFAULT_AUTH_UNAUTHENTICATED: frozenset[str] = frozenset(
         "/api/v1/auth/login",
         "/api/v1/auth/register",
         "/api/v1/auth/refresh",
-        # Cognito federated login flow: these run pre-authentication. /logout still
-        # requires a Bearer token so it is deliberately NOT listed here.
-        "/api/v1/auth/cognito/login-url",
-        "/api/v1/auth/cognito/exchange",
-        "/api/v1/auth/cognito/refresh",
     }
 )
 

@@ -1,0 +1,88 @@
+---
+description: Human-readable errors, localized handling, and structured logging (Python, TS/Next, Terraform, Helm).
+globs:
+  # TypeScript / Next — first-party paths only (avoids node_modules / build output).
+  - "frontend/*.ts"
+  - "frontend/*.tsx"
+  - "frontend/app/**/*.{ts,tsx}"
+  - "frontend/components/**/*.{ts,tsx}"
+  - "frontend/lib/**/*.{ts,tsx}"
+  - "frontend/services/**/*.{ts,tsx}"
+  - "frontend/test/**/*.{ts,tsx}"
+  - "aspire.svc/*.ts"
+  - "aspire.svc/*.tsx"
+  - "aspire.svc/app/**/*.{ts,tsx}"
+  - "aspire.svc/components/**/*.{ts,tsx}"
+  - "aspire.svc/lib/**/*.{ts,tsx}"
+  - "aspire.svc/services/**/*.{ts,tsx}"
+  - "aspire.svc/test/**/*.{ts,tsx}"
+  - "iam.svc/http-auth-client/src/**/*.ts"
+  - "iam.svc/http-auth-client/test/**/*.ts"
+  - "solutions.svc/client/src/**/*.ts"
+  - "storage.svc/client/src/**/*.ts"
+  - "general.ai.agent.svc/client/src/**/*.ts"
+  - "general.ai.agent.svc/client/tests/**/*.ts"
+  # Python services + Cursor tool (excludes .venv / site-packages).
+  - "solutions.svc/server/src/**/*.py"
+  - "solutions.svc/server/tests/**/*.py"
+  - "solutions.svc/server/tools/**/*.py"
+  - "iam.svc/server/src/**/*.py"
+  - "iam.svc/server/tests/**/*.py"
+  - "storage.svc/server/src/**/*.py"
+  - "storage.svc/server/tests/**/*.py"
+  - "general.ai.agent.svc/server/src/**/*.py"
+  - "general.ai.agent.svc/server/tests/**/*.py"
+  - ".cursor/tools/aspire/src/**/*.py"
+  - ".cursor/tools/aspire/tests/**/*.py"
+  # IaC — repo Terraform + deployed Helm only (no repo-wide **/*.ts).
+  - "infra/**/*.tf"
+  - "infra/**/*.tfvars"
+  - "infra/deployed/**/helm/**/*.yaml"
+  - "infra/deployed/**/helm/**/*.yml"
+alwaysApply: false
+---
+
+# Errors and logging (mandatory)
+
+Applies to **Python**, **TypeScript / Next.js**, **Terraform**, and **Helm** in this repo per **`globs`** (first-party source and `infra/` only; principles apply everywhere).
+
+## Core rules
+
+1. **Where it breaks, explain it** — The catch site has the most context. **There** (or a small helper in the same package), produce a **clear, actionable** message for humans. Do not bubble only a generic string outward unless this layer has **already** logged structured detail.
+2. **Always log handled failures** — Structured, **rich** logs: stable tag, operation, relevant ids, region/account/service when useful, exception **type** and **vendor codes**. Use **stack traces** for unexpected errors (`exc_info=True` in Python; preserve **`cause`** / log stack in Node).
+3. **Split user vs diagnostic** — **User/client text**: what failed and what to try. **Logs**: everything safe for debugging — **never** secrets, tokens, passwords, or raw PII.
+
+## Python
+
+- Handle at **boundaries** (RPC servicer, worker, CLI); use **`Result` / `AppError`** where the service already does.
+- Map vendor errors (boto3, gRPC, HTTP) **next to the call**. Extract a dedicated `*_error_narrative` module when mapping exceeds ~15 lines.
+- One **ERROR** (or **WARNING** for validation) log per failure path, with a **grep-friendly tag** (e.g. `gaa_upstream_failure`) and labeled fields or short indented lines.
+- No bare `except:`; no context-free `logger.exception("failed")`.
+
+## TypeScript / Next.js
+
+- **Workspace split**: App Router code under **`frontend/`** follows **`frontend/.cursor/rules/`** (logging: **`frontend/.cursor/rules/logging.mdc`**; validation: **`frontend/.cursor/rules/validation.mdc`**). The same *principles* below apply everywhere.
+- **Expected validation failures** (forms, JSON bodies, query params): return a typed **`Result`** or structured response using **`safeParse`** / project helpers — do not rely on bare **`throw`** as the only signal when **`frontend/.cursor/rules/validation.mdc`** requires **`Result`** composition.
+- **Unexpected failures** after structured logging: server actions and route handlers **should not swallow** errors; **`throw`** an `Error` with a **specific, safe** message and set **`cause`** when wrapping, once **`ServerLogging.emit`** (or equivalent) has captured structured detail where applicable.
+- **Clients** (gRPC, fetch): map codes **at the call site** into connectivity vs auth/upstream vs validation, using server text when safe.
+- **Client UI**: show server messages only; no raw stacks in the browser.
+
+## Terraform
+
+- **`check`**, **`precondition`**, **`postcondition`**: `error_message` must name the **variable or resource** and **how to fix** it.
+- Variable **`validation`**: `error_message` must state allowed shapes and the variable name.
+
+## Helm / Kubernetes YAML
+
+- **`required`** / `fail` / schema: messages must name the **missing key** and **where to set it** (e.g. `values.yaml`, secret name).
+- NOTES / comments: list **external deps** and common misconfig symptoms.
+
+## Anti-patterns
+
+- Inner catch returns only **"Something went wrong"** with no structured log.
+- Logging credentials or full bodies with secrets.
+- **Duplicate** full stack logs at every layer with no new fields.
+
+## Tests
+
+- **Unit-test** error mappers (table: input → headline + code / tag).

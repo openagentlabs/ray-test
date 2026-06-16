@@ -1,5 +1,5 @@
 # THE ONLY FILE most engineers edit for this root. All other .tf files are locked structure.
-# See `.cursor/rules/terrafrom.mdc` and `.cursor/rules/constants.mdc`.
+# See `.cursor/rules/terrafrom.mdc` and `.cursor/rules/constants/constants.mdc`.
 
 solution_name        = "ray_test"
 solution_description = "ARB - AI Assistant primary AWS infrastructure."

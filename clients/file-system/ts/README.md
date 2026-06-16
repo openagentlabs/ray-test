@@ -74,5 +74,5 @@ npm run test:integration
 ## Related
 
 - Python twin: `clients/file-system/py`
-- TypeScript conventions: `.cursor/rules/typescript.mdc`
-- Vitest layout: `.cursor/rules/testing_ts.mdc`
+- TypeScript conventions: `.cursor/rules/typescript/typescript.mdc`
+- Vitest layout: `.cursor/rules/testing_ts/testing_ts.mdc`

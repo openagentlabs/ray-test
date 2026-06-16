@@ -1,0 +1,1 @@
+"""Auth-specific persistence models."""

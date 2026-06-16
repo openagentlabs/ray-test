@@ -1,2 +1,0 @@
-
-aws: [ERROR]: An error occurred (AccessDenied) when calling the ListResourceRecordSets operation: User: arn:aws:sts::811391286931:assumed-role/AWSReservedSSO_uc-dev2.0-app.architects-ps_ed88ec1990bfba3d/KEITH334747@exlservice.com is not authorized to access this resource

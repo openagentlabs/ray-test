@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AppConfig } from "@/lib/config/app-config";
+import { AppPublicConfig } from "@/lib/config/app-config-public";
 import { NavigationIconResolver } from "@/lib/navigation/navigation-icon-resolver";
 import { SidebarPreferences } from "@/lib/storage/sidebar-preferences";
 import type { NavItemDefinition } from "@/lib/types/nav-item-definition";
@@ -122,7 +122,7 @@ export function AppSidebar({ navigationItems }: AppSidebarProps) {
       >
         {!collapsed ? (
           <span className="truncate text-sm font-semibold tracking-tight">
-            {AppConfig.applicationName}
+            {AppPublicConfig.applicationName}
           </span>
         ) : null}
         <Tooltip>

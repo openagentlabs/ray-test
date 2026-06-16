@@ -13,11 +13,12 @@ terraform {
 }
 
 locals {
-  topic_name = replace(replace(replace(lower(replace(
+  _topic_name_raw = lower(replace(
     "${var.solution.name}-${var.solution.deployment_key}-notifications-email",
     "_",
     "-",
-  )), "--", "-"), "--", "-"), "--", "-")
+  ))
+  topic_name = can(regex("--", var.solution.deployment_key)) ? local._topic_name_raw : replace(replace(replace(local._topic_name_raw, "--", "-"), "--", "-"), "--", "-")
 }
 
 resource "aws_sns_topic" "notifications" {

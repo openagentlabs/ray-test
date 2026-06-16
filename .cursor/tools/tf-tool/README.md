@@ -360,7 +360,7 @@ uv run mypy
 uv run pytest
 ```
 
-See **`.cursor/rules/python.mdc`** and **`.cursor/rules/terrafrom.mdc`** for repo-wide Python and Terraform guidance.
+See **`.cursor/rules/python/python.mdc`** and **`.cursor/rules/terrafrom.mdc`** for repo-wide Python and Terraform guidance.
 
 ---
 

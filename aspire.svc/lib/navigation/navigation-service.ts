@@ -1,22 +1,30 @@
 import type { NavItemDefinition } from "@/lib/types/nav-item-definition";
 
 export class NavigationService {
-  private static instance: NavigationService | undefined;
+  private static readonly instance: NavigationService = new NavigationService();
 
-  private readonly mainNavigation: readonly NavItemDefinition[];
-
-  private constructor() {
-    this.mainNavigation = Object.freeze([] satisfies NavItemDefinition[]);
-  }
+  private readonly mainNavigation: readonly NavItemDefinition[] = Object.freeze([
+    {
+      id: "dashboard",
+      title: "Dashboard",
+      href: "/pages/dashboard",
+      groupTitle: "Workspace",
+    },
+    {
+      id: "settings",
+      title: "Settings",
+      href: "/pages/settings",
+      groupTitle: "Account",
+    },
+  ] satisfies NavItemDefinition[]);
 
   public static getInstance(): NavigationService {
-    if (NavigationService.instance === undefined) {
-      NavigationService.instance = new NavigationService();
-    }
     return NavigationService.instance;
   }
 
   public getMainNavigation(): readonly NavItemDefinition[] {
     return this.mainNavigation;
   }
+
+  private constructor() {}
 }

@@ -16,11 +16,14 @@
 ###############################################################################
 
 locals {
-  bucket_name = var.bucket_name_override != null ? var.bucket_name_override : replace(replace(replace(lower(replace(
+  _bucket_name_raw = lower(replace(
     "${var.solution.name}-${var.solution.deployment_key}-${var.purpose}-${var.solution.account_id}",
     "_",
     "-",
-  )), "--", "-"), "--", "-"), "--", "-")
+  ))
+  bucket_name = var.bucket_name_override != null ? var.bucket_name_override : (
+    can(regex("--", var.solution.deployment_key)) ? local._bucket_name_raw : replace(replace(replace(local._bucket_name_raw, "--", "-"), "--", "-"), "--", "-")
+  )
 
   encryption_algorithm = var.customer_managed_key_enabled ? "aws:kms" : "AES256"
 

@@ -1,0 +1,284 @@
+---
+description: Playwright E2E conventions — specs, fixtures, locators, and config for browser tests in this monorepo.
+globs:
+  # Any first-party TypeScript / Next.js file in the solution (Cursor excludes node_modules by default).
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# Playwright end-to-end tests
+
+**What this file is:** Agent-oriented rules for authoring and maintaining **Playwright** browser tests in this repository — TypeScript specs, shared helpers, and `playwright.config.ts`.
+
+**When to use it:** Creating or editing files under **`frontend/e2e/`**, adding E2E coverage for **`frontend/`** or **`aspire.svc/`**, scaffolding Playwright templates, or debugging flaky / parallel test failures.
+
+**How to use it:** Run **Prerequisite check (mandatory — run first)** below before any other Playwright work in this session. Keep **unit and integration** tests on **Vitest** (see **`.cursor/rules/testing_ts/testing_ts.mdc`**). Use Playwright only for **critical user journeys** across a running app. Link **`.cursor/rules/solution/solution.mdc`** for local dev ports; do not duplicate **`PRJ_*`** or AWS values from **`.cursor/rules/constants/constants.mdc`**.
+
+---
+
+## Prerequisite check (mandatory — run first)
+
+Before **creating**, **modifying**, or **running** Playwright specs, helpers, fixtures, templates, or `playwright.config.ts`, the agent **must** complete this checklist. **Do not** scaffold E2E code, call Playwright MCP tools, or run `playwright test` until applicable steps pass — unless the user explicitly asks to skip (e.g. offline doc-only edits).
+
+**E2E workspace:** **`frontend/e2e/`** under the **`frontend/`** Next.js workspace (`package.json` owns **`@playwright/test`** and **`@playwright/mcp`**).
+
+### 1. Node and npm
+
+```bash
+node --version && npm --version
+```
+
+Both must succeed. If missing, stop and tell the user to install Node.js LTS before continuing.
+
+### 2. E2E npm packages (`frontend/e2e/`)
+
+```bash
+cd frontend/e2e
+npm install
+npm ls @playwright/test @playwright/mcp --depth=0
+node -e "require.resolve('@playwright/test/package.json'); require.resolve('@playwright/mcp/package.json')"
+```
+
+If **`npm ls`** reports empty or **UNMET**, install before any other Playwright work:
+
+```bash
+cd frontend/e2e
+npm install --save-dev @playwright/test @playwright/mcp
+```
+
+### 3. Playwright MCP (Cursor)
+
+Project MCP config: **`.cursor/mcp.json`**. It must include:
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+Merge into existing **`mcpServers`** when other servers are present — do not remove unrelated entries.
+
+**Verify MCP responds** (stdio handshake; run from repo root):
+
+```bash
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke-test","version":"1.0"}}}' \
+  | timeout 10 npx @playwright/mcp@latest | head -1
+```
+
+Expect JSON with **`serverInfo.name`** **`Playwright`**. After editing **`mcp.json`**, reload MCP in **Cursor Settings → MCP** (or restart Cursor) before relying on MCP tools in the IDE.
+
+### 4. Playwright CLI (`@playwright/cli`) and browsers
+
+**Global CLI** (use the NVM Node prefix if `npm config get prefix` points at Cursor’s bundled path):
+
+```bash
+export NPM_CONFIG_PREFIX="$HOME/.nvm/versions/node/v25.6.0"   # adjust to your nvm Node root
+npm install -g @playwright/cli@latest
+export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
+playwright-cli --version
+playwright-cli install
+```
+
+**Test runner browsers** (from **`frontend/e2e/`**):
+
+```bash
+cd frontend/e2e
+npx playwright --version
+npx playwright install --list
+```
+
+If a required browser is missing:
+
+```bash
+npx playwright install chromium
+# Linux CI / headless hosts may also need:
+npx playwright install-deps chromium
+```
+
+### 5. Playwright agent skills (`testdino-hq/playwright-skill`)
+
+Install from the **repository root** (non-interactive **`-y`**). Prefer the **full pack** once; add **packs** only when you need a subset on a fresh machine.
+
+| Install | Command | Guides | Installed skill path |
+|---------|---------|--------|----------------------|
+| **All (recommended)** | `npx skills add testdino-hq/playwright-skill -y` | 70+ (E2E, API, component, visual, a11y, security, CI, CLI, POM, migration) | `.agents/skills/playwright-skill/SKILL.md` |
+| **Core** | `npx skills add testdino-hq/playwright-skill/core -y` | 46 locator / assertion / auth / framework guides | `.agents/skills/playwright-core/SKILL.md` |
+| **CI** | `npx skills add testdino-hq/playwright-skill/ci -y` | 9 GitHub Actions / GitLab CI guides | `.agents/skills/playwright-ci/SKILL.md` |
+| **CLI** | `npx skills add testdino-hq/playwright-skill/playwright-cli -y` | 11 terminal automation guides | `.agents/skills/playwright-cli/SKILL.md` |
+
+**Bootstrap (full stack on a new clone):**
+
+```bash
+cd /path/to/repo
+npx skills add testdino-hq/playwright-skill -y
+npx skills add testdino-hq/playwright-skill/core -y
+npx skills add testdino-hq/playwright-skill/ci -y
+npx skills add testdino-hq/playwright-skill/playwright-cli -y
+```
+
+**Verify** each **`SKILL.md`** exists (and **`skills-lock.json`** lists the skill if the CLI wrote it):
+
+```bash
+test -f .agents/skills/playwright-skill/SKILL.md
+test -f .agents/skills/playwright-core/SKILL.md
+test -f .agents/skills/playwright-ci/SKILL.md
+test -f .agents/skills/playwright-cli/SKILL.md
+```
+
+**When to load which skill:**
+
+- **`playwright-skill`** — default for writing, debugging, or scaling test suites (read this first).
+- **`playwright-core`** — locators, assertions, fixtures, auth, traces, React/Next/Vue/Angular recipes.
+- **`playwright-ci`** — GitHub Actions, GitLab CI, sharding, Docker, reporting, global setup/teardown.
+- **`playwright-cli`** — terminal-first browser control via **`playwright-cli`** (not **`playwright test`**).
+
+Review skill content before use; skills run with full agent permissions. Details: https://skills.sh/testdino-hq/playwright-skill
+
+### 6. Python Playwright (optional cross-language E2E)
+
+```bash
+pip install playwright
+python -m playwright install chromium
+```
+
+Use the **same Python** that received **`pip install`** (e.g. **`$(which python)`** or your active venv). **`python3`** on PATH may differ from the install interpreter.
+
+### 7. Target application (when running or debugging E2E)
+
+Identify the surface under test and its port from **`.cursor/rules/solution/solution.mdc`**:
+
+| Surface | `baseURL` (local) | Dev start (from repo root) |
+|---------|-------------------|----------------------------|
+| **`frontend/`** | `http://localhost:8802` | `npm --prefix frontend run dev` |
+| **`aspire.svc/`** | `http://localhost:8801` | `npm --prefix aspire.svc run dev` |
+
+Verify the app responds before `playwright test` (adjust port/path if the spec targets a different host):
+
+```bash
+curl -sf -o /dev/null -w "%{http_code}\n" http://localhost:8802/
+# or for aspire:
+curl -sf -o /dev/null -w "%{http_code}\n" http://localhost:8801/
+```
+
+- **2xx–3xx** (or expected redirect): app is up — proceed.
+- **Connection refused / timeout**: start the dev server (or document that the user must start it), then re-check. Do not run E2E against a down server and treat failures as test bugs.
+
+Optional: confirm dependent **gRPC** services are up when the journey requires them (IAM **8803**, etc.) — same port table in **`.cursor/rules/solution/solution.mdc`**.
+
+### 8. Report and proceed
+
+| Check | Pass criterion |
+|-------|----------------|
+| Node / npm | Commands exit 0 |
+| **`frontend/e2e` packages** | `@playwright/test` and `@playwright/mcp` in `npm ls`; `require.resolve` succeeds |
+| **Playwright MCP** | `.cursor/mcp.json` has `playwright` server; initialize smoke test returns `Playwright` in `serverInfo` |
+| **`playwright-cli`** | `playwright-cli --version` exits 0; `playwright-cli install` completed |
+| **Test browsers** | `npx playwright install --list` includes browsers used in config |
+| **Agent skills** | All four `SKILL.md` paths exist under `.agents/skills/` (see step 5) |
+| **Python** (if used) | `python -m playwright --version` exits 0 |
+| **App** (run/debug only) | `curl` to `baseURL` succeeds |
+
+If any check fails, **stop**, report which step failed, and give the exact fix command. Only after all applicable rows pass may the agent create or change Playwright artifacts, use Playwright MCP, or run tests.
+
+---
+
+## Layout and tooling
+
+| Item | Convention |
+|------|------------|
+| Root | **`frontend/e2e/`** (config: **`frontend/e2e/playwright.config.ts`**) |
+| Spec files | **`feature-name.spec.ts`** — one file per feature or user flow (kebab-case stem) |
+| Helpers | **`frontend/e2e/helpers/`** or **`frontend/e2e/fixtures/`** — shared navigation, auth stubs, test data |
+| Package | **`@playwright/test`**, **`@playwright/mcp`** in **`frontend/e2e/package.json`** |
+| Cursor MCP | **`.cursor/mcp.json`** → `playwright` server via `npx @playwright/mcp@latest` |
+| Agent skills | **`.agents/skills/playwright-skill/`**, **`playwright-core/`**, **`playwright-ci/`**, **`playwright-cli/`** — install via step 5 |
+| Reports | **`playwright-report/`**, **`test-results/`**, **`blob-report/`** are gitignored — do not commit |
+
+**App targets (local):** default `baseURL` in **`frontend/e2e/playwright.config.ts`** is **`http://127.0.0.1:8802`** (**`frontend/`**). For **`aspire.svc/`** (8801), add a separate Playwright **project** or a future **`aspire.svc/e2e/`** workspace (see **`.cursor/rules/solution/solution.mdc`**). Start the dev server in CI/global setup or document the prerequisite; do not hard-code stale ports (8081, 3000, etc.).
+
+---
+
+## Playwright rules — `PRJ_NAME`
+
+Human-readable project name: **`PRJ_NAME`** in **`.cursor/rules/constants/constants.mdc`** (`ARB - AI Assistant`). Apply the sections below when authoring or editing specs under **`frontend/e2e/`**.
+
+### Locators
+
+- Use **`getByRole`**, **`getByTestId`**, or **`getByLabel`** only.
+- **Never** use CSS selectors, XPath, or **`page.locator()`** with class/id strings.
+- Before choosing a locator, inspect the **live accessibility tree** via the **Playwright MCP** server (**.cursor/mcp.json`**) on the page under test.
+
+### Structure
+
+- **One file per feature or user flow** — name files **`feature-name.spec.ts`** (kebab-case).
+- Wrap related tests in **`test.describe()`** blocks.
+- Keep **each test under 30 lines**; extract helpers when longer.
+- Use descriptive test titles that state expected behavior (e.g. `should show success after submit`).
+
+### Timing
+
+- **Never** use **`page.waitForTimeout()`** or fixed delays.
+- Use **`page.waitForLoadState('networkidle')`** for full page transitions after navigation.
+- Use **`locator.waitFor({ state: 'visible' })`** (or Playwright **`expect`** auto-waiting) for element state.
+- Prefer **`page.waitForURL`** when the signal is a route change.
+
+### Test data
+
+- Load **credentials and test data** from **fixtures** or **environment variables** only — never hard-code secrets in specs.
+- Tests **must pass in isolation**; no dependency on execution order or prior tests.
+- Use **`storageState`** for authentication; **do not** log in through the UI in every test (one-time setup or fixture, then reuse state).
+
+### Assertions
+
+- Assert the **final outcome**, not intermediate DOM states.
+- Use **`toBeVisible`**, **`toHaveText`**, **`toHaveURL`** (and related web-first matchers) — not Node **`assert`**.
+
+### Output (agent edits)
+
+- When changing specs, return **diffs**, not full file rewrites, unless the user asks for a complete file.
+- Add a **one-line comment at the top** of each spec file stating what user flow or feature the file covers.
+
+### Additional conventions
+
+- **Code quality** — Concise TypeScript with accurate types; match ESLint/Prettier for the repo.
+- **Fixtures** — Use Playwright fixtures (`test`, `page`, `expect`) and **`frontend/e2e/fixtures/`** for shared setup; avoid mutable globals across workers.
+- **DRY** — Extract reusable flows into **`frontend/e2e/helpers/`**; add **JSDoc** on exported helpers (not step-by-step comments inside tests beyond the file header).
+- **Configuration** — Centralize `baseURL`, timeouts, browsers, and **`globalSetup`** / **`globalTeardown`** in **`playwright.config.ts`**; use **`projects`** + **`devices`** for cross-browser runs.
+- **Parallelization** — Safe under parallel workers: isolated data, **`storageState`** per role, unique prefixes where needed.
+- **Scope** — E2E covers **UI journeys** only; domain rules stay in **`*.svc/`** (see **`.cursor/rules/solution/solution.mdc`**).
+- **Secrets** — Never commit tokens or `.env` credentials; use CI secrets and env vars at runtime.
+
+---
+
+## Example spec structure
+
+```typescript
+// Solution owner submit flow — happy path and validation errors
+import { test, expect } from '@playwright/test';
+
+test.describe('Solution owner', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/pages/solution-owner');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('should show success after submit', async ({ page }) => {
+    await page.getByRole('button', { name: 'Submit' }).click();
+    await expect(page.getByRole('status')).toBeVisible();
+  });
+});
+```
+
+---
+
+## Reference
+
+- Official guide: [Playwright — Writing tests](https://playwright.dev/docs/writing-tests)
+- Unit/integration tests: **`.cursor/rules/testing_ts/testing_ts.mdc`**
+- TypeScript boundaries: **`.cursor/rules/typescript/typescript.mdc`**

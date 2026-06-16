@@ -25,7 +25,7 @@ Read these rules **before** running any step. They govern how the workflow below
 6. **All file paths are relative to the solution root** (`Arb Sherpa` repository root). Use the **`@/`** import alias for cross-folder imports.
 7. **Obey existing rules** at every step:
    - Page structure (`aspire.svc/.cursor/rules/nextjs.mdc` §"Page routes and page components") — two-piece contract is mandatory.
-   - TypeScript style (`aspire.svc/.cursor/rules/typescript.mdc`) — `strict`, no `any`, prefer `interface`, no enums.
+   - TypeScript style (`aspire.svc/.cursor/rules/typescript/typescript.mdc`) — `strict`, no `any`, prefer `interface`, no enums.
    - Style guide (`aspire.svc/.cursor/rules/pages_compoents_style_guide.mdc`) — semantic tokens, shadcn, lucide.
    - Architecture (`aspire.svc/.cursor/rules/architetcure.mdc` → `nextjs.mdc`) — classes in `lib/` and page-private classes co-located in `components/pages/<segment>/`.
 8. **Cleanup on abort.** If the user aborts mid-run, `JMP STEP_99_ABORT`. Do not leave half-created files on disk.

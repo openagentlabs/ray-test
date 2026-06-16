@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import authService from '../services/authService';
-import cognitoAuthService from '../services/cognitoAuthService';
 
 export interface User {
   name: string;
@@ -99,15 +98,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    // Clear React state first so UI updates immediately.
     setUserState(null);
-    // Delegate to the Cognito-aware logout: revokes the Cognito refresh token
-    // via /oauth2/revoke, invalidates the Redis `sid` server session, clears
-    // the HttpOnly cookie and local storage, then redirects the browser to the
-    // Cognito /logout URL so the Hosted UI + federated Entra SSO session also end.
-    // Falls back to local-only cleanup if the backend call fails.
-    void cognitoAuthService.logout().catch((e) => {
-      console.error('Cognito logout failed; falling back to local cleanup:', e);
+    void authService.logoutFromServer().finally(() => {
       authService.logout();
     });
   };

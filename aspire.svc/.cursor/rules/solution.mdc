@@ -17,7 +17,7 @@ alwaysApply: false
 
 # Arb Aspire — `PRJ_NAME` application host
 
-**Arb Aspire** is the codename for everything under **`aspire.svc/`**: the **application host** that ships the product defined by **`PRJ_NAME`**, **`PRJ_PACKAGE`**, and **`PRJ_SLUG`** in **`.cursor/rules/constants.mdc`** at the repository root. **`aspire.svc/.cursor/`** holds stack rules for this host only; AWS account binding, Terraform (**`infra/aws_tf/`** only), **`infra/deployed/`**, and Helm layout live in the root **`.cursor/`** tree (**`infra.mdc`**, **`terrafrom.mdc`**).
+**Arb Aspire** is the codename for everything under **`aspire.svc/`**: the **application host** that ships the product defined by **`PRJ_NAME`**, **`PRJ_PACKAGE`**, and **`PRJ_SLUG`** in **`.cursor/rules/constants/constants.mdc`** at the repository root. **`aspire.svc/.cursor/`** holds stack rules for this host only; AWS account binding, Terraform (**`infra/aws_tf/`** only), **`infra/deployed/`**, and Helm layout live in the root **`.cursor/`** tree (**`infra.mdc`**, **`terrafrom.mdc`**).
 
 Use this file for **what Arb Aspire is**, **how it relates to other services in the repo**, and **where code lives under `aspire.svc/`**. Companion rules in **`aspire.svc/.cursor/rules/`** (this directory) define stack details — do not duplicate them here.
 

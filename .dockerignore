@@ -1,0 +1,12 @@
+**/.git
+**/.next
+**/node_modules
+**/.venv
+**/dist
+**/build
+**/__pycache__
+**/.cursor
+**/terminals
+bu-analytics-gen-ai-midas
+testing
+infra/aws/aws_tf/.terraform

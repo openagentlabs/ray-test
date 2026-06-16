@@ -1,11 +1,8 @@
 /**
  * Authentication service for API calls.
  *
- * Authentication is now Cognito (Hosted UI + Entra ID federation). This module
- * holds the internal Bearer access token and user profile returned by the
- * backend's /api/v1/auth/cognito/exchange endpoint, and drives session-timer
- * bookkeeping. The actual Cognito flow (PKCE, authorize redirect, callback,
- * refresh, logout) lives in ./cognitoAuthService.ts.
+ * Uses email/password login against /api/v1/auth/login with server-side sessions
+ * and internal Bearer JWT tokens.
  */
 
 import {
@@ -72,23 +69,41 @@ class AuthService {
   private token: string | null = null;
 
   constructor() {
-    // Load internal access token from localStorage on initialization.
-    // Note: the legacy `refresh_token` key is intentionally no longer read or written here — the Cognito
-    // refresh token lives in a backend-issued HttpOnly cookie and is never exposed to JS.
     this.token = localStorage.getItem('auth_token');
-    // Clean up any legacy refresh token previously written by the username/password flow.
-    localStorage.removeItem('refresh_token');
   }
 
   /**
-   * Persist the full login response returned by the backend's Cognito `/exchange`
-   * endpoint (also compatible with the legacy `/login` shape). Used by
-   * `cognitoAuthService.completeLogin`.
+   * Login with email and password against the backend /login endpoint.
+   */
+  async login(username: string, password: string): Promise<LoginResponse> {
+    const response = await fetch(`${API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = (await response.json().catch(() => ({}))) as AuthError;
+      const detail = typeof errorData.detail === 'string' ? errorData.detail : 'Invalid username or password';
+      throw new Error(detail);
+    }
+
+    const data: LoginResponse = await response.json();
+    this.setSessionFromApiResponse(data);
+    return data;
+  }
+
+  /**
+   * Persist the full login response returned by the backend /login endpoint.
    */
   setSessionFromApiResponse(data: LoginResponse): void {
     this.token = data.access_token;
     localStorage.setItem('auth_token', data.access_token);
     localStorage.setItem('user_data', JSON.stringify(data.user));
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
+    }
 
     const created =
       typeof data.session_created_at === 'number'
@@ -102,11 +117,11 @@ class AuthService {
           : 120;
     persistSessionMetaFromApi(created, ttl, data.session_id ?? null);
     initVisibilityRefreshGuard();
+    try { window.dispatchEvent(new Event('midas:auth-changed')); } catch { /* no-op */ }
   }
 
   /**
-   * Update only the internal Bearer access token (used by `cognitoAuthService.refresh`
-   * after it re-mints the token via the backend's /refresh endpoint).
+   * Update only the internal Bearer access token (used after /refresh).
    */
   setAccessTokenOnly(accessToken: string): void {
     this.token = accessToken;
@@ -199,9 +214,25 @@ class AuthService {
   }
 
   /**
+   * Server logout: invalidate session and revoke refresh tokens.
+   */
+  async logoutFromServer(): Promise<void> {
+    if (!this.token) {
+      return;
+    }
+    try {
+      await fetch(`${API_BASE_URL}/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.token}` },
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Server logout error:', error);
+    }
+  }
+
+  /**
    * Local logout: clear the Bearer token, user profile, timers, and caches.
-   * The HttpOnly Cognito refresh cookie is cleared by the backend `/logout` endpoint;
-   * full Cognito + Entra logout is orchestrated by `cognitoAuthService.logout`.
    */
   logout(): void {
     clearSessionTimerAndMeta();
@@ -209,13 +240,12 @@ class AuthService {
     resetSessionExpiryDispatchFlag();
     this.token = null;
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token'); // legacy cleanup
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_data');
     localStorage.removeItem('chatSessions');
     localStorage.removeItem('datasets');
     localStorage.removeItem('connections');
     sessionStorage.clear();
-    // Notify UserContext / any listeners that authentication state has changed.
     try { window.dispatchEvent(new Event('midas:auth-changed')); } catch { /* no-op */ }
   }
 
@@ -227,13 +257,48 @@ class AuthService {
   }
 
   /**
-   * Silent refresh: delegate to the Cognito flow. The Cognito refresh token lives in
-   * the backend-issued HttpOnly cookie, so nothing is read from localStorage here.
+   * Silent refresh via /api/v1/auth/refresh using stored refresh token.
    */
   async refreshAccessToken(): Promise<boolean> {
-    // Lazy import to avoid a circular dependency with cognitoAuthService -> authService.
-    const { refresh } = await import('./cognitoAuthService');
-    return refresh();
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      if (!data.access_token) {
+        return false;
+      }
+
+      this.setAccessTokenOnly(data.access_token);
+      const created =
+        typeof data.session_created_at === 'number'
+          ? data.session_created_at
+          : Math.floor(Date.now() / 1000);
+      const ttl =
+        typeof data.session_ttl_seconds === 'number' && data.session_ttl_seconds > 0
+          ? data.session_ttl_seconds
+          : typeof data.expires_in === 'number' && data.expires_in > 0
+            ? data.expires_in
+            : 3600;
+      persistSessionMetaFromApi(created, ttl, data.session_id ?? null);
+      return true;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      return false;
+    }
   }
 
   /**
@@ -258,33 +323,13 @@ class AuthService {
 
   /**
    * Initialize authentication state on app boot.
-   *
-   * Flow:
-   *  1. If we have a locally-stored Bearer token, verify it with the backend.
-   *  2. If verification says "expired/unauthorized", attempt a silent refresh via the
-   *     HttpOnly Cognito cookie (it works even when `auth_token` was never stored — e.g.
-   *     a fresh tab after a full-page reload).
-   *  3. Propagate the final outcome to the caller.
    */
   async initializeAuth(): Promise<{ isAuthenticated: boolean; user: User | null }> {
     const storedUser = this.getStoredUser();
 
-    // On the Cognito /auth/callback page, the AuthCallback component is the
-    // sole authority — it will exchange the authorization code and populate
-    // the session. Do NOT race it with a silent /cognito/refresh here
-    // (that call would always 401 because the midas_cg_rt cookie is only
-    // set *after* /exchange, and the spurious 401 shows up in server logs).
-    const onCallbackRoute =
-      typeof window !== 'undefined' && window.location.pathname === '/auth/callback';
-
     if (!this.token || !storedUser) {
-      if (onCallbackRoute) {
-        return { isAuthenticated: false, user: null };
-      }
-      // No local token: try silent refresh via the HttpOnly Cognito cookie.
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        // /refresh does not return the user profile; reuse whatever we had cached (may be null).
         return { isAuthenticated: true, user: storedUser };
       }
       return { isAuthenticated: false, user: null };

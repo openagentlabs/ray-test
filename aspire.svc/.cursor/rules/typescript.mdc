@@ -15,7 +15,7 @@ alwaysApply: false
 
 # Arb Aspire — TypeScript rules
 
-Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 Apply when writing or editing **TypeScript** (`.ts`, `.tsx`).
 

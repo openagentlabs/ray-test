@@ -1,5 +1,6 @@
 locals {
-  name_prefix = replace(replace(replace(lower(replace("${var.solution.name}-${var.solution.deployment_key}-ray", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  _name_prefix_raw = lower(replace("${var.solution.name}-${var.solution.deployment_key}-ray", "_", "-"))
+  name_prefix      = can(regex("--", var.solution.deployment_key)) ? local._name_prefix_raw : replace(replace(replace(local._name_prefix_raw, "--", "-"), "--", "-"), "--", "-")
 
   node_security_group_ids = distinct(concat(
     [var.cluster_security_group_id],

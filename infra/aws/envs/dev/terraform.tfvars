@@ -1,10 +1,15 @@
-# THE ONLY FILE most engineers edit for this root. All other .tf files are locked structure.
-# See `.cursor/rules/terrafrom.mdc` and `.cursor/rules/constants.mdc`.
+# Dev environment overrides — merged after infra/aws/aws_tf/terraform.tfvars.
+# Always apply with: terraform plan|apply -var-file=../envs/dev/terraform.tfvars
+# See infra/aws/containers/README.md and infra/aws/aws_tf/REDEPLOY.md.
 
-solution_name        = "ray_test"
+# Live stack identity (legacy arb-ai-assistant deployment). Clear overrides when migrating to ray_test.
+solution_name        = "arb_ai_assistant"
 solution_description = "ARB - AI Assistant primary AWS infrastructure."
-solution_version     = "0.1.0"
-solution_date        = "2026-05-16"
+
+# Legacy physical names — match resources already in AWS account 017868795096.
+deployment_key_override  = "dev--0001--a1b2c3"
+containers_cluster_name  = "arb-ai-assistant-dev--0001--a1b2c3"
+containers_k8s_namespace = "arb-ai-assistant"
 
 # Deployment identity — see .cursor/rules/infras/resource-naming.mdc and resource-taging.mdc
 deployment_environment = "dev"
@@ -49,10 +54,6 @@ containers_workloads = {
 
 # manager-web uses FSx/S3 CSI on Ray EC2 nodes — not compatible with Fargate profile.
 containers_fargate_workloads_namespace_enabled = false
-
-# Reuse prior ECS VPC when set; leave empty to create a new platform VPC (see vpc_platform).
-# containers_existing_vpc_id = "vpc-xxxxxxxx"
-# containers_existing_subnet_ids = ["subnet-xxxxxxxx", "subnet-yyyyyyyy"]
 
 # Optional overrides (defaults match general.ai.agent.svc `app_config.toml` `[agent.bedrock]`):
 # general_ai_agent_bedrock_foundation_model_id  = "anthropic.claude-sonnet-4-5-20250929-v1:0"

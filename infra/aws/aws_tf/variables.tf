@@ -1,5 +1,5 @@
 variable "aws_account_id" {
-  description = "AWS account ID this stack deploys into. Must equal AWS_ACCOUNT_ID in .cursor/rules/constants.mdc."
+  description = "AWS account ID this stack deploys into. Must equal AWS_ACCOUNT_ID in .cursor/rules/constants/constants.mdc."
   type        = string
   default     = "017868795096"
   nullable    = false
@@ -10,7 +10,7 @@ variable "aws_account_id" {
 }
 
 variable "aws_region" {
-  description = "AWS region this stack deploys into. Must equal AWS_DEFAULT_REGION in .cursor/rules/constants.mdc."
+  description = "AWS region this stack deploys into. Must equal AWS_DEFAULT_REGION in .cursor/rules/constants/constants.mdc."
   type        = string
   default     = "us-east-1"
   nullable    = false
@@ -80,6 +80,17 @@ variable "deployment_instance" {
     condition     = can(regex("^[a-z0-9]{6}$", var.deployment_instance)) && !can(regex("--", var.deployment_instance))
     error_message = "deployment_instance must be exactly six lowercase letters or digits — no '--' in the value."
   }
+}
+
+variable "deployment_key_override" {
+  description = <<-EOT
+    Optional full deployment_key when live AWS resources use a legacy key (e.g. dev--0001--a1b2c3).
+    Leave empty for canonical single-hyphen keys from deployment_environment/index/instance.
+    Set in infra/envs/<env>/terraform.tfvars to align Terraform with an existing stack without rename.
+  EOT
+  type        = string
+  default     = ""
+  nullable    = false
 }
 
 variable "deployed_at" {
@@ -219,6 +230,20 @@ variable "containers_eks_enabled" {
   EOT
   type        = bool
   default     = false
+  nullable    = false
+}
+
+variable "containers_cluster_name" {
+  description = "EKS cluster name override. Empty uses PRJ_SLUG (solution_slug). Set for legacy stacks whose cluster name includes deployment_key."
+  type        = string
+  default     = ""
+  nullable    = false
+}
+
+variable "containers_k8s_namespace" {
+  description = "Kubernetes namespace for ARB workloads. Empty uses solution_slug. Set to match an existing cluster namespace."
+  type        = string
+  default     = ""
   nullable    = false
 }
 

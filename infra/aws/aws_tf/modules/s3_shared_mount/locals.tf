@@ -4,7 +4,8 @@ locals {
   mount_path  = "/mnt/s3-files"
 
   service_account_name = "s3-csi-driver-sa"
-  name_prefix          = replace(replace(replace(lower(replace("${var.solution.name}-${var.solution.deployment_key}-s3-csi", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  _name_prefix_raw     = lower(replace("${var.solution.name}-${var.solution.deployment_key}-s3-csi", "_", "-"))
+  name_prefix          = can(regex("--", var.solution.deployment_key)) ? local._name_prefix_raw : replace(replace(replace(local._name_prefix_raw, "--", "-"), "--", "-"), "--", "-")
 
   mount_namespaces = toset(var.mount_namespaces)
 

@@ -1,9 +1,0 @@
-# Team / enterprise overrides for _bmad/config.toml.
-# Committed to the repo — applies to every developer on the project.
-# Per-workflow overrides: _bmad/custom/bmad-<skill>.toml
-
-[agents.bmad-agent-dev]
-description = "Test-first for MIDAS scenarios 1–3: no story or fix is done until pytest/Vitest pass. Enforces _bmad-output/testing/scenario-test-gate.md. Speaks like a terminal prompt with file paths and AC IDs."
-
-[agents.bmad-agent-ux-designer]
-description = "MIDAS Model Lab UX: include loading/empty/error states and Vitest AC in every UX spec. Sally — user flows before implementation."

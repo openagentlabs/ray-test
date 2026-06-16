@@ -6,15 +6,9 @@
 FROM node:22-bookworm AS grpc_clients
 WORKDIR /repo
 
-COPY iam.svc/grpc-client-call/package.json iam.svc/grpc-client-call/package-lock.json ./iam.svc/grpc-client-call/
-COPY iam.svc/grpc-client-call/tsconfig.json ./iam.svc/grpc-client-call/
-COPY iam.svc/grpc-client-call/src ./iam.svc/grpc-client-call/src
-RUN cd iam.svc/grpc-client-call && npm ci && npm run build
-
 COPY document-storage.svc/server/proto ./document-storage.svc/server/proto
 COPY arch.diagram.agent.svc/server/proto ./arch.diagram.agent.svc/server/proto
 
-COPY iam.svc/client/package.json iam.svc/client/package-lock.json ./iam.svc/client/
 COPY general.ai.agent.svc/client/package.json general.ai.agent.svc/client/package-lock.json ./general.ai.agent.svc/client/
 COPY notification.svc/client/package.json notification.svc/client/package-lock.json ./notification.svc/client/
 COPY solutions.svc/client/package.json solutions.svc/client/package-lock.json ./solutions.svc/client/
@@ -23,8 +17,7 @@ COPY collaboration.svc/client/package.json collaboration.svc/client/package-lock
 COPY document-storage.svc/client/package.json document-storage.svc/client/package-lock.json ./document-storage.svc/client/
 COPY arch.diagram.agent.svc/client/package.json arch.diagram.agent.svc/client/package-lock.json ./arch.diagram.agent.svc/client/
 
-RUN cd iam.svc/client && npm ci --ignore-scripts \
-  && cd /repo/general.ai.agent.svc/client && npm ci --ignore-scripts \
+RUN cd /repo/general.ai.agent.svc/client && npm ci --ignore-scripts \
   && cd /repo/notification.svc/client && npm ci --ignore-scripts \
   && cd /repo/solutions.svc/client && npm ci --ignore-scripts \
   && cd /repo/storage.svc/client && npm ci --ignore-scripts \
@@ -32,7 +25,6 @@ RUN cd iam.svc/client && npm ci --ignore-scripts \
   && cd /repo/document-storage.svc/client && npm ci --ignore-scripts \
   && cd /repo/arch.diagram.agent.svc/client && npm ci --ignore-scripts
 
-COPY iam.svc/client ./iam.svc/client
 COPY general.ai.agent.svc/client ./general.ai.agent.svc/client
 COPY notification.svc/client ./notification.svc/client
 COPY solutions.svc/client ./solutions.svc/client
@@ -41,8 +33,7 @@ COPY collaboration.svc/client ./collaboration.svc/client
 COPY document-storage.svc/client ./document-storage.svc/client
 COPY arch.diagram.agent.svc/client ./arch.diagram.agent.svc/client
 
-RUN cd iam.svc/client && npm run build \
-  && cd /repo/general.ai.agent.svc/client && npm run build \
+RUN cd /repo/general.ai.agent.svc/client && npm run build \
   && cd /repo/notification.svc/client && npm run build \
   && cd /repo/solutions.svc/client && npm run build \
   && cd /repo/storage.svc/client && npm run build \
@@ -53,8 +44,6 @@ RUN cd iam.svc/client && npm run build \
 FROM node:22-bookworm AS builder
 WORKDIR /app
 
-COPY --from=grpc_clients /repo/iam.svc/grpc-client-call ./iam.svc/grpc-client-call
-COPY --from=grpc_clients /repo/iam.svc/client ./iam.svc/client
 COPY --from=grpc_clients /repo/general.ai.agent.svc/client ./general.ai.agent.svc/client
 COPY --from=grpc_clients /repo/notification.svc/client ./notification.svc/client
 COPY --from=grpc_clients /repo/solutions.svc/client ./solutions.svc/client

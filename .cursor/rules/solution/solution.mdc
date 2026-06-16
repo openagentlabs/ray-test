@@ -1,0 +1,127 @@
+---
+description: Repo root boundaries—frontend vs microservices, canonical ports, component index, path ownership, and rule pointers.
+alwaysApply: true
+---
+
+# Repository root — solution scope
+
+**What this file is:** The authoritative repo-root guide for where code and rules live—`frontend/` vs `*.svc/` (including `aspire.svc/`)—and which component owns each concern.
+
+**When to use it:** Before adding features, APIs, persistence, UI, or rules anywhere in the monorepo; when choosing between `frontend/`, `aspire.svc/`, or a gRPC microservice; when looking up dev ports or per-service rule locations.
+
+**How to use it:** Read **Format** and **Build**; apply every line in **Rules**; follow per-component rules via **Related** and the rule-pointer table—never duplicate Next.js or per-service stacks in root `.cursor/rules/`.
+
+---
+
+## Format
+
+### Solution components
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Component name as used in docs and local dev |
+| **Path** | Repo-relative root folder (from repository root) |
+| **What it is** | One-line purpose and how it fits the solution |
+| **When to use it** | When an agent should extend or call this component (vs another) |
+
+| Name | Path | What it is | When to use it |
+|------|------|------------|----------------|
+| **Arb Aspire** | `aspire.svc/` | Next.js **app-composition host** (modular monolith): UI, `aspire.svc/lib/`, and bounded contexts under `aspire.svc/services/`. | Host-specific composition, aspire service registry, or legacy architect shell—not the primary product UI (`frontend/`). |
+| **Arb Frontend** | `frontend/` | Primary **Next.js presentation** app: pages, components, and thin gRPC adapters only. | Any user-facing UI, routes, layout, or view models; never domain rules, authz, or persistence. |
+| **IAM** | `iam.svc/` | **Identity and access**: authentication, authorization, RBAC over gRPC + DynamoDB. | Users, logins, roles, permissions, tokens, or security decisions shared across the platform. |
+| **ARB Solutions** | `solutions.svc/` | **ARB solution domain**: solution capabilities and data under ARB architect ownership and team review. | Solution metadata, review workflow, or behavior specific to the ARB solution—not IAM, files, or generic UI. |
+| **Storage** | `storage.svc/` | **File/object storage**: logical folders, presigned S3 URLs, and metadata over gRPC. | Uploads, downloads, blobs, or file references—not workflows, auth, or solution business rules. |
+| **General AI Agent** | `general.ai.agent.svc/` | **Strands + Bedrock** conversational agent over gRPC (in-memory sessions per `conversation_id`). | AI chat, agent tools, or model-driven assistance—call from server-side code (`frontend/` / `aspire.svc/`), not browser gRPC. |
+| **Notification** | `notification.svc/` | **Outbound notifications** (e.g. SNS email) over gRPC. | Email or event fan-out to users—not in-app UI state or domain persistence. |
+| **Collaboration** | `collaboration.svc/` | **Aliases and discussions**: stable entity aliases and threaded messages over gRPC + DynamoDB. | Comments, threads, or human-readable aliases for platform entities—not duplicate comment storage in other services. |
+| **Document storage** | `document-storage.svc/` | **Generic document storage**: group-scoped logical tables, item CRUD, vector search, attachments over gRPC + DynamoDB. | Structured documents, workbook rows, imports, or admin requirement-document UI—not solution review or generic file storage. |
+| **Arch diagram agent** | `arch.diagram.agent.svc/` | **Diagram-to-graph conversion**: validates diagram input and runs Bedrock-backed conversion jobs over gRPC + DynamoDB. | Architecture diagram ingestion, instance-graph conversion, or conversion job lifecycle—not generic chat or document CRUD. |
+
+### Canonical dev ports
+
+| Surface | Path | Port |
+|---------|------|------|
+| Arb Aspire | `aspire.svc/` | **8801** |
+| Arb Frontend | `frontend/` | **8802** |
+| IAM | `iam.svc/server` | **8803** |
+| Solutions | `solutions.svc/server` | **8804** |
+| Storage | `storage.svc/server` | **8805** |
+| General AI agent | `general.ai.agent.svc/server` | **8806** |
+| Notification | `notification.svc/server` | **8807** |
+| Collaboration | `collaboration.svc/server` | **8808** |
+| Document storage | `document-storage.svc/server` | **8809** |
+| Arch diagram agent | `arch.diagram.agent.svc/server` | **8810** |
+
+**Obsolete ports:** **8081**, **8082**, **3000**, and **50051** — do not use for these surfaces.
+
+### Root layout (non-service paths)
+
+| Path | Role / when editing |
+|------|---------------------|
+| `doc/` | Human-oriented docs |
+| `.cursor/rules/` | Repo-wide pointers (this tree) |
+| `infra/aws_tf/` | **Only** `terraform init/plan/apply` root |
+| `infra/deployed/aws/.../services/<svc>/` | Ownership markers + Helm—not a TF root |
+| `infra/tf_lib/` | Read-only TF snippets; skills copy into `infra/aws_tf/modules/` |
+| `.cursor/skills/`, **`skills/`** | Root agent skills — **`.cursor/skills/ray-test/`** router; canonical bodies in **`skills/<id>/`** |
+| `AGENTS.md`, `CLAUDE.md` | Optional repo-wide agent hints |
+
+---
+
+## Build
+
+1. Classify the task: presentation/UI vs domain logic (persistence, authz, workflows, invariants, calculations).
+2. For presentation, choose **Arb Frontend** (`frontend/`) unless the work is aspire-host composition—then use **Arb Aspire** (`aspire.svc/`).
+3. For domain logic, pick exactly one row from **Solution components**—never duplicate the concern in `frontend/` or another service.
+4. Confirm the local dev port from **Canonical dev ports** before running or wiring clients.
+5. Load component-specific rules from **Related** and per-service `.cursor/rules/`—do not re-declare stacks in root rules.
+6. For AWS/IaC work, follow **Rules** § Infrastructure and link **`constants.mdc`** for `PRJ_*` and account/region values.
+
+---
+
+## Rules
+
+### Frontend boundary
+
+1. **Domain logic placement** — Description: Product domain logic lives in `*.svc/` microservices — Criteria: Rules, auth beyond UI gates, persistence, workflows, invariants, and calculations — When: Any feature needing durable state or business decisions — How: Implement in the matching gRPC service and call from server-side app code — Effect: Domain code never lands in browser or `frontend/` Next server handlers.
+2. **Frontend allowed scope** — Description: `frontend/` is presentation-only — Criteria: UI/UX, layout, navigation, forms, client-side feedback validation, loading/errors, a11y, theming, thin gRPC→view-model adapters — When: Building user-facing surfaces in the primary product UI — How: Keep handlers thin; map gRPC responses to view models — Effect: Frontend remains a thin shell over services.
+3. **Frontend forbidden scope** — Description: No product persistence or business modules in frontend — Criteria: Repos, domain modules, or business rules under `frontend/services/` or `frontend/lib/` — When: Tempted to add data access or domain logic locally — How: Extend the correct `*.svc/` first, then wire UI — Effect: Single source of truth per bounded context in microservices.
+4. **Frontend route handlers** — Description: `frontend/app/` handlers validate and delegate — Criteria: Presentation input validation, gRPC calls, error mapping only — When: Adding or changing App Router handlers/actions — How: Reject domain decisions in the handler layer — Effect: Handlers stay adapters, not business-rule hosts.
+5. **Frontend rule precedence** — Description: Root solution boundary supersedes conflicting frontend workspace rules — Criteria: Any conflict between this file and `frontend/.cursor/rules/` on presentation-vs-domain split — When: Both rule sets apply — How: Follow this file’s frontend boundary — Effect: Consistent monorepo placement across agents.
+
+### Component and port selection
+
+6. **Component index authority** — Description: Solution components table is the canonical folder picker — Criteria: One row per app host or gRPC microservice with path and when-to-use — When: Unsure which folder owns a feature — How: Match task to **When to use it** column before coding — Effect: Features land in the correct tree on first attempt.
+7. **Canonical dev ports** — Description: Local dev uses ports 8801–8810 per surface — Criteria: Port column in **Canonical dev ports** — When: Starting servers, writing client config, or documenting run commands — How: Bind each surface to its listed port — Effect: No port collisions across services during local dev.
+8. **Obsolete ports** — Description: Legacy ports are retired for solution surfaces — Criteria: Ports 8081, 8082, 3000, 50051 — When: Configuring or documenting dev URLs — How: Use 8801–8810 instead — Effect: Docs and scripts align with current layout.
+
+### Root rules and layout
+
+9. **Root rules scope** — Description: Root `.cursor/rules/` holds cross-cutting pointers only — Criteria: Constants, AWS/IaC, Python/TS tool hints, testing/errors — When: Authoring or extending repo-wide rules — How: Link to workspace rules; do not duplicate Next.js or per-service stacks — Effect: Per-service detail stays in service folders.
+10. **Human docs path** — Description: `doc/` is for human-oriented documentation — Criteria: Prose docs not tied to a single service README — When: Adding narrative or onboarding docs — How: Place under `doc/` — Effect: Service READMEs stay at service roots per `docs.mdc`.
+11. **Terraform runnable root** — Description: Only `infra/aws_tf/` runs `terraform init/plan/apply` — Criteria: Runnable TF state and modules — When: Planning or applying infrastructure — How: Execute Terraform from `infra/aws_tf/` — Effect: Single authoritative TF root.
+12. **Deployed markers** — Description: `infra/deployed/aws/.../services/<svc>/` holds ownership markers and Helm — Criteria: Not a Terraform root — When: Adding deployment ownership or Helm charts — How: Use markers path; do not init Terraform there — Effect: Clear separation of TF root vs deployment artifacts.
+13. **TF library snippets** — Description: `infra/tf_lib/` is read-only reference — Criteria: Snippets copied by skills into `infra/aws_tf/modules/` — When: Scaffolding new infra modules — How: Copy via skill workflow; do not apply directly from `tf_lib/` — Effect: Modules are vetted before entering the runnable root.
+
+### Infrastructure
+
+14. **AWS and Terraform rules** — Description: All paths follow root infra rules — Criteria: `infra.mdc`, `terrafrom.mdc`, `.cursor/skills/` — When: Any AWS CLI, SDK, MCP, or Terraform work — How: Read those rules before changing infra — Effect: Consistent IaC practices repo-wide.
+15. **Constants single source** — Description: Never re-declare project or AWS parameters outside constants — Criteria: `PRJ_*`, account, profile, region literals in rules or modules — When: Naming, tagging, or configuring AWS resources — How: Reference **`.cursor/rules/constants/constants.mdc`** by constant ID — Effect: No drift between rules, tfvars, and live config.
+
+---
+
+## Related
+
+| Topic | Path |
+|-------|------|
+| Rule authoring | **`.cursor/rules/rules/rules.mdc`** — template **`.cursor/rules/rules/template.mdc`** — skill **`rules-create`** |
+| Project constants | **`.cursor/rules/constants/constants.mdc`** |
+| Documentation README policy | **`.cursor/rules/docs/docs.mdc`** |
+| Python / uv apps / async gRPC | **`.cursor/rules/python/python.mdc`** — no one-off scripts; script requests → uv application |
+| TypeScript / gRPC clients | **`.cursor/rules/typescript/typescript.mdc`** |
+| AWS CLI/SDK/MCP | **`.cursor/rules/infra.mdc`** |
+| Terraform | **`.cursor/rules/terrafrom.mdc`** |
+| IAM service rules | **`iam.svc/.cursor/rules/`** |
+| ARB solutions rules | **`solutions.svc/.cursor/rules/solution/solution.mdc`** (`microservice`, `architetcure`, `validation`, `database`, `logging`, `grpc`) |
+| Arb Aspire rules | **`aspire.svc/.cursor/rules/solution/solution.mdc`** |
+| Frontend stack/UX | **`frontend/.cursor/rules/solution/solution.mdc`** |

@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { HomePage } from "@/components/pages/home/home-page";
+import { MarketingNavigation } from "@/lib/navigation/marketing-navigation";
 
 export default function RootRoute() {
-  redirect("/pages/users/architect");
+  return <HomePage navigationItems={MarketingNavigation.getItems()} />;
 }

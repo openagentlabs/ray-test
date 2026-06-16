@@ -193,4 +193,4 @@ Every `tf-tool` run (except `--help`) runs `ruff check` and `ruff format --check
 
 Full build output, project layout, and action authoring: [project README](../README.md).
 
-Stack rules: `.cursor/rules/python.mdc`, `.cursor/rules/terrafrom.mdc`.
+Stack rules: `.cursor/rules/python/python.mdc`, `.cursor/rules/terrafrom.mdc`.

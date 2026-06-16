@@ -100,8 +100,8 @@ When the **user asks to perform the checks** (or a deploy / end-of-interaction g
 | Repo Terraform HCL | `.cursor/rules/iac/terrafrom.mdc` |
 | Registry module search | `.cursor/rules/tools/terraform-tool.mdc` |
 | AWS / IaC operations | `.cursor/rules/infra.mdc` |
-| Tooling index | `.cursor/rules/tool.mdc` |
-| Errors & reporting | `.cursor/rules/error.mdc` |
+| Tooling index | `.cursor/rules/tool/tool.mdc` |
+| Errors & reporting | `.cursor/rules/error/error.mdc` |
 
 ---
 

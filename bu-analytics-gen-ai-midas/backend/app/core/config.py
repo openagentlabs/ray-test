@@ -582,6 +582,9 @@ class Settings:
     # S3_BUCKET_NAME is blank, the app falls back to local ``UPLOAD_DIR``.
     S3_BUCKET_NAME: Optional[str] = _optional_env_str("S3_BUCKET_NAME")
     S3_REGION: Optional[str] = _optional_env_str("S3_REGION")
+    # Upload object store: ``local`` (disk under UPLOAD_DIR), ``s3``, or ``auto``
+    # (try Secrets Manager / S3_BUCKET_NAME, then fall back to local).
+    OBJECT_STORAGE_BACKEND: str = os.getenv("OBJECT_STORAGE_BACKEND", "auto").strip().lower()
 
     # Database Configuration
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", "data/message_states.db")

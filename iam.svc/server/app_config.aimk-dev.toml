@@ -1,0 +1,91 @@
+# Local dev overlay for `aimk solution run` — noop observability (no CloudWatch).
+# Full defaults: app_config.toml. Select via IAM_APP_CONFIG_PATH.
+
+[app]
+service_name = "iam-service"
+log_level = "DEBUG"
+version = "0.1.0"
+
+[observability.identity]
+service_id = "arb-iam-svc"
+service_name = "arb-iam-svc"
+service_version = "0.1.0"
+instance_id = "local"
+environment = "dev"
+
+[observability.logging]
+enabled = true
+driver = "noop"
+level = "DEBUG"
+
+[observability.security_logging]
+enabled = true
+driver = "noop"
+level = "INFO"
+
+[observability.tracing]
+enabled = false
+driver = "noop"
+sample_rate = 1.0
+
+[observability.metrics]
+enabled = false
+driver = "noop"
+namespace = "EXL/IAM"
+
+[observability.apm]
+enabled = false
+driver = "noop"
+
+[api_service]
+host = "0.0.0.0"
+port = 8803
+
+[http_auth]
+enabled = true
+host = "0.0.0.0"
+port = 8873
+public_base_url = "http://127.0.0.1:8873"
+cors_allow_origins = ["http://127.0.0.1:8811", "http://localhost:8811"]
+
+[vault]
+driver = "local"
+master_key_id = "iam-master-key-1"
+
+[vault.local]
+vault_path = "./vault"
+
+[idp]
+driver = "hardcoded"
+
+[idp.hardcoded]
+provider_id = "hardcoded-test"
+display_name = "Hardcoded Test IdP"
+
+[[idp.hardcoded.users]]
+email = "keith.tobin@gmail.com"
+password = "123456"
+
+[dynamodb]
+region = "us-east-1"
+endpoint_url = ""
+
+[dynamodb.tables]
+users = "arb-ai-assistant-iam-users-017868795096"
+user_types = "arb-ai-assistant-iam-user-types-017868795096"
+login_types = "arb-ai-assistant-iam-login-types-017868795096"
+logins = "arb-ai-assistant-iam-logins-017868795096"
+skill_lists = "arb-ai-assistant-iam-skill-lists-017868795096"
+skills = "arb-ai-assistant-iam-skills-017868795096"
+user_skills = "arb-ai-assistant-iam-user-skills-017868795096"
+sessions = "arb-ai-assistant-iam-sessions-017868795096"
+invites = "arb-ai-assistant-iam-invites-017868795096"
+deployment_admin = "arb-ai-assistant-iam-deployment-admin-017868795096"
+roles = "arb-ai-assistant-iam-roles-017868795096"
+permissions = "arb-ai-assistant-iam-permissions-017868795096"
+role_permissions = "arb-ai-assistant-iam-role-permissions-017868795096"
+user_role_assignments = "arb-ai-assistant-iam-user-role-assignments-017868795096"
+service_permissions = "arb-ai-assistant-iam-service-permissions-017868795096"
+service_function_registry = "arb-ai-assistant-iam-service-function-registry-017868795096"
+user_permissions = "arb-ai-assistant-iam-user-permissions-017868795096"
+auth_sessions = "arb-ai-assistant-iam-auth-sessions-017868795096"

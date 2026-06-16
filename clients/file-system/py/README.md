@@ -129,5 +129,5 @@ text = outcome.unwrap()
 
 ## 6. Related
 
-- Python conventions: `.cursor/rules/python.mdc`
-- Error handling: `.cursor/rules/error.mdc`
+- Python conventions: `.cursor/rules/python/python.mdc`
+- Error handling: `.cursor/rules/error/error.mdc`

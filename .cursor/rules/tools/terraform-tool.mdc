@@ -50,8 +50,8 @@ cd .cursor/tools/tf-tool && uv sync --dev && uv run tf-tool-build && uv run tf-t
 | Topic | Path |
 |-------|------|
 | Repo Terraform HCL | `.cursor/rules/terrafrom.mdc` |
-| Tool source & tests | `.cursor/tools/tf-tool/`, `.cursor/rules/python.mdc` |
-| Tooling index | `.cursor/rules/tool.mdc` |
+| Tool source & tests | `.cursor/tools/tf-tool/`, `.cursor/rules/python/python.mdc` |
+| Tooling index | `.cursor/rules/tool/tool.mdc` |
 
 ---
 

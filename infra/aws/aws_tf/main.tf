@@ -126,6 +126,9 @@ module "workloads_infra" {
 
   solution = local.solution
 
+  cluster_name = local.containers_cluster_name_effective
+  namespace    = local.containers_k8s_namespace_effective
+
   application_log_group_arns       = [for arn in module.cloudwatch_application_logs.log_group_arns_by_key : arn]
   application_log_group_names      = module.cloudwatch_application_logs.log_group_names_by_key
   cloudwatch_log_retention_in_days = 30
@@ -169,7 +172,7 @@ module "iam_document_storage_svc" {
 
   solution = local.solution
 
-  role_name = replace(replace(replace(lower(replace("arb-${local.deployment_key}-document-storage-svc", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  role_name = local.iam_role_name.document_storage_svc
 
   irsa_trust = local.irsa_trust != null ? merge(local.irsa_trust, {
     service_account = "document-storage"
@@ -242,7 +245,7 @@ module "iam_general_ai_agent_bedrock" {
 
   solution = local.solution
 
-  role_name = replace(replace(replace(lower(replace("arb-${local.deployment_key}-general-ai-agent-bedrock", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  role_name = local.iam_role_name.general_ai_agent
 
   irsa_trust = local.irsa_trust != null ? merge(local.irsa_trust, {
     service_account = "general-ai-agent"
@@ -257,7 +260,7 @@ module "iam_arch_diagram_agent_bedrock" {
 
   solution = local.solution
 
-  role_name = replace(replace(replace(lower(replace("arb-${local.deployment_key}-arch-diagram-agent-bedrock", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  role_name = local.iam_role_name.arch_diagram_agent
 
   irsa_trust = local.irsa_trust != null ? merge(local.irsa_trust, {
     service_account = "arch-diagram-agent"
@@ -281,11 +284,13 @@ module "sns_notifications" {
 
 check "naming_no_double_hyphens" {
   assert {
-    condition = !can(regex("--", local.deployment_key)) && !can(regex("--", local.solution_slug)) && !can(regex(
-      "--",
-      local.docstore_solution_slug,
-    ))
-    error_message = "Physical names must use single hyphens only: deployment_key and composed slugs must not contain '--' (see constants.mdc)."
+    condition = length(trimspace(var.deployment_key_override)) > 0 || (
+      !can(regex("--", local.deployment_key)) && !can(regex("--", local.solution_slug)) && !can(regex(
+        "--",
+        local.docstore_solution_slug,
+      ))
+    )
+    error_message = "Physical names must use single hyphens only: deployment_key and composed slugs must not contain '--' (see constants.mdc). Set deployment_key_override only for legacy stacks."
   }
 }
 

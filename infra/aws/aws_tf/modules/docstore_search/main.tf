@@ -4,17 +4,19 @@
 
 locals {
   # OpenSearch Serverless names must be 3–32 characters.
+  _collection_name_raw = lower(replace("${var.solution.name}-${var.solution.deployment_key}-doc-vec", "_", "-"))
   collection_name = substr(
-    replace(replace(replace(lower(replace("${var.solution.name}-${var.solution.deployment_key}-doc-vec", "_", "-")), "--", "-"), "--", "-"), "--", "-"),
+    can(regex("--", var.solution.deployment_key)) ? local._collection_name_raw : replace(replace(replace(local._collection_name_raw, "--", "-"), "--", "-"), "--", "-"),
     0,
     32,
   )
-  attachments_bucket_base = replace(replace(replace(lower(replace(
+  _attachments_bucket_base_raw = lower(replace(
     "${var.solution.name}-${var.solution.deployment_key}-docstore-attachments-${var.solution.account_id}",
     "_",
     "-",
-  )), "--", "-"), "--", "-"), "--", "-")
-  attachments_bucket = trimsuffix(substr(local.attachments_bucket_base, 0, 63), "-")
+  ))
+  attachments_bucket_base = can(regex("--", var.solution.deployment_key)) ? local._attachments_bucket_base_raw : replace(replace(replace(local._attachments_bucket_base_raw, "--", "-"), "--", "-"), "--", "-")
+  attachments_bucket      = trimsuffix(substr(local.attachments_bucket_base, 0, 63), "-")
 }
 
 resource "aws_s3_bucket" "docstore_attachments" {

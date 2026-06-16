@@ -1,8 +1,0 @@
-# MIDAS team override — bmad-investigate (bug scenario)
-
-[workflow]
-
-persistent_facts = [
-  "file:{project-root}/_bmad-output/testing/scenario-test-gate.md",
-  "For scenario 3 bugs: findings must recommend a regression test location (backend/tests/ or frontend *.test.tsx) and how to reproduce in pytest/Vitest.",
-]

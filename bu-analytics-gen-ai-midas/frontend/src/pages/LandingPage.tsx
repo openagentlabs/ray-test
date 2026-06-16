@@ -107,11 +107,10 @@ import {
 import { useUser } from '../contexts/UserContext';
 import { LogIn, X } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
-import cognitoAuthService from '../services/cognitoAuthService';
 import { consumeSessionNotice } from '../services/sessionExpired';
 
 const LandingPage: React.FC = () => {
-  const { isAuthenticated, login } = useUser();
+  const { isAuthenticated, login, user } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [activeFeature, setActiveFeature] = useState(0);
@@ -294,15 +293,8 @@ const LandingPage: React.FC = () => {
   };
 
   const handleShowLogin = () => {
-    // Kick off the Cognito (Hosted UI + Entra ID) Authorization Code + PKCE flow.
-    // The modal is retained only as a fallback UI for session-expired notices;
-    // direct login goes straight to Cognito without a modal round-trip.
-    cognitoAuthService.beginLogin().catch((e) => {
-      console.error('Failed to start Cognito login:', e);
-      // Fall back to the modal so the user still sees feedback.
-      setAuthModalMode('login');
-      setShowAuthModal(true);
-    });
+    setAuthModalMode('login');
+    setShowAuthModal(true);
   };
 
   const scrollToTop = () => {

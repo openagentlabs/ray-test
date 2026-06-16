@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LandingPage from './pages/LandingPage';
@@ -15,7 +15,6 @@ import SyntheticDataStudio from './pages/SyntheticDataStudio';
 const ModelBuilder = lazy(() => import('./pages/ModelBuilder'));
 const ModelEvaluationMEEA = lazy(() => import('./pages/ModelEvaluationMEEA'));
 const ModelComparisonDashboard = lazy(() => import('./pages/ModelComparisonDashboard'));
-import AuthCallback from './pages/AuthCallback';
 import { DataProvider } from './contexts/DataContext';
 import { DatabaseProvider } from './contexts/DatabaseContext';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -166,9 +165,7 @@ function AppContent() {
             {!isAuthenticated && (
               <div className="flex-1 bg-white dark:bg-white">
                 <Routes>
-                  {/* Cognito Hosted UI redirects here after the user signs in via Entra.
-                      Must be reachable before the app knows the user is authenticated. */}
-                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/auth/callback" element={<Navigate to="/" replace />} />
                   <Route path="/" element={<LandingPage />} />
                   <Route path="*" element={<LandingPage />} />
                 </Routes>

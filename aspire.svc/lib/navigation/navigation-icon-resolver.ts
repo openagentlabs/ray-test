@@ -1,14 +1,16 @@
 import type { LucideIcon } from "lucide-react";
-import { DraftingCompass, LayoutDashboard, Mail } from "lucide-react";
+import {
+  Home,
+  LayoutDashboard,
+  Settings,
+} from "lucide-react";
 
-/**
- * Maps sidebar nav item ids to icons; unknown ids fall back to {@link LayoutDashboard}.
- */
 export class NavigationIconResolver {
   private static readonly icons: Readonly<Record<string, LucideIcon>> =
     Object.freeze({
-      "users-invites": Mail,
-      "users-architect": DraftingCompass,
+      home: Home,
+      dashboard: LayoutDashboard,
+      settings: Settings,
     });
 
   public resolve(navId: string): LucideIcon {

@@ -97,9 +97,27 @@ def build_upload_object_storage(
     """
     Returns S3 when configured via secret or env; local ``UPLOAD_DIR`` otherwise.
 
-    Order: ``bundle.s3`` → env ``S3_BUCKET_NAME`` → ``LocalObjectStorage``.
+    ``OBJECT_STORAGE_BACKEND``:
+      - ``local`` — always ``LocalObjectStorage`` (offline / laptop dev).
+      - ``s3`` — S3 only (secret or ``S3_BUCKET_NAME``); falls back to local if
+        the bucket probe fails (same as ``auto``).
+      - ``auto`` (default) — ``bundle.s3`` → env ``S3_BUCKET_NAME`` → local.
+
     Prefix comes from ``S3_UPLOAD_KEY_PREFIX`` (default ``uploads``).
     """
+    backend_mode = (getattr(settings, "OBJECT_STORAGE_BACKEND", None) or "auto").lower()
+    if backend_mode == "local":
+        logger.info(
+            "Using local object storage (OBJECT_STORAGE_BACKEND=local) at %s",
+            settings.UPLOAD_DIR,
+        )
+        return LocalObjectStorage(Path(settings.UPLOAD_DIR))
+    if backend_mode not in {"auto", "s3"}:
+        logger.warning(
+            "Unknown OBJECT_STORAGE_BACKEND=%r; treating as auto",
+            backend_mode,
+        )
+
     prefix = getattr(settings, "S3_UPLOAD_KEY_PREFIX", None) or "uploads"
 
     candidate: Optional["S3Secrets"] = bundle.s3

@@ -47,12 +47,12 @@ const EMPTY_SUMMARY: ArchitectSolutionSummaryCounts = Object.freeze({
   completed: 0,
 });
 
-const EMPTY_ROLE_COUNTS: ArchitectIamRoleSummaryCounts = Object.freeze({
-  admins: 0,
-  solutionOwners: 0,
-  architects: 0,
-  softwareDevs: 0,
-  devops: 0,
+const MOCK_ROLE_COUNTS: ArchitectIamRoleSummaryCounts = Object.freeze({
+  admins: 2,
+  solutionOwners: 4,
+  architects: 3,
+  softwareDevs: 6,
+  devops: 2,
 });
 
 export function ArchitectWorkspaceMock({
@@ -82,12 +82,8 @@ export function ArchitectWorkspaceMock({
   const [rosterRows, setRosterRows] = useState<readonly ArchitectRosterRow[]>([]);
   const [summary, setSummary] =
     useState<ArchitectSolutionSummaryCounts>(EMPTY_SUMMARY);
-  const [roleCounts, setRoleCounts] =
-    useState<ArchitectIamRoleSummaryCounts>(EMPTY_ROLE_COUNTS);
-  const [iamStatsError, setIamStatsError] = useState<string | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
-  const [iamStatsVersion, setIamStatsVersion] = useState(0);
   const [workspacePending, startWorkspaceTransition] = useTransition();
 
   const dataRequest = useMemo(
@@ -149,47 +145,6 @@ export function ArchitectWorkspaceMock({
       cancelled = true;
     };
   }, [dataRequest, dataVersion]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/iam/user-type-stats")
-      .then(async (res) => {
-        const raw: unknown = await res.json();
-        if (cancelled) {
-          return;
-        }
-        if (!res.ok || raw === null || typeof raw !== "object") {
-          const message =
-            raw !== null &&
-            typeof raw === "object" &&
-            "error" in raw &&
-            typeof (raw as { error?: unknown }).error === "string"
-              ? (raw as { error: string }).error
-              : `IAM stats request failed (${res.status}).`;
-          setIamStatsError(message);
-          setRoleCounts(EMPTY_ROLE_COUNTS);
-          return;
-        }
-        const body = raw as { roles?: ArchitectIamRoleSummaryCounts };
-        if (!body.roles) {
-          setIamStatsError("IAM stats response was missing role counts.");
-          setRoleCounts(EMPTY_ROLE_COUNTS);
-          return;
-        }
-        setIamStatsError(null);
-        setRoleCounts(body.roles);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        setIamStatsError(err instanceof Error ? err.message : "IAM stats request failed.");
-        setRoleCounts(EMPTY_ROLE_COUNTS);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [iamStatsVersion]);
 
   const visibleIds = useMemo(() => rosterRows.map((r) => r.id), [rosterRows]);
   const allVisibleSelected =
@@ -290,7 +245,6 @@ export function ArchitectWorkspaceMock({
     resetArchitectWorkspaceMockStore();
     setSelectedIds(new Set());
     bumpDataVersion();
-    setIamStatsVersion((v) => v + 1);
   }, [bumpDataVersion]);
 
   const handleSelectProgramFromTypeahead = useCallback((program: string) => {
@@ -320,16 +274,7 @@ export function ArchitectWorkspaceMock({
       <div className="flex flex-col gap-4 pb-8">
         <SolutionSummaryPanels counts={summary} />
 
-        <IamRoleSummaryPanels counts={roleCounts} />
-
-        {iamStatsError !== null ? (
-          <div
-            className="rounded-[10px] border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive"
-            role="status"
-          >
-            People counts unavailable: {iamStatsError}
-          </div>
-        ) : null}
+        <IamRoleSummaryPanels counts={MOCK_ROLE_COUNTS} />
 
         <RegisteredServicesPanel initialResult={registeredServicesBootstrap} />
 

@@ -1,0 +1,280 @@
+---
+description: >-
+  PEP 8 style guide rules for Python in this repository — one typed bullet per
+  guideline distilled from PEP 8; complements python.mdc for format and lint.
+globs:
+  # Any first-party Python source in the solution (Cursor excludes node_modules / .venv by default).
+  - "**/*.py"
+  - "**/*.pyi"
+  - "**/*.pyx"
+  - "**/*.pxd"
+  - "**/*.pxi"
+  - "**/*.pyw"
+---
+
+# PEP 8 — Python style guide
+
+## Agent init
+
+**Mandatory:** Read this entire section before any other content in this file; execute every `Action:` line here immediately and retain every `Rule:` and `Knowledge:` line for the rest of this session.
+
+- Rule: Every bullet in **Rules content** is exactly one line starting with `Knowledge:`, `Rule:`, or `Action:` — never wrap a rule across multiple lines.
+- Rule: Type prefix is PascalCase with no spaces, first letter capitalized, followed by a colon and one space — Example: `Rule: Use 4 spaces per indentation level.`
+- Rule: `Knowledge:` bullets are context to retain; `Rule:` bullets are constraints to follow when this file applies; `Action:` bullets are steps to execute when their condition is met.
+- Knowledge: This file distills [PEP 8](https://peps.python.org/pep-0008/) into single-line agent rules for all **`**/*.py`** files in this repository; docstring detail lives in PEP 257.
+- Knowledge: Load this file when writing, reviewing, or formatting Python style; pair with **`.cursor/rules/python/python.mdc`** for uv applications, no one-off scripts, typing, async, and ruff usage.
+- Action: Read every `###` subsection in **Rules content** in order; store `Knowledge:` and `Rule:` bullets; execute `Action:` bullets when their condition applies.
+
+---
+
+## Rules content
+
+### Consistency and precedence
+
+Apply when choosing whether to follow a PEP 8 guideline or local/project convention.
+
+- Knowledge: Code is read far more often than written; readability and consistency are the primary goals.
+- Rule: Project-specific coding style guides take precedence over PEP 8 when they conflict for that project.
+- Rule: **`.cursor/rules/python/python.mdc`** is this repository's project-specific Python policy and takes precedence over PEP 8 when they conflict — including ruff `line-length` and the no one-off-script rule.
+- Rule: Consistency with PEP 8 matters; consistency within a project matters more; consistency within one module or function matters most.
+- Rule: Know when to be inconsistent — when in doubt, use judgment, review nearby examples, and ask rather than guessing.
+- Rule: Use judgment when a guideline is inapplicable; do not break backwards compatibility solely to comply with PEP 8.
+- Rule: Ignore a guideline when applying it would make the code less readable even for PEP-aware readers.
+- Rule: Ignore a guideline to stay consistent with surrounding code that already breaks it, or clean up the inconsistency when practical.
+- Rule: Ignore a guideline on legacy code that predates the guideline when there is no other reason to modify that code.
+- Rule: Ignore a guideline when older Python versions lack the feature the guideline recommends.
+
+### Code layout — indentation
+
+Apply when breaking lines, indenting continuations, or structuring multiline blocks.
+
+- Rule: Use 4 spaces per indentation level.
+- Rule: Align wrapped continuation elements vertically with the opening delimiter inside parentheses, brackets, or braces, or use a hanging indent.
+- Rule: With a hanging indent, put no arguments on the first line and indent continuation lines so they are clearly distinct.
+- Rule: Do not place continuation-line arguments at the same indent as the enclosing block when not using vertical alignment with the opening delimiter.
+- Rule: The 4-space rule is optional for continuation lines beyond the first indentation level.
+- Rule: On multiline constructs, align the closing brace, bracket, or parenthesis under the first non-whitespace of the last line or under the opening delimiter line.
+- Rule: For long `if` conditionals split across lines, use no extra indent, a distinguishing comment, or extra indent on the continuation line — PEP 8 takes no single mandated style.
+
+### Code layout — tabs, line length, and breaks
+
+Apply when choosing indentation characters, wrapping lines, and breaking expressions.
+
+- Rule: Spaces are the preferred indentation method; use tabs only to match existing tab-indented code.
+- Rule: Python disallows mixing tabs and spaces for indentation.
+- Rule: Limit all lines to a maximum of 79 characters in code.
+- Rule: Limit docstrings and comments to 72 characters per line.
+- Rule: Teams may raise the code line limit to 99 characters by agreement while keeping comments and docstrings at 72.
+- Rule: Prefer implicit line continuation inside parentheses, brackets, and braces over backslash continuation.
+- Rule: Use backslash continuation when implicit continuation is unavailable (e.g. multiple `with` statements before Python 3.10, or `assert` statements).
+- Rule: Indent continued lines appropriately when using backslash continuation.
+- Rule: Break before binary operators (Knuth style) in new code so operators align with operands.
+- Rule: Breaking before or after binary operators is permissible if the choice is consistent locally.
+
+### Code layout — blank lines and encoding
+
+Apply between definitions, inside functions, and for file encoding.
+
+- Rule: Surround top-level function and class definitions with two blank lines.
+- Rule: Surround method definitions inside a class with one blank line.
+- Rule: Use extra blank lines sparingly to separate groups of related functions.
+- Rule: Blank lines between related one-liner functions may be omitted.
+- Rule: Use blank lines sparingly inside functions to mark logical sections.
+- Rule: Form feed (control-L) may separate pages of related file sections when tools support it.
+- Rule: Use UTF-8 for Python source; omit encoding declarations in normal project code.
+- Rule: Use non-UTF-8 encodings only for deliberate test purposes.
+- Rule: Use non-ASCII characters sparingly in data, preferably only for places and human names; avoid noisy Unicode and byte-order marks.
+- Rule: Identifiers in shared libraries must be ASCII-compatible per PEP 3131 and should use English words where feasible.
+- Rule: Open-source projects with a global audience should adopt an ASCII-only identifier policy where feasible.
+
+### Imports and module dunders
+
+Apply at module top level before globals and constants.
+
+- Rule: Imports should usually be on separate lines except `from module import name1, name2`.
+- Rule: Put imports at the top of the file after module comments and docstrings and before module globals and constants.
+- Rule: Group imports in order — standard library, third party, local application — with a blank line between groups.
+- Rule: Prefer absolute imports; explicit relative imports are acceptable for complex package layouts where absolute imports would be unnecessarily verbose.
+- Rule: Standard-library-style code should avoid complex package layouts and use absolute imports only.
+- Rule: `from module import Class` is acceptable unless it causes local name clashes; then `import module` and qualified access.
+- Rule: Avoid wildcard imports (`from module import *`) except to republish an internal interface in a documented public API.
+- Rule: When republishing names via wildcard import, still follow the public and internal interface guidelines below.
+- Rule: Place `from __future__` imports immediately after the module docstring and before any other code.
+- Rule: Place module-level dunders (`__all__`, `__version__`, etc.) after the docstring and before other imports except `from __future__`.
+
+### String quotes
+
+Apply when choosing quote style for string literals and docstrings.
+
+- Rule: Pick single or double quotes and use them consistently within a project.
+- Rule: When a string contains one quote type, use the other quote type to avoid backslash escapes.
+- Rule: Use double-quote characters for triple-quoted strings to match PEP 257 docstring convention.
+
+### Whitespace in expressions
+
+Apply inside expressions, calls, slices, and operator spacing.
+
+- Rule: Avoid extraneous whitespace in the situations below.
+- Rule: Do not put extraneous whitespace immediately inside parentheses, brackets, or braces.
+- Rule: Do not put a space between a trailing comma and the closing parenthesis (singleton tuples use `(0,)`).
+- Rule: Do not put a space immediately before a comma, semicolon, or colon.
+- Rule: In slices, put equal spacing around colons as for a binary operator; omit space when a slice bound is omitted.
+- Rule: Do not put a space immediately before the open parenthesis of a function call.
+- Rule: Do not put a space immediately before the open bracket of indexing or slicing.
+- Rule: Do not use multiple spaces around assignment or other operators to vertically align statements.
+- Rule: Avoid trailing whitespace anywhere in source files.
+- Rule: Surround binary operators — assignment, augmented assignment, comparisons, `in`, `not in`, `is`, `is not`, `and`, `or`, `not` — with a single space on each side.
+- Rule: When mixing operator priorities, add whitespace around the lowest-priority operators; never use more than one space; keep spacing equal on both sides.
+- Rule: In function annotations, use normal colon spacing and put spaces around the `->` return arrow when present.
+- Rule: Do not use spaces around `=` in keyword arguments or unannotated default parameter values.
+- Rule: When an annotated parameter has a default, put spaces around the `=` sign.
+- Rule: Discourage compound statements with multiple statements on one line.
+- Rule: A single-clause `if`, `for`, or `while` with a small body may appear on one line; never combine multiple clauses on one line.
+- Rule: Never put multi-clause `if`, `for`, `while`, or `try` statements on one line; avoid folding long multi-statement lines.
+
+### Trailing commas
+
+Apply in literals, calls, and version-control-friendly multiline collections.
+
+- Knowledge: Trailing commas are usually optional except where mandatory for one-element tuples.
+- Rule: Use a trailing comma for one-element tuples and prefer redundant parentheses for clarity — `(item,)`.
+- Rule: Put each collection element on its own line with a trailing comma and the closing delimiter on the next line when the list will grow over time.
+- Rule: Do not put a trailing comma on the same line as the closing delimiter except for singleton tuples.
+
+### Comments
+
+Apply to block comments, inline comments, and comment maintenance.
+
+- Rule: Comments that contradict the code are worse than no comments; keep comments up to date when code changes.
+- Rule: Write comments as complete sentences; capitalize the first word unless it is a lowercase identifier.
+- Rule: Never alter the casing of identifiers when capitalizing comment sentences.
+- Rule: Write block comments as one or more paragraphs of complete sentences ending with periods.
+- Rule: Use one or two spaces after a sentence-ending period in multi-sentence comments except after the final sentence.
+- Rule: Write comments clearly enough for other speakers of the language to understand them.
+- Rule: Write comments in English unless you are certain the code will never be read by non-native speakers.
+- Rule: Indent block comments to the same level as the code they describe; start each line with # and one space.
+- Rule: Separate block-comment paragraphs with a lone # character on its own line.
+- Rule: Use inline comments sparingly; separate them from the statement by at least two spaces; start with `#` and one space.
+- Rule: Do not use inline comments that merely restate obvious code behavior.
+
+### Documentation strings
+
+Apply to public API docstrings; defer full conventions to PEP 257.
+
+- Rule: Write docstrings for all public modules, functions, classes, and methods.
+- Rule: For non-public methods without docstrings, add a comment after the `def` line describing what the method does.
+- Rule: Follow PEP 257 for full docstring content conventions beyond PEP 8 layout rules.
+- Rule: Put the closing `"""` of a multiline docstring on its own line.
+- Rule: Keep the closing `"""` on the same line for one-line docstrings.
+
+### Naming — styles and principles
+
+Apply when choosing or reading identifier naming patterns.
+
+- Knowledge: Common styles include `b`, `B`, `lowercase`, `lower_case_with_underscores`, `UPPERCASE`, `UPPER_CASE_WITH_UNDERSCORES`, `CapWords` (StudlyCaps), and `mixedCase`.
+- Rule: Write new modules and packages to these naming standards; in existing libraries with established style, prefer internal consistency.
+- Rule: Public API names should reflect usage rather than implementation details.
+- Rule: Capitalize every letter of an acronym in CapWords names — `HTTPServerError`, not `HttpServerError`.
+- Rule: Do not use `Capitalized_Words_With_Underscores` — it is an ugly and discouraged style.
+- Knowledge: A single leading underscore signals weak internal use and is omitted from `from module import *`.
+- Knowledge: A single trailing underscore avoids clashes with Python keywords — e.g. `class_`.
+- Knowledge: Double leading underscores on class attributes invoke name mangling — `__attr` becomes `_ClassName__attr`.
+- Knowledge: Double leading and trailing underscores denote magic names — never invent them; use only as documented (`__init__`, `__all__`, etc.).
+
+### Naming — prescriptive conventions
+
+Apply when naming modules, classes, functions, variables, and constants.
+
+- Rule: Never use the characters l (lowercase L), O (uppercase o), or I (uppercase i) as single-character variable names; prefer L over l when a single letter is needed.
+- Rule: Use short, all-lowercase module names; underscores may improve readability.
+- Rule: Use short, all-lowercase package names; underscores are discouraged in package names.
+- Rule: Give C/C++ extension modules a leading underscore when paired with a higher-level Python module — e.g. `_socket`.
+- Rule: Use CapWords for class names unless the interface is documented and used primarily as a callable.
+- Rule: Name type variables with CapWords, preferring short names; suffix `_co` or `_contra` for covariance or contravariance.
+- Rule: Define exceptions as classes and name them with CapWords.
+- Rule: Name exception classes with CapWords and suffix `Error` when the exception represents an error.
+- Rule: Non-error exceptions used for non-local flow control or signaling need no special suffix.
+- Rule: Name module-level globals like functions — lowercase with underscores; use `__all__` or a leading underscore for non-public globals in `from M import *` modules.
+- Rule: Name functions and variables in lowercase with underscores; variable names follow the same convention as function names.
+- Rule: Use mixedCase for functions and variables only where prevailing style requires backwards compatibility.
+- Rule: Always use self as the first argument to instance methods.
+- Rule: Always use cls as the first argument to class methods.
+- Rule: Append a single trailing underscore to parameter names that clash with reserved keywords; prefer a synonym to avoid the clash.
+- Rule: Name methods and instance variables in lowercase with underscores; one leading underscore marks non-public members.
+- Rule: Use two leading underscores on attributes only to avoid name clashes in classes designed for subclassing.
+- Rule: Define constants at module level in `ALL_CAPS_WITH_UNDERSCORES`.
+
+### Naming — inheritance and interfaces
+
+Apply when designing class APIs and marking public vs internal symbols.
+
+- Rule: Default new class attributes to non-public unless they are intended for unrelated clients; if in doubt, choose non-public.
+- Rule: When designing a subclassable class, decide explicitly which attributes are public, part of the subclass API, or base-class-only.
+- Rule: Public attributes must not use leading underscores.
+- Rule: Public attributes imply a commitment to avoid backwards-incompatible changes for unrelated clients.
+- Knowledge: Non-public attributes carry no guarantee they will not change or be removed.
+- Rule: Append a trailing underscore when a public attribute name collides with a reserved keyword, except use `cls` for class references.
+- Rule: Expose simple public data as plain attributes; use properties when behavior grows; keep property behavior side-effect free except for acceptable caching.
+- Rule: Do not use properties for computationally expensive operations.
+- Rule: Use double leading underscores and no trailing underscore on attributes that subclasses must not accidentally override.
+- Rule: Backwards compatibility guarantees apply only to public interfaces.
+- Rule: Treat documented interfaces as public unless documentation marks them provisional or internal.
+- Rule: Treat undocumented interfaces as internal.
+- Rule: Declare the public API explicitly with `__all__`; an empty `__all__` means the module exposes no public API.
+- Rule: Prefix internal names with a single leading underscore even when `__all__` is set.
+- Rule: Treat an interface as internal when any containing namespace (package, module, or class) is internal.
+- Rule: Treat imported names as implementation details; other modules must not rely on indirect access unless the name is an explicitly documented part of the containing module API.
+
+### Programming recommendations
+
+Apply to comparisons, exceptions, control flow, and common idioms beyond layout.
+
+- Rule: Do not rely on CPython in-place string concatenation; use `''.join()` in performance-sensitive concatenation.
+- Rule: Compare singletons such as `None` with `is` or `is not`, never with `==` or `!=`.
+- Rule: Use `if x is not None` when testing that an optional value was set, not bare `if x` when falsy container types matter.
+- Rule: Prefer `if foo is not None` over `if not foo is None`.
+- Rule: Implement all six rich comparison methods or apply `functools.total_ordering` when defining ordering behavior.
+- Rule: Bind functions with `def`, not `identifier = lambda ...`.
+- Rule: Derive exceptions from Exception, not BaseException; reserve BaseException for exceptions that should almost never be caught.
+- Rule: Design exception hierarchies around what catching code needs to distinguish, not where exceptions are raised; answer "what went wrong?" programmatically.
+- Rule: Use `raise NewException from original` for explicit replacement; preserve relevant details when using `raise NewException from None`.
+- Rule: Catch specific exception types; avoid bare `except:` except when logging the traceback or performing cleanup before re-raising.
+- Rule: Prefer try/finally over bare except when cleanup must run before the exception propagates.
+- Rule: Use except Exception to catch program errors; bare except is equivalent to except BaseException and also catches KeyboardInterrupt and SystemExit.
+- Rule: Prefer the Python 3.3+ `OSError` hierarchy over inspecting `errno` values when handling operating system errors.
+- Rule: Keep each `try` clause to the minimum code needed so exceptions are not masked; use `try`/`except`/`else` to keep handling out of the `try` block.
+- Rule: Use `with` for local resources; `try`/`finally` is acceptable when `with` is unsuitable.
+- Rule: Call context managers through explicit methods when they do more than acquire and release — e.g. `with conn.begin_transaction():`.
+- Rule: Make return behavior consistent in a function — either all branches return an expression or none do; use explicit `return None` where needed.
+- Rule: When some branches return a value, include an explicit `return` at the end of the function when the final path is reachable.
+- Rule: Use `str.startswith()` and `str.endswith()` instead of slice comparisons for prefixes and suffixes.
+- Rule: Use `isinstance(obj, cls)` for type checks, not `type(obj) is type(...)`.
+- Rule: Test empty sequences with truthiness (`if not seq`) rather than `len(seq)`.
+- Rule: Do not write string literals that depend on significant trailing whitespace.
+- Rule: Do not compare boolean values to `True` or `False` with `==` or `is`.
+- Rule: Avoid `return`, `break`, or `continue` in a `finally` suite when it would exit the `finally` and suppress a propagating exception.
+
+### Type annotations
+
+Apply to PEP 484 function annotations and PEP 526 variable annotations.
+
+- Rule: Function annotations should use PEP 484 syntax with the whitespace rules from the expressions section.
+- Rule: Do not use pre-PEP-484 experimental annotation styles; PEP 484 syntax is required.
+- Rule: Outside the standard library, PEP 484 annotation experiments are encouraged; the standard library should adopt annotations conservatively.
+- Rule: Standard-library-style code may adopt PEP 484 annotations in new code and large refactorings while remaining conservative overall.
+- Rule: Put `# type: ignore` near the top of files that use annotations for non-PEP-484 purposes so type checkers skip them.
+- Knowledge: Type checkers are optional separate tools like linters; users who do not want them may ignore them.
+- Rule: Python interpreters must not emit messages or change runtime behavior based on annotations by default.
+- Rule: Publish optional static types for third-party consumers via `.pyi` stub files read by type checkers instead of changing runtime behavior.
+- Rule: Variable annotations require one space after the colon and no space before the colon.
+- Rule: When an annotated assignment includes a value, put exactly one space on both sides of `=`.
+- Rule: Prefer variable annotation syntax in stub files on all supported Python versions per PEP 484.
+
+### Related
+
+Reference paths for companion rules — link by path; do not duplicate repo-specific Python policy here.
+
+- Knowledge: Repository Python stack, uv applications, no one-off scripts, typing, async gRPC, and ruff — **`.cursor/rules/python/python.mdc`**.
+- Knowledge: Approved Python libraries catalog — **`.cursor/rules/python/lib.mdc`**.
+- Knowledge: Docstring conventions beyond PEP 8 layout — [PEP 257](https://peps.python.org/pep-0257/).
+- Knowledge: Full authoritative PEP 8 text — **`.cursor/rules/python/peps.python.org_pep-0008_.2026-06-14T15_17_36.107Z.md`** and [peps.python.org/pep-0008](https://peps.python.org/pep-0008/).

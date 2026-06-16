@@ -10,7 +10,7 @@ alwaysApply: false
 
 **Mandatory.** This file is the **only** infrastructure tools list for this repo. Before any infra CLI, skill, or MCP, **read it** and pick from **`## Tools`** below. Do not improvise commands, install paths, or unlisted tools.
 
-- **What:** Infra-only CLIs, validation scanners, skills (`.cursor/skills/`), and cloud/IaC MCP. Each entry: what, when, how.
+- **What:** Infra-only CLIs, validation scanners, skills (**`skills/`**, router **`.cursor/skills/ray-test/`**), and cloud/IaC MCP. Each entry: what, when, how, target(s).
 - **How:** Match **`## Tools`** → follow linked rule or `SKILL.md` end-to-end → link **`constants.mdc`**, **`infras/aws.mdc`**, **`iac/terrafrom.mdc`**; do not re-declare their values.
 - **Not for:** UI, app code, `*.svc/` domain — use **`solution.mdc`**.
 
@@ -20,15 +20,17 @@ alwaysApply: false
 
 Run tools in this order to optimize feedback and resource use. Skip stages only when the changed paths do not apply (e.g. Helm-only change skips Terraform stages).
 
-| Order | Stage | Tools | Objective |
-|-------|-------|-------|-----------|
-| 01 | Syntax & style | `terraform fmt`, `helm lint` | Instant formatting and chart structure checks |
-| 02 | Static validation | `TFLint`, `KubeLinter` | Cloud-provider parameter and manifest production-readiness |
-| 03 | Vulnerability scan | `Trivy`, `Checkov` | Misconfigurations, secrets, CVE/compliance signatures |
-| 04 | Dynamic plan & policy | `terraform validate` → `terraform plan` → `Conftest` | Compiled plan state and custom policy-as-code |
-| — | Pre-apply supplements | `GitLeaks` / `Trufflehog`, `Infracost` | Secret history and cost guardrails before apply |
+| Order | Stage | Tools | Target(s) | Objective |
+|-------|-------|-------|-----------|-----------|
+| 01 | Syntax & style | `terraform fmt`, `helm lint` | `infra/aws/aws_tf/**/*.tf`, `infra/aws/aws_tf/**/*.tfvars`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/` | Instant formatting and chart structure checks |
+| 02 | Static validation | `TFLint`, `KubeLinter` | `infra/aws/aws_tf/`, `infra/aws/aws_tf/modules/<name>/`, chart paths above, rendered manifests from `helm template` | Cloud-provider parameter and manifest production-readiness |
+| 03 | Vulnerability scan | `Trivy`, `Checkov` | `infra/aws/aws_tf/`, `infra/aws/aws_tf/modules/<name>/`, `infra/aws/tf_lib/`, chart paths above | Misconfigurations, secrets, CVE/compliance signatures |
+| 04 | Dynamic plan & policy | `terraform validate` → `terraform plan` → `Conftest` | `infra/aws/aws_tf/`, Terraform plan JSON, rendered Helm manifests, `policy/` | Compiled plan state and custom policy-as-code |
+| — | Pre-apply supplements | `GitLeaks` / `Trufflehog`, `Infracost` | `infra/`, repo root (git history), `infra/aws/aws_tf/` | Secret history and cost guardrails before apply |
 
 **Repo paths:** Terraform root **`infra/aws/aws_tf/`**; Helm charts **`infra/aws/deployed/aws/<account>/<region>/services/<service>/helm/<chart>/`**.
+
+**Orchestrator script:** **`infra/scripts/iac_deploy.py`** — runs this pipeline end-to-end, verifies AWS account identity from **`constants/constants.mdc`**, writes reports under **`.cursor/scratch/<run-id>/`**, and deploys with **`--deploy`**, **`--deploy-terraform`**, or **`--deploy-helm`** after validation passes.
 
 ---
 
@@ -37,83 +39,97 @@ Run tools in this order to optimize feedback and resource use. Skip stages only 
 ### AWS
 
 - **What:** AWS CLI, SDK, and cloud MCP (`awsiac`, `awspricing`, `awsknowledge`) for this repo's single account.
+- **Target(s):** live AWS account `AWS_ACCOUNT_ID` in `AWS_DEFAULT_REGION` (EKS, VPC, subnets, security groups, IAM, and other provisioned resources).
 - **When (mandatory):** The **primary go-to** whenever you need to **access, debug, understand, or change** the AWS account or its infrastructure — live resources, account state, configuration, or operational issues. Use before improvising account inspection or changes. **Not** for authoring Terraform HCL or app/`*.svc/` logic.
 - **How:** Follow **`.cursor/rules/infras/aws.mdc`** + **`constants.mdc`**. Pre-flight before first AWS action: `aws sts get-caller-identity --profile <AWS_CLI_PROFILE> --output <AWS_OUTPUT_FORMAT>` — confirm `Account` matches `AWS_ACCOUNT_ID`. Every call: explicit `--profile` and `--region`; stop on wrong account or failed identity check.
 
 ### Helm
 
 - **What:** **Helm** CLI for packaging, templating, and releasing Kubernetes charts in this repo.
+- **Target(s):** `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/`.
 - **When (mandatory):** The **primary go-to** whenever you need to **interact with, understand, author, upgrade, or roll back** Helm charts. Use for all chart lifecycle work; pair with **Terraform** when delivering a full AWS environment from intent; pair with **kubectl** to verify and debug live releases after deploy. **Not** for `terraform apply`, raw AWS CLI ops, live cluster inspection without a chart context (use **kubectl**), or charts inside **`infra/aws/aws_tf/`**.
 - **How:** Layout per **`infras/aws.mdc`** §Helm and **`iac/terrafrom.mdc`**. Pipeline stage 01: **`helm lint`**. Before deploy: `helm template <release> <chart-path> -f <values>` then run **KubeLinter**, **Trivy**, **Checkov**, and **Conftest** on rendered output as applicable. After release, verify live state with **kubectl**. Chart errors per **`error.mdc`** §Helm.
 
 ### kubectl
 
 - **What:** **`kubectl`** CLI — direct interaction with the EKS cluster: workloads, resources, logs, events, contexts, and in-cluster configuration.
+- **Target(s):** live EKS cluster `NET_EKS_CLUSTER_NAME` (Kubernetes API — namespaces, workloads, ingress, events, and in-cluster config).
 - **When (mandatory):** The **primary go-to** whenever you need to **inspect, debug, configure, or operate** live Kubernetes — pod/deployment/ingress status, `describe`/`logs`/events, port-forward, namespace and context management, node health, and post-Helm release verification. Use for runtime cluster diagnosis and configuration; use **Helm** for chart authoring, templating, and release lifecycle; use **AWS** for EKS control plane, IAM, and networking outside the cluster API. **Not** for Terraform HCL, chart lint/render (use **Helm**), or app/`*.svc/` logic.
 - **How:** Configure context first via **`aws eks update-kubeconfig`** per **`infras/aws.mdc`** + **`constants.mdc`** — explicit `--profile` and `--region`; cluster name from `terraform output -raw containers_eks_cluster_name` in **`infra/aws/aws_tf/`**. Verify: `kubectl config current-context` and `kubectl get nodes`. Prefer read-only commands first (`get`, `describe`, `logs`, `top`); mutating commands (`apply`, `delete`, `scale`, `patch`, `rollout`) require explicit user approval. For chart/render failures, run the **Helm / Kubernetes** flow in **`infras/debuging.mdc`** before cluster-side fixes. Operational examples: **`infra/aws/containers/README.md`**.
 
 ### Terraform
 
 - **What:** **Terraform** — infrastructure-as-code for **deploying and managing AWS resources**. Runnable root: **`infra/aws/aws_tf/`**.
-- **When (mandatory):** The **primary go-to** for **authoring, validating, planning, and applying** AWS infrastructure. Use whenever IaC must be checked or deployed; use with **Helm** and **kubectl** when delivering a full AWS environment from intent (Terraform provisions platform surfaces; Helm releases workloads; kubectl verifies and debugs live cluster state). **Not** for live account debugging (use **AWS**), live cluster inspection (use **kubectl**), or registry search alone (use **tf-tool** via **`.cursor/skills/tf/SKILL.md`**).
-- **How:** Follow **`.cursor/skills/tf/SKILL.md`** → **`workflow.md`** and **`iac/terrafrom.mdc`**. Run the **Pipeline sequence** above from **`infra/aws/aws_tf/`**; apply only with explicit user approval after stage 04 passes. Wire modules with **`solution = local.solution`**; account/region from **`constants.mdc`** via **`terraform.tfvars`**.
+- **Target(s):** `infra/aws/aws_tf/`.
+- **When (mandatory):** The **primary go-to** for **authoring, validating, planning, and applying** AWS infrastructure. Use whenever IaC must be checked or deployed; use with **Helm** and **kubectl** when delivering a full AWS environment from intent (Terraform provisions platform surfaces; Helm releases workloads; kubectl verifies and debugs live cluster state). **Not** for live account debugging (use **AWS**), live cluster inspection (use **kubectl**), or registry search alone (use **tf-tool** via **`skills/tf/SKILL.md`**).
+- **How:** Follow **`skills/tf/SKILL.md`** → **`workflow.md`** and **`iac/terrafrom.mdc`**. Run the **Pipeline sequence** above from **`infra/aws/aws_tf/`**; apply only with explicit user approval after stage 04 passes. Wire modules with **`solution = local.solution`**; account/region from **`constants.mdc`** via **`terraform.tfvars`**. Entry router: **`.cursor/skills/ray-test/SKILL.md`**.
 
 ### terraform fmt
 
 - **What:** Native Terraform **formatting validator** — enforces canonical HCL layout.
+- **Target(s):** `infra/aws/aws_tf/**/*.tf`, `infra/aws/aws_tf/**/*.tfvars`.
 - **When (mandatory):** **Pipeline stage 01** — every commit or PR that touches `.tf` / `.tfvars` under **`infra/aws/aws_tf/`**; before `terraform validate`, `plan`, or security scans. **Not** a substitute for `validate`, lint, or security tools.
 - **How:** From **`infra/aws/aws_tf/`**: `terraform fmt -recursive -check` (CI) or `terraform fmt -recursive` (fix). Re-run after HCL edits.
 
 ### terraform validate
 
 - **What:** Native Terraform **structural validator** — catches invalid references, type mismatches, and provider config errors (requires `terraform init`).
+- **Target(s):** `infra/aws/aws_tf/` (after `terraform init` in the same directory).
 - **When (mandatory):** **Pipeline stage 04** — after fmt/TFLint and before or with `terraform plan`; mandatory before any `apply`. **Not** for compliance signatures (use **Checkov** / **Trivy**) or custom org policy (use **Conftest**).
 - **How:** From **`infra/aws/aws_tf/`** after `terraform init`: `terraform validate`. Fix reported errors before planning.
 
 ### TFLint
 
 - **What:** Pluggable, **cloud-aware** Terraform linter beyond native `validate` — provider-specific rules (e.g. invalid AWS instance types, unsupported SKUs).
+- **Target(s):** `infra/aws/aws_tf/`, `infra/aws/aws_tf/modules/<name>/`.
 - **When (mandatory):** **Pipeline stage 02** — after `terraform fmt`, before vulnerability scans and `terraform plan`. **Not** for Helm, secret history, or custom Rego policy.
 - **How:** From **`infra/aws/aws_tf/`** (or module path): `tflint --init` then `tflint -f compact`. Fix structural/provider anomalies before stage 03.
 
 ### helm lint
 
 - **What:** Native Helm **syntax validator** — `Chart.yaml`, template YAML layout, and values conventions.
+- **Target(s):** `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/`.
 - **When (mandatory):** **Pipeline stage 01** — every change under a chart path; before `helm template`, **KubeLinter**, or security scans. **Not** for production-readiness rules (use **KubeLinter**) or policy-as-code (use **Conftest**).
 - **How:** `helm lint <chart-path>` (e.g. `infra/aws/deployed/aws/.../services/<service>/helm/<chart>/`). Fix all errors before templating.
 
 ### KubeLinter
 
 - **What:** Kubernetes **production-readiness** linter — missing resource limits, probes, dangerous `runAsRoot`, and similar manifest gaps.
+- **Target(s):** `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/`, rendered manifests from `helm template`.
 - **When (mandatory):** **Pipeline stage 02** — after `helm lint`, on chart directories or rendered manifests before vulnerability scans. **Not** for Terraform HCL or compliance framework signatures (use **Checkov** / **Trivy**).
 - **How:** `kubelinter lint <chart-path>/` or lint rendered YAML from `helm template`. Fix findings before stage 03.
 
 ### Trivy
 
 - **What:** Multi-target security scanner (Aqua Security) — Terraform misconfigurations, exposed secrets, IAM anomalies; Helm/Kubernetes compliance (NSA/CISA, CIS).
+- **Target(s):** `infra/aws/aws_tf/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/`.
 - **When (mandatory):** **Pipeline stage 03** — pre-commit or PR gate on changed Terraform trees and Helm charts; before deploy. **Not** for custom enterprise Rego rules (use **Conftest**) or cost analysis (use **Infracost**).
 - **How:** `trivy config infra/aws/aws_tf/` (Terraform); `trivy config <chart-path>/` (Helm). Report findings; block deploy on critical issues unless user accepts risk.
 
 ### Checkov
 
 - **What:** Graph-based static analysis (Bridgecrew/Prisma Cloud) — 1,000+ rules for Terraform (SOC2, HIPAA, PCI-DSS) and Helm template directories.
+- **Target(s):** `infra/aws/aws_tf/`, `infra/aws/aws_tf/modules/<name>/`, `infra/aws/tf_lib/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/`, `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/`.
 - **When (mandatory):** **Pipeline stage 03** — before any `terraform apply` / deploy and when finishing an interaction that touched **`infra/`**; PR/CI gate with SARIF/JUnit output. **Not** for fmt/validate/plan (use **Terraform** tools) or custom Rego policy (use **Conftest**). Full rule: **`.cursor/rules/tools/checkov-tool.mdc`**.
 - **How:** `checkov -d infra/aws/aws_tf --compact --quiet` (Terraform); `checkov -d <chart-path>/` (Helm). CI: `checkov -d <path> --output sarif`. Mandatory trigger gate per **checkov-tool.mdc**.
 
 ### Conftest (Open Policy Agent)
 
 - **What:** **Policy-as-code** (Rego) for custom enterprise compliance — scans **rendered** Terraform plan JSON and **rendered** Helm manifests static scanners can miss.
+- **Target(s):** Terraform plan JSON from `infra/aws/aws_tf/`, rendered Helm manifests from `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/services/<service>/helm/<chart>/` and `infra/aws/deployed/aws/<AWS_ACCOUNT_ID>/<AWS_DEFAULT_REGION>/helm/<chart>/`, Rego policies in `policy/` (or team Conftest bundle).
 - **When (mandatory):** **Pipeline stage 04** — pre-plan/pre-deploy after `terraform validate` and `terraform plan`; on `helm template` output before release. **Not** for known signature libraries alone (use **Checkov** / **Trivy**) or native syntax (use fmt/lint).
 - **How:** Terraform: `terraform plan -out=tfplan.binary` → `terraform show -json tfplan.binary > tfplan.json` → `conftest test tfplan.json`. Helm: `helm template <release> <chart-path> | conftest test -`. Policies live in repo `policy/` or team Conftest bundle.
 
 ### GitLeaks / Trufflehog
 
 - **What:** Dedicated **secret scanners** — cloud keys, certificates, and credentials in repo history and staged files (including HCL and `values.yaml`).
+- **Target(s):** `infra/`, repo root (full git history and staged files — `.tf`, `.tfvars`, `values.yaml`, and other IaC).
 - **When (mandatory):** Supplementary **pre-apply** gate on PRs and before first deploy of new modules/charts; when reviewing infra changes that touch variables, locals, or values files. **Not** a replacement for **Trivy** / **Checkov** misconfiguration rules.
 - **How:** `gitleaks detect --source .` or `trufflehog git file://.` (or CI equivalents). Rotate any exposed secret; never commit credentials per **`constants.mdc`**.
 
 ### Infracost
 
 - **What:** **Cost guardrail** — parses Terraform plan/changes and estimates monthly cost delta before apply.
+- **Target(s):** `infra/aws/aws_tf/`, Terraform plan output from `infra/aws/aws_tf/`.
 - **When (mandatory):** Supplementary **pre-apply** check when Terraform changes add or resize billable resources; PR gate when budget limits apply. **Not** a security or compliance scanner.
 - **How:** `infracost breakdown --path infra/aws/aws_tf/` or `infracost diff --path infra/aws/aws_tf/` against plan output. Block or flag PRs that exceed defined budget thresholds.

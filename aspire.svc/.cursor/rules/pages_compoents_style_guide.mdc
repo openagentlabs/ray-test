@@ -13,7 +13,7 @@ alwaysApply: false
 
 # Arb Aspire — style guide (mandatory rules)
 
-Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity (`PRJ_NAME`) is defined in **`.cursor/rules/constants/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 For **stack/Next/React** rules see `nextjs.mdc`. For **TypeScript** see `typescript.mdc`. For **persistence** see `database.mdc`. **This file is the single source of truth for visual styling.** The long-form explainer lives in `doc/web-stylng/` (start at `00-overview.md`); the rules below are extracted from that guide and **must** be followed by every UI change.
 

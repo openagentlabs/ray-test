@@ -1,5 +1,8 @@
 # THE ONLY FILE most engineers edit for this root. All other .tf files are locked structure.
-# See `.cursor/rules/terrafrom.mdc` and `.cursor/rules/constants.mdc`.
+# See `.cursor/rules/terrafrom.mdc` and `.cursor/rules/constants/constants.mdc`.
+#
+# AWS dev deploy merges infra/aws/envs/dev/terraform.tfvars (legacy live stack overrides).
+# Always run: terraform plan|apply -var-file=../envs/dev/terraform.tfvars
 
 solution_name        = "ray_test"
 solution_description = "Ray Test primary AWS infrastructure."
@@ -40,6 +43,20 @@ s3_shared_files_enabled = true
 
 # CSI mounts require EC2 (Ray node pool); Fargate profile on workloads namespace must stay off.
 containers_fargate_workloads_namespace_enabled = false
+
+# Default workload set for greenfield ray_test; dev env overrides in infra/aws/envs/dev/terraform.tfvars.
+containers_workloads = {
+  frontend               = { enabled = false }
+  iam_svc                = { enabled = false }
+  general_ai_agent       = { enabled = false }
+  solutions_svc          = { enabled = false }
+  notification_svc       = { enabled = false }
+  storage_svc            = { enabled = false }
+  collaboration_svc      = { enabled = false }
+  document_storage_svc   = { enabled = false }
+  arch_diagram_agent_svc = { enabled = false }
+  manager_web            = { enabled = true }
+}
 
 # Optional overrides (defaults match general.ai.agent.svc `app_config.toml` `[agent.bedrock]`):
 # general_ai_agent_bedrock_foundation_model_id  = "anthropic.claude-sonnet-4-5-20250929-v1:0"

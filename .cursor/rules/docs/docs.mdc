@@ -1,0 +1,39 @@
+---
+description: Documentation standards — README scaffolding, structure, and factual content. Always apply when creating or editing docs.
+alwaysApply: true
+---
+
+# Documentation rules (agent guide)
+
+**What this file is:** Repository-wide documentation policy. It is **always included** in agent context (`alwaysApply: true`).
+
+**When to use it:** Whenever you add, move, or rename a **solution**, **project**, **library**, **crate**, **module**, **microservice**, **component**, or other **self-contained folder**; when the user asks for a README or docs; or before finishing work that introduces a new top-level or bounded-context directory without `README.md`.
+
+**How to use it:** Apply the rules below in order. For README work, start from **`.cursor/templates/README.md.tmpl`** — do not invent structure from scratch.
+
+---
+
+## README at every root
+
+Every **solution**, **project**, **lib**, **crate**, **module**, **microservice**, and **component** must have **`README.md` at that folder’s root** (same directory as its entrypoint, `package.json`, `Cargo.toml`, `pyproject.toml`, or primary source root).
+
+### Scaffold from template
+
+1. Copy **`.cursor/templates/README.md.tmpl`** to **`README.md`** in the target folder root.
+2. Do **not** keep the `.tmpl` extension; the deliverable is **`README.md`** only.
+3. **Quick pass:** Read that folder and immediate subfolders (manifests, `src/`, configs, ports, scripts) and fill every section from **observed** facts — package names, stacks, commands, boundaries, integrations. Do not invent versions, owners, URLs, or behavior.
+4. If a value is unknown, ask or leave a clear placeholder; do not fabricate.
+5. Follow the template’s section rules: keep numbered headings and page-break markers; **sections 1, 2, 3, 4, and 12 are mandatory**; drop inapplicable sections and renumber the rest consecutively; remove any HTML instruction comment block before saving.
+
+### When to create or refresh
+
+- **Create** `README.md` when scaffolding a new folder in the list above.
+- **Update** `README.md` when you materially change purpose, layout, run instructions, or dependencies in that folder.
+
+---
+
+## General documentation
+
+- Prefer updating the **nearest** `README.md` over duplicating long prose in rules or chat.
+- Keep docs **accurate and minimal** — purpose, how to run/build/test, layout, and integration points; skip boilerplate that repeats parent READMEs unless this folder differs.
+- Link to canonical repo constants and ports in **`.cursor/rules/constants/constants.mdc`** and **`.cursor/rules/solution/solution.mdc`** instead of re-declaring them.

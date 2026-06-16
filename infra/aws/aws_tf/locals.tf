@@ -1,7 +1,7 @@
 locals {
   solution_slug = replace(replace(replace(lower(replace(var.solution_name, "_", "-")), "--", "-"), "--", "-"), "--", "-")
 
-  deployment_key = "${var.deployment_environment}-${var.deployment_index}-${var.deployment_instance}"
+  deployment_key = length(trimspace(var.deployment_key_override)) > 0 ? var.deployment_key_override : "${var.deployment_environment}-${var.deployment_index}-${var.deployment_instance}"
   project_id     = "${local.solution_slug}-${local.deployment_key}"
 
   solution = {
@@ -46,6 +46,18 @@ locals {
   k8s_namespace    = local.solution_slug
   k8s_dns_suffix   = "${local.k8s_namespace}.svc.cluster.local"
   k8s_service_host = "svc.cluster.local"
+
+  # EKS naming — use tfvars overrides for legacy stacks; avoids provider ↔ module cycle on existing clusters.
+  containers_cluster_name_effective  = length(trimspace(var.containers_cluster_name)) > 0 ? var.containers_cluster_name : local.solution_slug
+  containers_k8s_namespace_effective = length(trimspace(var.containers_k8s_namespace)) > 0 ? var.containers_k8s_namespace : local.solution_slug
+
+  legacy_physical_naming = length(trimspace(var.deployment_key_override)) > 0
+
+  iam_role_name = {
+    document_storage_svc = local.legacy_physical_naming ? lower(replace("arb-${local.deployment_key}-document-storage-svc", "_", "-")) : replace(replace(replace(lower(replace("arb-${local.deployment_key}-document-storage-svc", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+    general_ai_agent     = local.legacy_physical_naming ? lower(replace("arb-${local.deployment_key}-general-ai-agent-bedrock", "_", "-")) : replace(replace(replace(lower(replace("arb-${local.deployment_key}-general-ai-agent-bedrock", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+    arch_diagram_agent   = local.legacy_physical_naming ? lower(replace("arb-${local.deployment_key}-arch-diagram-agent-bedrock", "_", "-")) : replace(replace(replace(lower(replace("arb-${local.deployment_key}-arch-diagram-agent-bedrock", "_", "-")), "--", "-"), "--", "-"), "--", "-")
+  }
 
   document_storage_bedrock_embed_arns = [
     for model_id in var.document_storage_bedrock_embed_model_ids :

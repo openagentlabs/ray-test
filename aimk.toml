@@ -1,0 +1,66 @@
+# Solution metadata and registered projects for AI-Make (aimk).
+
+[solution]
+name = "Ray Test"
+description = "Ray Test primary AWS infrastructure and microservices monorepo."
+version = "0.1.0"
+
+[projects.infra]
+name = "Infrastructure"
+path = "infra"
+
+[projects.frontend]
+name = "Arb Frontend"
+path = "frontend"
+
+[projects.aspire]
+name = "Arb Aspire"
+path = "aspire.svc"
+
+[projects.iam]
+name = "IAM"
+path = "iam.svc"
+
+[projects.solutions]
+name = "ARB Solutions"
+path = "solutions.svc"
+
+[projects.storage]
+name = "Storage"
+path = "storage.svc"
+
+[projects.general_ai_agent]
+name = "General AI Agent"
+path = "general.ai.agent.svc"
+
+[projects.notification]
+name = "Notification"
+path = "notification.svc"
+
+[projects.collaboration]
+name = "Collaboration"
+path = "collaboration.svc"
+
+[projects.document_storage]
+name = "Document Storage"
+path = "document-storage.svc"
+
+[projects.arch_diagram_agent]
+name = "Arch Diagram Agent"
+path = "arch.diagram.agent.svc"
+
+[projects.observability]
+name = "EXL Observability"
+path = "lib/exl-observability"
+
+[projects.web_app]
+name = "Manager Web"
+path = "web-app"
+
+[projects.ai_make]
+name = "AI-Make"
+path = "build/ai-make"
+
+[projects.doc]
+name = "Documentation"
+path = "doc"

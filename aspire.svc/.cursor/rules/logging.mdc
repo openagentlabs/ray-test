@@ -16,7 +16,7 @@ alwaysApply: false
 
 # Arb Aspire — logging and observability rules
 
-Project identity values (`PRJ_NAME`, `PRJ_SLUG`) are defined in **`.cursor/rules/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
+Project identity values (`PRJ_NAME`, `PRJ_SLUG`) are defined in **`.cursor/rules/constants/constants.mdc`** at the **repository root** (beside **`aspire.svc/`**; **`PRJ_*`** is authoritative there while **`aspire.svc/.cursor/`** holds Aspire-only stack rules).
 
 ## Agent workflow (read first)
 

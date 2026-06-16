@@ -1,5 +1,6 @@
 locals {
-  ecr_prefix = replace(replace(replace("${lower(replace(var.solution.name, "_", "-"))}-${var.solution.deployment_key}", "--", "-"), "--", "-"), "--", "-")
+  _ecr_prefix_raw = lower(replace("${var.solution.name}-${var.solution.deployment_key}", "_", "-"))
+  ecr_prefix      = can(regex("--", var.solution.deployment_key)) ? local._ecr_prefix_raw : replace(replace(replace(local._ecr_prefix_raw, "--", "-"), "--", "-"), "--", "-")
 
   workload_catalog = {
     frontend = {

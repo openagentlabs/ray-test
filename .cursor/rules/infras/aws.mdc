@@ -20,7 +20,7 @@ alwaysApply: false
 
 ## Target account and region
 
-Account ID, CLI profile, primary region, and output format are defined **only** in **`.cursor/rules/constants.mdc`**:
+Account ID, CLI profile, primary region, and output format are defined **only** in **`.cursor/rules/constants/constants.mdc`**:
 
 | Constant ID | Role |
 |-------------|------|
@@ -153,7 +153,7 @@ Package charts under **`infra/aws/deployed/.../helm/<chart>/`**. Do not colocate
 
 | Topic | Path |
 |-------|------|
-| Account, region, network names | **`.cursor/rules/constants.mdc`** |
+| Account, region, network names | **`.cursor/rules/constants/constants.mdc`** |
 | Infra tools index | **`.cursor/rules/infras/tools.mdc`** |
 | Infra debugging flows | **`.cursor/rules/infras/debuging.mdc`** |
 | Terraform layout | **`.cursor/rules/iac/terrafrom.mdc`** |

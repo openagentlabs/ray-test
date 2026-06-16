@@ -12,7 +12,6 @@ from app.api.routes import upload_router, chat_router
 from app.api.chunked_upload import router as chunked_upload_router
 from app.api.sse import router as sse_router
 from app.api.auth_routes import auth_router
-from app.api.cognito_routes import cognito_router
 from app.api.project_routes import project_router
 from app.api.documentation_routes import documentation_router
 from app.api.rfe_routes import rfe_router
@@ -164,8 +163,15 @@ if _cors_origins:
         allow_origins=_cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["Authorization", "Content-Type", "X-Session-Id",
-                       "x-llm-chat-model", "x-llm-kg-model", "x-llm-embedding-model"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Content-Range",
+            "X-Session-Id",
+            "x-llm-chat-model",
+            "x-llm-kg-model",
+            "x-llm-embedding-model",
+        ],
     )
     logger.info("CORS configured with credentials for origins: %s", _cors_origins)
 else:
@@ -311,7 +317,6 @@ app.include_router(chunked_upload_router, prefix="/api/v1", tags=["upload-chunke
 app.include_router(sse_router, prefix="/api/v1", tags=["sse"])
 app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
-app.include_router(cognito_router, prefix="/api/v1/auth/cognito", tags=["authentication:cognito"])
 app.include_router(project_router, prefix="/api/v1", tags=["projects"])
 app.include_router(documentation_router, prefix="/api/v1", tags=["documentation"])
 app.include_router(rfe_router, prefix="/api/v1", tags=["model-training-rfe"])

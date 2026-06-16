@@ -7,7 +7,7 @@ const configDir = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.join(configDir, "..");
 
 const nextConfig: NextConfig = {
-  /** Resolve `file:../iam.svc/client` and other workspace siblings from `aspire.svc/`. */
+  /** Resolve monorepo workspace siblings from `aspire.svc/`. */
   outputFileTracingRoot: monorepoRoot,
   experimental: {
     externalDir: true,
