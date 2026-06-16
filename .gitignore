@@ -138,10 +138,11 @@ coverage.xml
 *.sqlite3
 
 # =============================================================================
-# Cursor — machine-local (commit .cursor/rules/, .cursor/skills/, templates/)
+# Cursor — jet-pack submodule (jet-pack/); .cursor -> jet-pack/.cursor
 # =============================================================================
 .cursor/mcp.json
 .cursor/scratch/
+jet-pack/_bmad/config.user.toml
 
 # =============================================================================
 # Local runtime — apps and services
