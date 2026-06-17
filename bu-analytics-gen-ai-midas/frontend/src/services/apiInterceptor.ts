@@ -12,6 +12,10 @@ import {
 
 /** Avoid `/api/v1` twice if `VITE_BASE_URL` already includes it. */
 function resolveApiV1Base(): string {
+  // Local Vite dev: same-origin /api proxy (vite.config.ts) — no CORS, works on any dev port.
+  if (import.meta.env.DEV) {
+    return '/api/v1';
+  }
   const raw = (import.meta.env.VITE_BASE_URL || '').trim().replace(/\/+$/, '');
   if (!raw) {
     return '/api/v1';

@@ -16,7 +16,10 @@ import {
 } from './authSessionExpiry';
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || '';
-const API_BASE_URL = `${VITE_BASE_URL}/api/v1/auth`;
+// Local Vite dev: same-origin /api proxy (vite.config.ts) — no CORS, works on any dev port.
+const API_BASE_URL = import.meta.env.DEV
+  ? '/api/v1/auth'
+  : `${VITE_BASE_URL}/api/v1/auth`;
 
 // Warn if VITE_BASE_URL is not set in production
 if (import.meta.env.PROD && !VITE_BASE_URL) {

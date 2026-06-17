@@ -555,9 +555,12 @@ export class FastAPIService {
   }
 
   constructor(baseUrl?: string) {
-    // Use provided baseUrl, or fall back to environment variable, or empty string
     const envBaseUrl = import.meta.env.VITE_BASE_URL || '';
-    const defaultBaseUrl = envBaseUrl ? `${envBaseUrl}/api/v1` : '/api/v1';
+    const defaultBaseUrl = import.meta.env.DEV
+      ? '/api/v1'
+      : envBaseUrl
+        ? `${envBaseUrl}/api/v1`
+        : '/api/v1';
     this.baseUrl = baseUrl || defaultBaseUrl;
     
     // Debug logging
